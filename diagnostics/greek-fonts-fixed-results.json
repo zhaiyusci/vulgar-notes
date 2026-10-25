@@ -1,0 +1,494 @@
+{
+  "TeX": [
+    {
+      "name": "默认命令",
+      "source": "\\alpha\\Gamma",
+      "glyphs": [
+        "mjx-c1D6FC",
+        "mjx-c2062",
+        "mjx-c393"
+      ],
+      "error": null
+    },
+    {
+      "name": "默认字符",
+      "source": "αΓ",
+      "glyphs": [
+        "mjx-c1D6FC",
+        "mjx-c2062",
+        "mjx-c393"
+      ],
+      "error": null
+    },
+    {
+      "name": "symbf 命令",
+      "source": "\\symbf{a\\alpha\\Gamma}",
+      "glyphs": [
+        "mjx-c1D41A",
+        "mjx-c2062",
+        "mjx-c1D736",
+        "mjx-c2062",
+        "mjx-c1D6AA"
+      ],
+      "error": null
+    },
+    {
+      "name": "symbf 字符",
+      "source": "\\symbf{aαΓ}",
+      "glyphs": [
+        "mjx-c1D41A",
+        "mjx-c2062",
+        "mjx-c1D736",
+        "mjx-c2062",
+        "mjx-c1D6AA"
+      ],
+      "error": null
+    },
+    {
+      "name": "symbf 带编辑标记",
+      "source": "\\symbf{\\class{math-region}{\\class{math-item}{a}\\class{math-item}{\\alpha }\\class{math-item}{\\Gamma }}}",
+      "glyphs": [
+        "mjx-c1D41A",
+        "mjx-c2062",
+        "mjx-c1D736",
+        "mjx-c2062",
+        "mjx-c1D6AA"
+      ],
+      "error": null
+    },
+    {
+      "name": "symbfup 命令",
+      "source": "\\symbfup{a\\alpha\\Gamma}",
+      "glyphs": [
+        "mjx-c1D41A",
+        "mjx-c2062",
+        "mjx-c1D6C2",
+        "mjx-c2062",
+        "mjx-c1D6AA"
+      ],
+      "error": null
+    },
+    {
+      "name": "symbfup 字符",
+      "source": "\\symbfup{aαΓ}",
+      "glyphs": [
+        "mjx-c1D41A",
+        "mjx-c2062",
+        "mjx-c1D6C2",
+        "mjx-c2062",
+        "mjx-c1D6AA"
+      ],
+      "error": null
+    },
+    {
+      "name": "symbfit 命令",
+      "source": "\\symbfit{a\\alpha\\Gamma}",
+      "glyphs": [
+        "mjx-c1D482",
+        "mjx-c2062",
+        "mjx-c1D736",
+        "mjx-c2062",
+        "mjx-c1D71E"
+      ],
+      "error": null
+    },
+    {
+      "name": "symbfit 字符",
+      "source": "\\symbfit{aαΓ}",
+      "glyphs": [
+        "mjx-c1D482",
+        "mjx-c2062",
+        "mjx-c1D736",
+        "mjx-c2062",
+        "mjx-c1D71E"
+      ],
+      "error": null
+    },
+    {
+      "name": "symup 命令",
+      "source": "\\symup{a\\alpha\\Gamma}",
+      "glyphs": [
+        "mjx-c61",
+        "mjx-c2062",
+        "mjx-c3B1",
+        "mjx-c2062",
+        "mjx-c393"
+      ],
+      "error": null
+    },
+    {
+      "name": "symup 字符",
+      "source": "\\symup{aαΓ}",
+      "glyphs": [
+        "mjx-c61",
+        "mjx-c2062",
+        "mjx-c3B1",
+        "mjx-c2062",
+        "mjx-c393"
+      ],
+      "error": null
+    },
+    {
+      "name": "boldsymbol 对照",
+      "source": "\\boldsymbol{a\\alpha\\Gamma}",
+      "glyphs": [
+        "mjx-c1D482",
+        "mjx-c2062",
+        "mjx-c1D736",
+        "mjx-c2062",
+        "mjx-c1D6AA"
+      ],
+      "error": null
+    },
+    {
+      "name": "嵌套字体",
+      "source": "\\symbf{\\alpha\\symup{\\alpha}\\alpha}",
+      "glyphs": [
+        "mjx-c1D736",
+        "mjx-c2062",
+        "mjx-c3B1",
+        "mjx-c2062",
+        "mjx-c1D736"
+      ],
+      "error": null
+    },
+    {
+      "name": "嵌套字体字符",
+      "source": "\\symbf{α\\symup{α}α}",
+      "glyphs": [
+        "mjx-c1D736",
+        "mjx-c2062",
+        "mjx-c3B1",
+        "mjx-c2062",
+        "mjx-c1D736"
+      ],
+      "error": null
+    },
+    {
+      "name": "嵌套分式",
+      "source": "\\symbf{\\frac{\\alpha}{\\sqrt{\\beta}}}",
+      "glyphs": [
+        "mjx-c1D736",
+        "mjx-c221A NCM-SO",
+        "mjx-c1D737"
+      ],
+      "error": null
+    },
+    {
+      "name": "嵌套分式字符",
+      "source": "\\symbf{\\frac{α}{\\sqrt{β}}}",
+      "glyphs": [
+        "mjx-c1D736",
+        "mjx-c221A NCM-SO",
+        "mjx-c1D737"
+      ],
+      "error": null
+    },
+    {
+      "name": "希腊变体命令",
+      "source": "\\symbf{\\epsilon\\varepsilon\\theta\\vartheta\\kappa\\varkappa\\phi\\varphi\\rho\\varrho\\pi\\varpi}",
+      "glyphs": [
+        "mjx-c1D750",
+        "mjx-c2062",
+        "mjx-c1D73A",
+        "mjx-c2062",
+        "mjx-c1D73D",
+        "mjx-c2062",
+        "mjx-c1D751",
+        "mjx-c2062",
+        "mjx-c1D73F",
+        "mjx-c2062",
+        "mjx-c1D752",
+        "mjx-c2062",
+        "mjx-c1D753",
+        "mjx-c2062",
+        "mjx-c1D74B",
+        "mjx-c2062",
+        "mjx-c1D746",
+        "mjx-c2062",
+        "mjx-c1D754",
+        "mjx-c2062",
+        "mjx-c1D745",
+        "mjx-c2062",
+        "mjx-c1D755"
+      ],
+      "error": null
+    },
+    {
+      "name": "希腊变体字符",
+      "source": "\\symbf{ϵεθϑκϰϕφρϱπϖ}",
+      "glyphs": [
+        "mjx-c1D750",
+        "mjx-c2062",
+        "mjx-c1D73A",
+        "mjx-c2062",
+        "mjx-c1D73D",
+        "mjx-c2062",
+        "mjx-c1D751",
+        "mjx-c2062",
+        "mjx-c1D73F",
+        "mjx-c2062",
+        "mjx-c1D752",
+        "mjx-c2062",
+        "mjx-c1D753",
+        "mjx-c2062",
+        "mjx-c1D74B",
+        "mjx-c2062",
+        "mjx-c1D746",
+        "mjx-c2062",
+        "mjx-c1D754",
+        "mjx-c2062",
+        "mjx-c1D745",
+        "mjx-c2062",
+        "mjx-c1D755"
+      ],
+      "error": null
+    }
+  ],
+  "ISO": [
+    {
+      "name": "默认命令",
+      "source": "\\alpha\\Gamma",
+      "glyphs": [
+        "mjx-c1D6FC",
+        "mjx-c2062",
+        "mjx-c1D6E4"
+      ],
+      "error": null
+    },
+    {
+      "name": "默认字符",
+      "source": "αΓ",
+      "glyphs": [
+        "mjx-c1D6FC",
+        "mjx-c2062",
+        "mjx-c1D6E4"
+      ],
+      "error": null
+    },
+    {
+      "name": "symbf 命令",
+      "source": "\\symbf{a\\alpha\\Gamma}",
+      "glyphs": [
+        "mjx-c1D482",
+        "mjx-c2062",
+        "mjx-c1D736",
+        "mjx-c2062",
+        "mjx-c1D71E"
+      ],
+      "error": null
+    },
+    {
+      "name": "symbf 字符",
+      "source": "\\symbf{aαΓ}",
+      "glyphs": [
+        "mjx-c1D482",
+        "mjx-c2062",
+        "mjx-c1D736",
+        "mjx-c2062",
+        "mjx-c1D71E"
+      ],
+      "error": null
+    },
+    {
+      "name": "symbf 带编辑标记",
+      "source": "\\symbf{\\class{math-region}{\\class{math-item}{a}\\class{math-item}{\\alpha }\\class{math-item}{\\Gamma }}}",
+      "glyphs": [
+        "mjx-c1D482",
+        "mjx-c2062",
+        "mjx-c1D736",
+        "mjx-c2062",
+        "mjx-c1D71E"
+      ],
+      "error": null
+    },
+    {
+      "name": "symbfup 命令",
+      "source": "\\symbfup{a\\alpha\\Gamma}",
+      "glyphs": [
+        "mjx-c1D41A",
+        "mjx-c2062",
+        "mjx-c1D6C2",
+        "mjx-c2062",
+        "mjx-c1D6AA"
+      ],
+      "error": null
+    },
+    {
+      "name": "symbfup 字符",
+      "source": "\\symbfup{aαΓ}",
+      "glyphs": [
+        "mjx-c1D41A",
+        "mjx-c2062",
+        "mjx-c1D6C2",
+        "mjx-c2062",
+        "mjx-c1D6AA"
+      ],
+      "error": null
+    },
+    {
+      "name": "symbfit 命令",
+      "source": "\\symbfit{a\\alpha\\Gamma}",
+      "glyphs": [
+        "mjx-c1D482",
+        "mjx-c2062",
+        "mjx-c1D736",
+        "mjx-c2062",
+        "mjx-c1D71E"
+      ],
+      "error": null
+    },
+    {
+      "name": "symbfit 字符",
+      "source": "\\symbfit{aαΓ}",
+      "glyphs": [
+        "mjx-c1D482",
+        "mjx-c2062",
+        "mjx-c1D736",
+        "mjx-c2062",
+        "mjx-c1D71E"
+      ],
+      "error": null
+    },
+    {
+      "name": "symup 命令",
+      "source": "\\symup{a\\alpha\\Gamma}",
+      "glyphs": [
+        "mjx-c61",
+        "mjx-c2062",
+        "mjx-c3B1",
+        "mjx-c2062",
+        "mjx-c393"
+      ],
+      "error": null
+    },
+    {
+      "name": "symup 字符",
+      "source": "\\symup{aαΓ}",
+      "glyphs": [
+        "mjx-c61",
+        "mjx-c2062",
+        "mjx-c3B1",
+        "mjx-c2062",
+        "mjx-c393"
+      ],
+      "error": null
+    },
+    {
+      "name": "boldsymbol 对照",
+      "source": "\\boldsymbol{a\\alpha\\Gamma}",
+      "glyphs": [
+        "mjx-c1D482",
+        "mjx-c2062",
+        "mjx-c1D736",
+        "mjx-c2062",
+        "mjx-c1D71E"
+      ],
+      "error": null
+    },
+    {
+      "name": "嵌套字体",
+      "source": "\\symbf{\\alpha\\symup{\\alpha}\\alpha}",
+      "glyphs": [
+        "mjx-c1D736",
+        "mjx-c2062",
+        "mjx-c3B1",
+        "mjx-c2062",
+        "mjx-c1D736"
+      ],
+      "error": null
+    },
+    {
+      "name": "嵌套字体字符",
+      "source": "\\symbf{α\\symup{α}α}",
+      "glyphs": [
+        "mjx-c1D736",
+        "mjx-c2062",
+        "mjx-c3B1",
+        "mjx-c2062",
+        "mjx-c1D736"
+      ],
+      "error": null
+    },
+    {
+      "name": "嵌套分式",
+      "source": "\\symbf{\\frac{\\alpha}{\\sqrt{\\beta}}}",
+      "glyphs": [
+        "mjx-c1D736",
+        "mjx-c221A NCM-SO",
+        "mjx-c1D737"
+      ],
+      "error": null
+    },
+    {
+      "name": "嵌套分式字符",
+      "source": "\\symbf{\\frac{α}{\\sqrt{β}}}",
+      "glyphs": [
+        "mjx-c1D736",
+        "mjx-c221A NCM-SO",
+        "mjx-c1D737"
+      ],
+      "error": null
+    },
+    {
+      "name": "希腊变体命令",
+      "source": "\\symbf{\\epsilon\\varepsilon\\theta\\vartheta\\kappa\\varkappa\\phi\\varphi\\rho\\varrho\\pi\\varpi}",
+      "glyphs": [
+        "mjx-c1D750",
+        "mjx-c2062",
+        "mjx-c1D73A",
+        "mjx-c2062",
+        "mjx-c1D73D",
+        "mjx-c2062",
+        "mjx-c1D751",
+        "mjx-c2062",
+        "mjx-c1D73F",
+        "mjx-c2062",
+        "mjx-c1D752",
+        "mjx-c2062",
+        "mjx-c1D753",
+        "mjx-c2062",
+        "mjx-c1D74B",
+        "mjx-c2062",
+        "mjx-c1D746",
+        "mjx-c2062",
+        "mjx-c1D754",
+        "mjx-c2062",
+        "mjx-c1D745",
+        "mjx-c2062",
+        "mjx-c1D755"
+      ],
+      "error": null
+    },
+    {
+      "name": "希腊变体字符",
+      "source": "\\symbf{ϵεθϑκϰϕφρϱπϖ}",
+      "glyphs": [
+        "mjx-c1D750",
+        "mjx-c2062",
+        "mjx-c1D73A",
+        "mjx-c2062",
+        "mjx-c1D73D",
+        "mjx-c2062",
+        "mjx-c1D751",
+        "mjx-c2062",
+        "mjx-c1D73F",
+        "mjx-c2062",
+        "mjx-c1D752",
+        "mjx-c2062",
+        "mjx-c1D753",
+        "mjx-c2062",
+        "mjx-c1D74B",
+        "mjx-c2062",
+        "mjx-c1D746",
+        "mjx-c2062",
+        "mjx-c1D754",
+        "mjx-c2062",
+        "mjx-c1D745",
+        "mjx-c2062",
+        "mjx-c1D755"
+      ],
+      "error": null
+    }
+  ]
+}

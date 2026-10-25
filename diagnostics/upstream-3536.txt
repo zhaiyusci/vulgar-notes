@@ -1,0 +1,422 @@
+it took a little effort, but I had worked out the changes needed to support the `\sym` and `\math` commands more in line with the `unicode-math` package in actual LaTeX (or rather `lualatex` and `xelatex`), along with the handling of literal Math Alphanumerics characters.  I also added the missing `literal` setting for `math-style`, and corrected the capitalization of `french` to be consistent with `unicode-math`.  But I didn't get the chance to write it up before other things took over my time.  
+
+I have gotten back to it finally, and present you a configuration that implements the changes, in case you wanted to use it.  It is pretty big, as there are changes to a number of places.  
+
+There are two new configuration options `tex.mathStyleGreekLC`, which determines whether `\mathrm`, `\mathit`, and the other `\math` macros from the original `ams` distribution will modify the lower-case Greek letters or not (original behavior is `false`, but `unicode-math` behavior is `true`), and `mathStyleMathAlphabets`, which determines whether MathJax will modify the characters in the Unicode Math Alphanumerics block or not.  The default for both is `false`, so the behavior will be to modify the usual Latin and Greek blocks, but leave the Math Alphanumerics alone (I think that was what you preferred above).
+
+I also added `symbbit` and `\mathbbit`, as you pointed out they were missing.  The STIX2 font has italic double-struck characters, so these macros work with that font, at least, but that is the only one currently.
+
+Here is the (extensive) configuration in an example file that illustrates the various macros and raw unicode characters.  You can set the `math-style` and other values at the top.  I've turned off speech generation just to speed up the display, as big tables like this will lots of entries take it a while.
+
+``` html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>3536 - process unicode symbols in \symb... and \math... macros</title>
+<script>
+MathJax = {
+  tex: {
+    mathStyle: 'ISO',
+    mathStyleGreekLC: true,
+    mathStyleMathAlphabets: true,
+//    identifierPattern: /^(?:[a-z]+|[A-Z]+)/, // for mathstyle=french, use this pattern
+  },
+  output: {
+    font: 'mathjax-stix2',
+  },
+  options: {
+    menuOptions: {
+      settings: {
+        enrich: false,    // speed up processing of the large tables
+      }
+    }
+  },
+  startup: {
+    ready() {
+      const {TeX} = MathJax._.input.tex_ts;
+
+      Object.assign(TeX.OPTIONS, {
+        mathStyleGreekLC: false,       // Whether the original \mathrm, \mathbf, etc. macros adjust lowercase Greek
+        mathStyleMathAlphabets: false, // Whether \symup, \mathup, etc., adjust explit Math Alphanumeric chars
+      });
+      
+      const ParseMethods = MathJax._.input.tex.ParseMethods.default;
+      const ParseOptions = MathJax._.input.tex.ParseOptions.default;
+      const {ParseUtil} = MathJax._.input.tex.ParseUtil;
+      
+      Object.assign(ParseMethods, {
+        variable(parser, c) {
+          const def = ParseUtil.getFontDef(parser);
+          const env = parser.stack.env;
+          if (env.multiLetterIdentifiers && env.font !== '') {
+            c = parser.string.substring(parser.i - 1).match(env.multiLetterIdentifiers)?.[0] || c;
+            parser.i += c.length - 1;
+            if (def.mathvariant === MATHVARIANT.NORMAL && env.noAutoOP && c.length > 1) def.autoOP = false;
+          }
+          if (MathStyle.isLatinOrGreekChar(c, parser)) c = MathStyle.setVariant(c, parser, def);
+          parser.Push(parser.create('token', 'mi', def, c));
+        },
+        lcGreek(parser, mchar) {
+          const def = {};
+          const c = MathStyle.setVariant(mchar.char, parser, def);
+          parser.Push(parser.create('token', 'mi', def, c));
+        },
+        ucGreek(parser, mchar) {
+          const def = {};
+          const c = MathStyle.setVariant(mchar.char, parser, def, true);
+          parser.Push(parser.create('token', 'mi', def, c));
+        },
+      });
+
+      const TexParser = MathJax._.input.tex.TexParser.default;
+      const {TexConstant} = MathJax._.input.tex.TexConstants;
+      const {EnvList} = MathJax._.input.tex.StackItem;
+      
+      const MATHVARIANT = TexConstant.Variant;
+      
+      const MathStyle = {
+        LatinPattern: /[a-zA-Z]/,
+        LatinLcPattern: /[a-z]/,
+        GreekPattern: /[\u0391-\u03A9\u03F4\u03B1-\u03C9\u03B5\u03C2\u03C6\u03D1\u03D6\u03F1]/,
+        GreekUcPattern: /[\u0391-\u03A9\u03F4]/,
+        GreekLcPattern: /[\u03B1-\u03C9\u03D1\u03D5\u03D6\u03F0\u03F1\u03F5\u2202]/,
+        MathLatinPattern: /[\u{1D400}-\u{1D49B}\u{1D5A0}-\u{1D66F}\u210E]/u,
+        MathGreekPattern: /[\u{1D6A8}-\u{1D7C9}]/u,
+        MathAlphaPattern: /[\u{1D400}-\u{1D49B}\u{1D5A0}-\u{1D66F}\u210E\u{1D6A8}-\u{1D7C9}]/u,
+        
+        mathAlpha: new Map([
+          ['TeX', [
+            [0x1D6C2, 0x1D6E1, 0x1D736],
+            [0x1D468, 0x1D49B, 0x1D400],
+            [0x1D71C, 0x1D735, 0x1D6A8],
+            [0x1D63C, 0x1D66F, 0x1D5D4],
+            [0x1D790, 0x1D7C9, 0x1D756],
+            [0x1D608, 0x1D63B, 0x1D5A0],
+            [0x1D6E2, 0x1D6FA, 0x391, MATHVARIANT.NORMAL],
+          ]],
+          ['ISO', [
+            [0x1D400, 0x1D433, 0x1D468],
+            [0x1D6A8, 0x1D6E1, 0x1D71C],
+            [0x1D5D4, 0x1D607, 0x1D63C],
+            [0x1D756, 0x1D78F, 0x1D790],
+            [0x1D5A0, 0x1D5D3, 0x1D608],
+          ]],
+          ['upright', [
+            [0x1D434, 0x1D44D, 0x41, MATHVARIANT.NORMAL],
+            [0x1D44E, 0x1D467, 0x61, MATHVARIANT.NORMAL],
+            [0x1D6E2, 0x1D6FA, 0x391, MATHVARIANT.NORMAL],
+            [0x1D6FC, 0x1D714, 0x3B1, MATHVARIANT.NORMAL],
+            [0x1D468, 0x1D49B, 0x1D400],
+            [0x1D71C, 0x1D755, 0x1D6A8],
+            [0x1D63C, 0x1D66F, 0x1D5D4],
+            [0x1D790, 0x1D7C9, 0x1D756],
+            [0x1D608, 0x1D63B, 0x1D5A0],
+          ]],
+          ['french', [
+            [0x1D434, 0x1D44D, 0x41, MATHVARIANT.NORMAL],
+            [0x1D6E2, 0x1D6FA, 0x391, MATHVARIANT.NORMAL],
+            [0x1D6FC, 0x1D714, 0x3B1, MATHVARIANT.NORMAL],
+            [0x1D468, 0x1D49B, 0x1D400],
+            [0x1D71C, 0x1D755, 0x1D6A8],
+            [0x1D63C, 0x1D66F, 0x1D5D4],
+            [0x1D790, 0x1D7C9, 0x1D756],
+            [0x1D608, 0x1D63B, 0x1D5A0],
+          ]],
+          ['literal', []],
+        ]),
+        
+        mathAlphaMap: new Map([
+          ['TeX', new Map([
+            [0x1D6F3, [MATHVARIANT.NORMAL, '\u03F4']],
+            [0x1D6FB, [MATHVARIANT.NORMAL, '\u2207']],
+          ])],
+          ['upright', new Map([
+            [0x0210E, [MATHVARIANT.NORMAL, 'h']],
+            [0x1D6F3, [MATHVARIANT.NORMAL, '\u03F4']],
+            [0x1D6FB, [MATHVARIANT.NORMAL, '\u2207']],
+            [0x1D715, [MATHVARIANT.NORMAL, '\u2202']],
+            [0x1D716, [MATHVARIANT.NORMAL, '\u03F5']],
+            [0x1D717, [MATHVARIANT.NORMAL, '\u03D1']],
+            [0x1D718, [MATHVARIANT.NORMAL, '\u03F0']],
+            [0x1D719, [MATHVARIANT.NORMAL, '\u03D5']],
+            [0x1D71A, [MATHVARIANT.NORMAL, '\u03F1']],
+            [0x1D71B, [MATHVARIANT.NORMAL, '\u03D6']],
+          ])],
+          ['french', new Map([
+            [0x1D6F3, [MATHVARIANT.NORMAL, '\u03F4']],
+            [0x1D6FB, [MATHVARIANT.NORMAL, '\u2207']],
+            [0x1D715, [MATHVARIANT.NORMAL, '\u2202']],
+            [0x1D716, [MATHVARIANT.NORMAL, '\u03F5']],
+            [0x1D717, [MATHVARIANT.NORMAL, '\u03D1']],
+            [0x1D718, [MATHVARIANT.NORMAL, '\u03F0']],
+            [0x1D719, [MATHVARIANT.NORMAL, '\u03D5']],
+            [0x1D71A, [MATHVARIANT.NORMAL, '\u03F1']],
+            [0x1D71B, [MATHVARIANT.NORMAL, '\u03D6']],
+          ])],
+        ]),
+        
+        styleFunction: new Map([
+          ['TeX',
+            ({c, C, font, afont, b}) => [
+              b && C.match(MathStyle.GreekUcPattern) ? font
+                : C.match(MathStyle.GreekLcPattern) || b ? afont : '',
+              c
+          ]],
+          ['ISO', ({c, C, ifont, afont}) => [C.match(MathStyle.GreekPattern) ? afont : ifont, c]],
+          ['french',
+            ({c, C, font, ifont}) => [C.match(MathStyle.LatinLcPattern) ? ifont : font, c],
+          ],
+          ['upright', ({c, font}) => [font, c]],
+          ['literal', ({c, font}) => [font || MATHVARIANT.NORMAL, c]],
+        ]),
+        
+        convertMathAlpha(style, c) {
+          const n = c.codePointAt(0);
+          const map = MathStyle.mathAlphaMap.get(style);
+          if (map?.has(n)) return map.get(n);
+          for (const [m, M, N, variant = ''] of MathStyle.mathAlpha.get(style) || []) {
+            if (n >= m && n <= M) {
+              const C = N + (n - m);
+              return [variant, String.fromCodePoint(C)];
+            }
+          }
+          return ['', c];
+        },
+        
+        isLatinOrGreekChar(c, parser) {
+          const C = [...c.normalize('NFC')][0];
+          return (!!C.match(this.LatinPattern) || !!C.match(this.GreekPattern)
+            || (parser.configuration.options.mathStyleMathAlphabets && !!C.match(this.MathAlphaPattern))
+          );
+        },
+        
+        setVariant(c, parser, def, b = false) {
+          const options = parser.configuration.options;
+          const env = parser.stack.env;
+          const font = env.font || '';
+          const ifont = env.italicFont || font || MATHVARIANT.ITALIC;
+          const afont = env.altItalicFont || ifont;
+          const C = [...c.normalize('NFC')][0];
+          if (font && !options.mathStyleGreekLC && !env.mathStyleGreekLC && C.match(this.GreekLcPattern)) {
+            def.mathvariant = MATHVARIANT.ITALIC;
+            return c;
+          }
+          const [variant, char] = (options.mathStyleMathAlphabets && !!C.match(this.MathAlphaPattern))
+            ? this.convertMathAlpha(parser.configuration.options.mathStyle || 'TeX', c)
+            : parser.configuration.mathStyle.call(MathStyle, {c, C, font: font || MATHVARIANT.NORMAL, ifont, afont, b});
+            if (variant) def.mathvariant = variant;
+          return char;
+        }
+      };
+      MathStyle.mathAlpha.set('French', MathStyle.mathAlpha.get('french'));
+      MathStyle.mathAlphaMap.set('French', MathStyle.mathAlphaMap.get('french'));
+      MathStyle.styleFunction.set('French', MathStyle.styleFunction.get('french'));
+
+      ParseOptions.getVariant = MathStyle.styleFunction;
+      TexConstant.Variant.DOUBLESTRUCKITALIC = '-double-struck-italic';
+      
+      const {BaseConfiguration} = MathJax._.input.tex.base.BaseConfiguration;
+      const BaseMethods = MathJax._.input.tex.base.BaseMethods.default;
+      const {MapHandler} = MathJax._.input.tex.MapHandler;
+      const {Macro} = MathJax._.input.tex.Token;
+      const {getRange} = MathJax._.core.MmlTree.OperatorDictionary;
+      const NodeUtil = MathJax._.input.tex.NodeUtil.default;
+      
+      Object.assign(BaseMethods, {
+        MathFont(parser, name, variant, italic, altItalic = '', greekLC = true) {
+          const text = parser.GetArgument(name);
+          const mml = new TexParser(text, {
+            multiLetterIdentifiers: parser.options.identifierPattern,
+            ...parser.stack.env,
+            font: variant,
+            italicFont: italic || variant,
+            altItalicFont: altItalic || italic || variant,
+            mathStyleGreekLC: greekLC,
+            noAutoOP: true,
+          }, parser.configuration).mml();
+          parser.Push(parser.create('node', 'TeXAtom', [mml]));
+        },
+        SetFont(parser, _name, font) {
+          parser.stack.env['font'] = font;
+          parser.stack.env['italicFont'] = font;
+          parser.stack.env['altItalicFont'] = font;
+          parser.stack.env['mathStyleGreekLC'] = false;
+          parser.Push(parser.itemFactory.create('null'));
+        },
+      });
+
+      BaseConfiguration.fallback.character = function Other(parser, char) {
+        const remap = MapHandler.getMap('remap').lookup(char);
+        const range = getRange(char);
+        const type = range[3];
+        const font = range[4] || parser.stack.env.font;
+        const def = font ? { mathvariant: font } : {};
+        if (MathStyle.isLatinOrGreekChar(char, parser)) {
+          char = MathStyle.setVariant(char, parser, def, true);
+        }
+        const mo = parser.create('token', type, def, remap ? remap.char : char);
+        if (type === 'mo') {
+          NodeUtil.setProperty(mo, 'fixStretchy', true);
+          parser.configuration.addNode('fixStretchy', mo);
+        }
+        parser.Push(mo);
+      };
+      
+      const VARIANT = TexConstant.Variant;
+      const macros = MapHandler.getMap('macros');
+      for (const name of ['mathnormal', 'mathrm', 'mathbf', 'mathit', 'mathsf', 'mathtt', 'mathcal']) {
+        macros.lookup(name)._args.push('', '', false);
+      }
+      for (const [name, args] of Object.entries({
+        symbb: ['', VARIANT.DOUBLESTRUCKITALIC],
+        symfrak: ['', VARIANT.ITALIC],
+        symbffrak: ['', VARIANT.BOLDITALIC],
+        symbfsf: [VARIANT.SANSSERIFBOLDITALIC],
+        symtt: ['', VARIANT.ITALIC],
+      })) {
+        macros.lookup(name)._args.push(...args);
+      }
+      for (const name of ['normal', 'rm', 'up', 'bf', 'bfup', 'it', 'bfit', 'bb',
+                          'frak', 'bffrak', 'scr', 'bfscr', 'sf', 'sfup', 'bfsf', 'bfsfup',
+                          'sfit', 'bfsfit', 'tt', 'cal', 'bfcal']) {
+        macros.lookup('sym' + name)._func  = BaseMethods.MathFont;
+        macros.lookup('math' + name)._func = BaseMethods.MathFont;
+      }
+      macros.lookup('frak')._func = macros.lookup('Bbb')._func = BaseMethods.MathFont;
+      macros.add('symbbit', new Macro('symbbit', BaseMethods.MathFont, [VARIANT.DOUBLESTRUCKITALIC]));
+      macros.add('mathbbit', new Macro('mathbbit', BaseMethods.MathFont, [VARIANT.DOUBLESTRUCKITALIC]));
+      for (const name of ['rm', 'bf', 'it', 'sf', 'tt', 'cal', 'mit', 'oldstyle']) {
+        macros.lookup(name)._func = BaseMethods.SetFont;
+      }
+      
+      MapHandler.getMap('letter')._parser  = ParseMethods.variable;
+      MapHandler.getMap('lcGreek')._parser = ParseMethods.lcGreek;
+      MapHandler.getMap('ucGreek')._parser = ParseMethods.ucGreek;
+      
+      const font = Object.values(Object.values(MathJax._.output.fonts)[0].chtml_ts)[0];
+      font.defaultVariants.push(['-double-struck-italic', 'double-struck', 'bold-italic']);
+      font.defaultCssFonts['-double-struck-italic'] = ['unknown', true, true];
+      font.VariantSmp['double-struck'][5] = {
+        0x0393: 0x213E,
+        0x03A0: 0x213F,
+        0x03A3: 0x2140,
+        0x03B3: 0x213D,
+        0x03C0: 0x213C,
+      };
+      font.VariantSmp['-double-struck-italic'] = [0x1D538, 0x1D552 , , , 0x1D7D8, {
+        0x44: 0x2145,
+        0x64: 0x2146,
+        0x65: 0x2147,
+        0x69: 0x2148,
+        0x6A: 0x2149,
+        0x0393: 0x213E,
+        0x03A0: 0x213F,
+        0x03A3: 0x2140,
+        0x03B3: 0x213D,
+        0x03C0: 0x213C,
+      }];
+      
+      MathJax.startup.defaultReady();
+    }
+  }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js"></script>
+</head>
+<body>
+
+<p style="text-align: center">math-style = <span id="mathstyle"></span></p>
+
+\[
+\def\chars{A\,a\,Bb\,ΓΔαβγ\;\Gamma\Delta\alpha\beta\gamma}
+\begin{array}[t]{r|l}
+                 & \chars \\
+\hline
+\text{symnormal} & \symnormal{\chars} \\
+\text{symrm}     & \symrm{\chars} \\
+\text{symup}     & \symup{\chars} \\
+\text{symbf}     & \symbf{\chars} \\
+\text{symbfup}   & \symbfup{\chars} \\
+\text{symit}     & \symit{\chars} \\
+\text{symbfit}   & \symbfit{\chars} \\
+\text{symbb}     & \symbb{\chars} \\
+\text{symbbit}   & \symbbit{\chars} \\
+\text{symfrak}   & \symfrak{\chars} \\
+\text{symbffrak} & \symbffrak{\chars} \\
+\text{symscr}    & \symscr{\chars} \\
+\text{symbfscr}  & \symbfscr{\chars} \\
+\text{symsf}     & \symsf{\chars} \\
+\text{symsfup}   & \symsfup{\chars} \\
+\text{symbfsf}   & \symbfsf{\chars} \\
+\text{symbfsfup} & \symbfsfup{\chars} \\
+\text{symsfit}   & \symsfit{\chars} \\
+\text{symbfsfit} & \symbfsfit{\chars} \\
+\text{symtt}     & \symtt{\chars} \\
+\text{symcal}    & \symcal{\chars} \\
+\text{symbfcal}  & \symbfcal{\chars} \\
+\hline
+\text{rm}        & {\rm \chars} \\
+\text{bf}        & {\bf \chars} \\
+\text{it}        & {\it \chars} \\
+\end{array}
+%
+\qquad
+%
+\begin{array}[t]{r|l}
+          & \chars \\
+\hline
+\text{mathnormal} & \mathnormal{\chars} \\
+\text{mathrm}     & \mathrm{\chars} \\
+\text{mathup}     & \mathup{\chars} \\
+\text{mathbf}     & \mathbf{\chars} \\
+\text{mathbfup}   & \mathbfup{\chars} \\
+\text{mathit}     & \mathit{\chars} \\
+\text{mathbfit}   & \mathbfit{\chars} \\
+\text{mathbb}     & \mathbb{\chars} \\
+\text{mathbbit}   & \mathbbit{\chars} \\
+\text{mathfrak}   & \mathfrak{\chars} \\
+\text{mathbffrak} & \mathbffrak{\chars} \\
+\text{mathscr}    & \mathscr{\chars} \\
+\text{mathbfscr}  & \mathbfscr{\chars} \\
+\text{mathsf}     & \mathsf{\chars} \\
+\text{mathsfup}   & \mathsfup{\chars} \\
+\text{mathbfsf}   & \mathbfsf{\chars} \\
+\text{mathbfsfup} & \mathbfsfup{\chars} \\
+\text{mathsfit}   & \mathsfit{\chars} \\
+\text{mathbfsfit} & \mathbfsfit{\chars} \\
+\text{mathtt}     & \mathtt{\chars} \\
+\text{mathcal}    & \mathcal{\chars} \\
+\text{mathbfcal}  & \mathbfcal{\chars} \\
+\hline
+\text{sf}        & {\sf \chars} \\
+\text{cal}       & {\cal \chars} \\
+\text{tt}        & {\tt \chars} \\
+\end{array}
+\]
+
+\[
+\begin{array}{l}
+ABCabch\ αβγδεζηθικλμνξοπρςστυφχψω𝜕ϵϑϰϕϱϖΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡϴΣΤΥΦΧΨΩ∇\\
+𝐴𝐵𝐶𝑎𝑏𝑐ℎ\ 𝛼𝛽𝛾𝛿𝜀𝜁𝜂𝜃𝜄𝜅𝜆𝜇𝜈𝜉𝜊𝜋𝜌𝜍𝜎𝜏𝜐𝜑𝜒𝜓𝜔𝜕𝜖𝜗𝜘𝜙𝜚𝜛𝛢𝛣𝛤𝛥𝛦𝛧𝛨𝛩𝛪𝛫𝛬𝛭𝛮𝛯𝛰𝛱𝛲𝛳𝛴𝛵𝛶𝛷𝛸𝛹𝛺𝛻\\
+𝐀𝐁𝐂𝐚𝐛𝐜\ 𝛂𝛃𝛄𝛅𝛆𝛇𝛈𝛉𝛊𝛋𝛌𝛍𝛎𝛏𝛐𝛑𝛒𝛓𝛔𝛕𝛖𝛗𝛘𝛙𝛚𝛛𝛜𝛝𝛞𝛟𝛠𝛡𝚨𝚩𝚪𝚫𝚬𝚭𝚮𝚯𝚰𝚱𝚲𝚳𝚴𝚵𝚶𝚷𝚸𝚹𝚺𝚻𝚼𝚽𝚾𝚿𝛀𝛁\\
+𝑨𝑩𝑪𝒂𝒃𝒄\ 𝜶𝜷𝜸𝜹𝜺𝜻𝜼𝜽𝜾𝜿𝝀𝝁𝝂𝝃𝝄𝝅𝝆𝝇𝝈𝝉𝝊𝝋𝝌𝝍𝝎𝝏𝝐𝝑𝝒𝝓𝝔𝝕𝜜𝜝𝜞𝜟𝜠𝜡𝜢𝜣𝜤𝜥𝜦𝜧𝜨𝜩𝜪𝜫𝜬𝜭𝜮𝜯𝜰𝜱𝜲𝜳𝜴𝜵\\
+𝗔𝗕𝗖𝗮𝗯𝗰\ 𝝰𝝱𝝲𝝳𝝴𝝵𝝶𝝷𝝸𝝹𝝺𝝻𝝼𝝽𝝾𝝿𝞀𝞁𝞂𝞃𝞄𝞅𝞆𝞇𝞈𝞉𝞊𝞋𝞌𝞍𝞎𝞏𝝖𝝗𝝘𝝙𝝚𝝛𝝜𝝝𝝞𝝟𝝠𝝡𝝢𝝣𝝤𝝥𝝦𝝧𝝨𝝩𝝪𝝫𝝬𝝭𝝮𝝯\\
+𝘼𝘽𝘾𝙖𝙗𝙘\ 𝞪𝞫𝞬𝞭𝞮𝞯𝞰𝞱𝞲𝞳𝞴𝞵𝞶𝞷𝞸𝞹𝞺𝞻𝞼𝞽𝞾𝞿𝟀𝟁𝟂𝟃𝟄𝟅𝟆𝟇𝟈𝟉𝞐𝞑𝞒𝞓𝞔𝞕𝞖𝞗𝞘𝞙𝞚𝞛𝞜𝞝𝞞𝞟𝞠𝞡𝞢𝞣𝞤𝞥𝞦𝞧𝞨𝞩\\
+𝖠𝖡𝖢𝖺𝖻𝖼\ 𝘈𝘉𝘊𝘢𝘣𝘤\ 𝙰𝙱𝙲𝚊𝚋𝚌\ 𝒜ℬ𝒞𝒶𝒷𝒸\ 𝓐𝓑𝓒𝓪𝓫𝓬\ 𝔄𝔅ℭ𝔞𝔟𝔠\ 𝕬𝕭𝕮𝖆𝖇𝖈\ 𝔸𝔹ℂ𝕒𝕓𝕔\\
+\end{array}
+\]
+
+<script>
+document.getElementById('mathstyle').textContent = MathJax.config.tex['mathStyle'];
+</script>
+
+</body>
+</html>
+```
+
+I am thinking about whether to move the `\sym` and `\math` definitions to a separate package.  It will include more of what `unicode-math` does (like map big operators and such), but this configuration should be enough for you for now.
+
+
+

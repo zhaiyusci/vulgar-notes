@@ -1,0 +1,2 @@
+const fs=require('fs'),vm=require('vm'),{buildSync}=require('esbuild');const ctx={exports:{}};vm.runInNewContext(buildSync({entryPoints:['src/letter-preamble.ts'],bundle:true,format:'cjs',write:false}).outputFiles[0].text,{module:ctx,exports:ctx.exports});const {symbols}=require('../../editor-model.js');fs.writeFileSync('diagnostics/letter-export/audit.tex','\\documentclass{article}\n'+ctx.exports.letterPreamble+'\n\\begin{document}\n'+symbols.filter(d=>!d.hidden&&d.exportTex).map(d=>'\\setbox0=\\hbox{$'+d.exportTex+'$}').join('\n')+'\n\\end{document}\n');
+

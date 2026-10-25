@@ -1,0 +1,61 @@
+\documentclass{article}
+\usepackage{unicode-math}
+\directlua{dofile('audit.lua')}
+\newsavebox{\auditbox}
+\newcommand{\record}[4]{\sbox{\auditbox}{$#4$}\directlua{audit('#1','#2','#3',\number\auditbox)}}
+\begin{document}
+\unimathsetup{math-style=TeX}\setmathfont{NewCMMath-Regular.otf}
+\record{TeX}{default}{macro}{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}
+\record{TeX}{symnormal}{macro}{\symnormal{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symup}{macro}{\symup{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symrm}{macro}{\symrm{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symit}{macro}{\symit{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symbf}{macro}{\symbf{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symbfup}{macro}{\symbfup{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symbfit}{macro}{\symbfit{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symsf}{macro}{\symsf{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symsfup}{macro}{\symsfup{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symsfit}{macro}{\symsfit{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symbfsf}{macro}{\symbfsf{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symbfsfup}{macro}{\symbfsfup{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symbfsfit}{macro}{\symbfsfit{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symbb}{macro}{\symbb{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symcal}{macro}{\symcal{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symscr}{macro}{\symscr{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symfrak}{macro}{\symfrak{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symtt}{macro}{\symtt{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symbfcal}{macro}{\symbfcal{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symbfscr}{macro}{\symbfscr{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symbffrak}{macro}{\symbffrak{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{TeX}{symcal}{nested}{\symbf{\symcal{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}}
+\record{TeX}{symbb}{nested}{\symbf{\symbb{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}}
+\record{TeX}{symsf}{nested}{\symbf{\symsf{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}}
+\record{TeX}{symtt}{nested}{\symbf{\symtt{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}}
+\unimathsetup{math-style=ISO}\setmathfont{NewCMMath-Regular.otf}
+\record{ISO}{default}{macro}{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}
+\record{ISO}{symnormal}{macro}{\symnormal{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symup}{macro}{\symup{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symrm}{macro}{\symrm{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symit}{macro}{\symit{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symbf}{macro}{\symbf{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symbfup}{macro}{\symbfup{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symbfit}{macro}{\symbfit{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symsf}{macro}{\symsf{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symsfup}{macro}{\symsfup{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symsfit}{macro}{\symsfit{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symbfsf}{macro}{\symbfsf{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symbfsfup}{macro}{\symbfsfup{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symbfsfit}{macro}{\symbfsfit{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symbb}{macro}{\symbb{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symcal}{macro}{\symcal{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symscr}{macro}{\symscr{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symfrak}{macro}{\symfrak{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symtt}{macro}{\symtt{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symbfcal}{macro}{\symbfcal{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symbfscr}{macro}{\symbfscr{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symbffrak}{macro}{\symbffrak{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}
+\record{ISO}{symcal}{nested}{\symbf{\symcal{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}}
+\record{ISO}{symbb}{nested}{\symbf{\symbb{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}}
+\record{ISO}{symsf}{nested}{\symbf{\symsf{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}}
+\record{ISO}{symtt}{nested}{\symbf{\symtt{Aa019\alpha\Gamma\gamma\pi\Pi\Sigma\partial\nabla\imath\jmath ϝ}}}
+\end{document}

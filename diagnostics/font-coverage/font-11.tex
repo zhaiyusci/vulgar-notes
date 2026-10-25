@@ -1,0 +1,49 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=18mm]{geometry}
+\usepackage[math-style=ISO]{unicode-math}
+\usepackage{booktabs}
+\directlua{dofile('audit.lua')}
+\newsavebox{\auditbox}
+\newcommand{\record}[4]{\sbox{\auditbox}{$#4$}\directlua{audit('#1','#2','#3',\number\auditbox)}}
+\setmathfont{GFSNeohellenicMath.otf}
+\begin{document}
+\section*{GFSNeohellenicMath.otf}
+TeX Live 2026 / LuaLaTeX / unicode-math 0.8r / ISO.\par
+Each row tests 44 Greek letters and symbols (recorded separately).\par\medskip
+\begin{tabular}{lll}\toprule
+Command & Latin & Greek \\ \midrule
+\record{ISO}{symnormal}{macro}{\symnormal{\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa\varkappa\lambda\mu\nu\xi\omicron\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi\chi\psi\omega\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega\partial\nabla}}
+\texttt{symnormal} & $\symnormal{AaBg}$ & $\symnormal{\alpha\gamma\pi\Gamma\Delta\Pi\Sigma}$ \\[5pt]
+\record{ISO}{symup}{macro}{\symup{\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa\varkappa\lambda\mu\nu\xi\omicron\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi\chi\psi\omega\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega\partial\nabla}}
+\texttt{symup} & $\symup{AaBg}$ & $\symup{\alpha\gamma\pi\Gamma\Delta\Pi\Sigma}$ \\[5pt]
+\record{ISO}{symit}{macro}{\symit{\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa\varkappa\lambda\mu\nu\xi\omicron\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi\chi\psi\omega\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega\partial\nabla}}
+\texttt{symit} & $\symit{AaBg}$ & $\symit{\alpha\gamma\pi\Gamma\Delta\Pi\Sigma}$ \\[5pt]
+\record{ISO}{symbfup}{macro}{\symbfup{\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa\varkappa\lambda\mu\nu\xi\omicron\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi\chi\psi\omega\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega\partial\nabla}}
+\texttt{symbfup} & $\symbfup{AaBg}$ & $\symbfup{\alpha\gamma\pi\Gamma\Delta\Pi\Sigma}$ \\[5pt]
+\record{ISO}{symbfit}{macro}{\symbfit{\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa\varkappa\lambda\mu\nu\xi\omicron\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi\chi\psi\omega\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega\partial\nabla}}
+\texttt{symbfit} & $\symbfit{AaBg}$ & $\symbfit{\alpha\gamma\pi\Gamma\Delta\Pi\Sigma}$ \\[5pt]
+\record{ISO}{symsfup}{macro}{\symsfup{\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa\varkappa\lambda\mu\nu\xi\omicron\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi\chi\psi\omega\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega\partial\nabla}}
+\texttt{symsfup} & $\symsfup{AaBg}$ & $\symsfup{\alpha\gamma\pi\Gamma\Delta\Pi\Sigma}$ \\[5pt]
+\record{ISO}{symsfit}{macro}{\symsfit{\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa\varkappa\lambda\mu\nu\xi\omicron\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi\chi\psi\omega\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega\partial\nabla}}
+\texttt{symsfit} & $\symsfit{AaBg}$ & $\symsfit{\alpha\gamma\pi\Gamma\Delta\Pi\Sigma}$ \\[5pt]
+\record{ISO}{symbfsfup}{macro}{\symbfsfup{\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa\varkappa\lambda\mu\nu\xi\omicron\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi\chi\psi\omega\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega\partial\nabla}}
+\texttt{symbfsfup} & $\symbfsfup{AaBg}$ & $\symbfsfup{\alpha\gamma\pi\Gamma\Delta\Pi\Sigma}$ \\[5pt]
+\record{ISO}{symbfsfit}{macro}{\symbfsfit{\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa\varkappa\lambda\mu\nu\xi\omicron\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi\chi\psi\omega\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega\partial\nabla}}
+\texttt{symbfsfit} & $\symbfsfit{AaBg}$ & $\symbfsfit{\alpha\gamma\pi\Gamma\Delta\Pi\Sigma}$ \\[5pt]
+\record{ISO}{symbb}{macro}{\symbb{\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa\varkappa\lambda\mu\nu\xi\omicron\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi\chi\psi\omega\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega\partial\nabla}}
+\texttt{symbb} & $\symbb{AaBg}$ & $\symbb{\alpha\gamma\pi\Gamma\Delta\Pi\Sigma}$ \\[5pt]
+\record{ISO}{symcal}{macro}{\symcal{\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa\varkappa\lambda\mu\nu\xi\omicron\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi\chi\psi\omega\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega\partial\nabla}}
+\texttt{symcal} & $\symcal{AaBg}$ & $\symcal{\alpha\gamma\pi\Gamma\Delta\Pi\Sigma}$ \\[5pt]
+\record{ISO}{symscr}{macro}{\symscr{\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa\varkappa\lambda\mu\nu\xi\omicron\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi\chi\psi\omega\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega\partial\nabla}}
+\texttt{symscr} & $\symscr{AaBg}$ & $\symscr{\alpha\gamma\pi\Gamma\Delta\Pi\Sigma}$ \\[5pt]
+\record{ISO}{symbfcal}{macro}{\symbfcal{\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa\varkappa\lambda\mu\nu\xi\omicron\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi\chi\psi\omega\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega\partial\nabla}}
+\texttt{symbfcal} & $\symbfcal{AaBg}$ & $\symbfcal{\alpha\gamma\pi\Gamma\Delta\Pi\Sigma}$ \\[5pt]
+\record{ISO}{symbfscr}{macro}{\symbfscr{\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa\varkappa\lambda\mu\nu\xi\omicron\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi\chi\psi\omega\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega\partial\nabla}}
+\texttt{symbfscr} & $\symbfscr{AaBg}$ & $\symbfscr{\alpha\gamma\pi\Gamma\Delta\Pi\Sigma}$ \\[5pt]
+\record{ISO}{symfrak}{macro}{\symfrak{\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa\varkappa\lambda\mu\nu\xi\omicron\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi\chi\psi\omega\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega\partial\nabla}}
+\texttt{symfrak} & $\symfrak{AaBg}$ & $\symfrak{\alpha\gamma\pi\Gamma\Delta\Pi\Sigma}$ \\[5pt]
+\record{ISO}{symbffrak}{macro}{\symbffrak{\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa\varkappa\lambda\mu\nu\xi\omicron\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi\chi\psi\omega\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega\partial\nabla}}
+\texttt{symbffrak} & $\symbffrak{AaBg}$ & $\symbffrak{\alpha\gamma\pi\Gamma\Delta\Pi\Sigma}$ \\[5pt]
+\record{ISO}{symtt}{macro}{\symtt{\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa\varkappa\lambda\mu\nu\xi\omicron\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi\chi\psi\omega\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega\partial\nabla}}
+\texttt{symtt} & $\symtt{AaBg}$ & $\symtt{\alpha\gamma\pi\Gamma\Delta\Pi\Sigma}$ \\[5pt]
+\bottomrule\end{tabular}\end{document}

@@ -1,0 +1,65 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><title>MathJax 希腊字母最小对照</title>
+<style>body{font:16px system-ui;margin:30px}table{border-collapse:collapse}td,th{border:1px solid #ddd;padding:10px 18px;text-align:left}td:nth-child(2){font:14px monospace}td:nth-child(3){font-size:26px}pre{white-space:pre-wrap;font-size:12px}</style>
+<h1>MathJax 希腊字母最小对照</h1><p id="status">加载中</p><table><thead><tr><th>用例</th><th>输入</th><th>实际渲染</th></tr></thead><tbody id="cases"></tbody></table><pre id="report"></pre>
+<script src="/mathjax-config.js"></script><script>
+const full=new URLSearchParams(location.search).has('full');
+const cases=[
+ ['默认命令',String.raw`\alpha\Gamma`],['默认字符','αΓ'],
+ ['symbf 命令',String.raw`\symbf{a\alpha\Gamma}`],['symbf 字符',String.raw`\symbf{aαΓ}`],
+ ['symbf 带编辑标记',String.raw`\symbf{\class{math-region}{\class{math-item}{a}\class{math-item}{\alpha }\class{math-item}{\Gamma }}}`],
+ ['symbfup 命令',String.raw`\symbfup{a\alpha\Gamma}`],['symbfup 字符',String.raw`\symbfup{aαΓ}`],
+ ['symbfit 命令',String.raw`\symbfit{a\alpha\Gamma}`],['symbfit 字符',String.raw`\symbfit{aαΓ}`],
+ ['symup 命令',String.raw`\symup{a\alpha\Gamma}`],['symup 字符',String.raw`\symup{aαΓ}`],
+ ['boldsymbol 对照',String.raw`\boldsymbol{a\alpha\Gamma}`],
+ ['嵌套字体',String.raw`\symbf{\alpha\symup{\alpha}\alpha}`],
+ ['嵌套字体字符',String.raw`\symbf{α\symup{α}α}`],
+ ['嵌套分式',String.raw`\symbf{\frac{\alpha}{\sqrt{\beta}}}`],
+ ['嵌套分式字符',String.raw`\symbf{\frac{α}{\sqrt{β}}}`],
+ ['希腊变体命令',String.raw`\symbf{\epsilon\varepsilon\theta\vartheta\kappa\varkappa\phi\varphi\rho\varrho\pi\varpi}`],
+ ['希腊变体字符',String.raw`\symbf{ϵεθϑκϰϕφρϱπϖ}`]
+];
+const packages=full?['html','cancel','mathtools','physics','mhchem']:['html'];
+const allFonts=new URLSearchParams(location.search).has('fonts');
+const fontCommands=['symnormal','symup','symrm','symit','symbf','symbfup','symbfit','symsf','symsfup','symsfit','symbfsf','symbfsfup','symbfsfit','symbb','symcal','symscr','symfrak','symtt','symbfcal','symbfscr','symbffrak'];
+const greekCommands=String.raw`\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa\varkappa\lambda\mu\nu\xi\omicron\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi\chi\psi\omega\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega\partial\nabla`;
+const greekCharacters='αβγδϵεζηθϑικϰλμνξοπϖρϱσςτυϕφχψωΓΔΘΛΞΠΣΥΦΨΩ∂∇';
+if(allFonts){
+ cases.length=0;
+ for(const font of fontCommands){
+  cases.push([font+' 命令',`\\${font}{${greekCommands}}`],[font+' 字符',`\\${font}{${greekCharacters}}`],
+   [font+' 标记',`\\${font}{\\class{math-region}{${greekCommands.match(/\\[a-zA-Z]+/g).map(c=>`\\class{math-item}{${c} }`).join('')}}}`],
+   [font+' 嵌套',`\\${font}{\\alpha\\symup{\\alpha}\\alpha}`]);
+ }
+}
+const installed=window.MathJax;
+const style=new URLSearchParams(location.search).get('style')||'TeX';
+window.MathJax={...installed,loader:{load:packages.map(p=>'[tex]/'+p)},tex:{...installed.tex,mathStyle:style,packages:{'[+]':packages}},startup:{...installed.startup,typeset:false,pageReady:async()=>{
+ const results=[];
+ for(const [name,source] of cases){
+  const tr=document.createElement('tr');for(const text of [name,source,'']){const td=document.createElement('td');td.textContent=text;tr.append(td)}document.querySelector('#cases').append(tr);
+  const output=await MathJax.tex2chtmlPromise(source,{display:false});tr.lastChild.append(output);
+  results.push({name,source,glyphs:Array.from(output.querySelectorAll('mjx-c')).map(c=>c.className),error:output.querySelector('mjx-merror')?.textContent??null});
+ }
+ document.querySelector('#status').textContent='MathJax '+MathJax.version+' · 已应用维护者补丁 · '+style+' · '+(full?'编辑器相同扩展配置':'基础配置 + html 定位标记扩展');
+ const glyphs=name=>results.find(r=>r.name===name).glyphs.filter(g=>g!=='mjx-c2062');
+ const failures=[];
+ if(allFonts){
+  for(const font of fontCommands){
+   for(const suffix of ['字符','标记'])if(JSON.stringify(glyphs(font+' 命令'))!==JSON.stringify(glyphs(font+' '+suffix)))failures.push(font+' '+suffix+' 不一致');
+   const nested=glyphs(font+' 嵌套'),first=glyphs(font+' 命令')[0];
+   if(JSON.stringify(nested)!==JSON.stringify([first,'mjx-c3B1',first]))failures.push(font+' 嵌套作用域错误');
+  }
+ }else{
+ for(const [a,b] of [['默认命令','默认字符'],['symbf 命令','symbf 字符'],['symbf 命令','symbf 带编辑标记'],['symbfup 命令','symbfup 字符'],['symbfit 命令','symbfit 字符'],['symup 命令','symup 字符'],['嵌套字体','嵌套字体字符'],['嵌套分式','嵌套分式字符'],['希腊变体命令','希腊变体字符']]){
+  if(JSON.stringify(glyphs(a))!==JSON.stringify(glyphs(b)))failures.push(a+' ≠ '+b);
+ }
+ for(const [name,expected] of [['symbf 命令',style==='ISO'?['1D482','1D736','1D71E']:['1D41A','1D736','1D6AA']],['symbfup 命令',['1D41A','1D6C2','1D6AA']],['symbfit 命令',['1D482','1D736','1D71E']],['symup 命令',['61','3B1','393']],['嵌套字体',['1D736','3B1','1D736']]]){
+  if(JSON.stringify(glyphs(name))!==JSON.stringify(expected.map(c=>'mjx-c'+c)))failures.push(name+' 字形不正确');
+ }
+ if(results.some(r=>r.error))failures.push('MathJax 排版错误');
+ }
+ if(results.some(r=>r.error))failures.push('MathJax 排版错误');
+ document.querySelector('#status').textContent+=' · '+(failures.length?'FAIL: '+failures.join('; '):`PASS：${allFonts?63:14} 项字形断言，无排版错误`);
+ document.querySelector('#report').textContent=JSON.stringify(results,null,2);
+}}};
+</script><script src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-chtml.js"></script></html>

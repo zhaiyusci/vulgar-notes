@@ -1,0 +1,1322 @@
+[
+  {
+    "font": "NewCMMath-Regular.otf",
+    "location": "c:/texlive/2026/texmf-dist/fonts/opentype/public/newcomputermodern/NewCMMath-Regular.otf",
+    "job": "font-01",
+    "missing": 0,
+    "rows": [
+      {
+        "command": "symnormal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symup",
+        "count": 44,
+        "alpha": "3B1",
+        "changedCodepoints": 43
+      },
+      {
+        "command": "symit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 1
+      },
+      {
+        "command": "symbfup",
+        "count": 44,
+        "alpha": "1D6C2",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfit",
+        "count": 44,
+        "alpha": "1D736",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symsfup",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symsfit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfsfup",
+        "count": 44,
+        "alpha": "1D770",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfsfit",
+        "count": 44,
+        "alpha": "1D7AA",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbb",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 4
+      },
+      {
+        "command": "symcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symfrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbffrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symtt",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      }
+    ]
+  },
+  {
+    "font": "NewCMSansMath-Regular.otf",
+    "location": "c:/texlive/2026/texmf-dist/fonts/opentype/public/newcomputermodern/NewCMSansMath-Regular.otf",
+    "job": "font-02",
+    "missing": 0,
+    "rows": [
+      {
+        "command": "symnormal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symup",
+        "count": 44,
+        "alpha": "3B1",
+        "changedCodepoints": 43
+      },
+      {
+        "command": "symit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 1
+      },
+      {
+        "command": "symbfup",
+        "count": 44,
+        "alpha": "1D6C2",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfit",
+        "count": 44,
+        "alpha": "1D736",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symsfup",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symsfit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfsfup",
+        "count": 44,
+        "alpha": "1D770",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfsfit",
+        "count": 44,
+        "alpha": "1D7AA",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbb",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 4
+      },
+      {
+        "command": "symcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symfrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbffrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symtt",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      }
+    ]
+  },
+  {
+    "font": "STIXTwoMath-Regular.otf",
+    "location": "c:/texlive/2026/texmf-dist/fonts/opentype/public/stix2-otf/STIXTwoMath-Regular.otf",
+    "job": "font-03",
+    "missing": 0,
+    "rows": [
+      {
+        "command": "symnormal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symup",
+        "count": 44,
+        "alpha": "3B1",
+        "changedCodepoints": 43
+      },
+      {
+        "command": "symit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 1
+      },
+      {
+        "command": "symbfup",
+        "count": 44,
+        "alpha": "1D6C2",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfit",
+        "count": 44,
+        "alpha": "1D736",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symsfup",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symsfit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfsfup",
+        "count": 44,
+        "alpha": "1D770",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfsfit",
+        "count": 44,
+        "alpha": "1D7AA",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbb",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 4
+      },
+      {
+        "command": "symcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symfrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbffrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symtt",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      }
+    ]
+  },
+  {
+    "font": "XITSMath-Regular.otf",
+    "location": "c:/texlive/2026/texmf-dist/fonts/opentype/public/xits/XITSMath-Regular.otf",
+    "job": "font-04",
+    "missing": 0,
+    "rows": [
+      {
+        "command": "symnormal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symup",
+        "count": 44,
+        "alpha": "3B1",
+        "changedCodepoints": 43
+      },
+      {
+        "command": "symit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 1
+      },
+      {
+        "command": "symbfup",
+        "count": 44,
+        "alpha": "1D6C2",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfit",
+        "count": 44,
+        "alpha": "1D736",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symsfup",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symsfit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfsfup",
+        "count": 44,
+        "alpha": "1D770",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfsfit",
+        "count": 44,
+        "alpha": "1D7AA",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbb",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 4
+      },
+      {
+        "command": "symcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symfrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbffrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symtt",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      }
+    ]
+  },
+  {
+    "font": "Asana-Math.otf",
+    "location": "c:/texlive/2026/texmf-dist/fonts/opentype/public/asana-math/Asana-Math.otf",
+    "job": "font-05",
+    "missing": 0,
+    "rows": [
+      {
+        "command": "symnormal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symup",
+        "count": 44,
+        "alpha": "3B1",
+        "changedCodepoints": 43
+      },
+      {
+        "command": "symit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 1
+      },
+      {
+        "command": "symbfup",
+        "count": 44,
+        "alpha": "1D6C2",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfit",
+        "count": 44,
+        "alpha": "1D736",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symsfup",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symsfit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfsfup",
+        "count": 44,
+        "alpha": "1D770",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfsfit",
+        "count": 44,
+        "alpha": "1D7AA",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbb",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 4
+      },
+      {
+        "command": "symcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symfrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbffrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symtt",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      }
+    ]
+  },
+  {
+    "font": "LibertinusMath-Regular.otf",
+    "location": "c:/texlive/2026/texmf-dist/fonts/opentype/public/libertinus-fonts/LibertinusMath-Regular.otf",
+    "job": "font-06",
+    "missing": 40,
+    "rows": [
+      {
+        "command": "symnormal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symup",
+        "count": 44,
+        "alpha": "3B1",
+        "changedCodepoints": 43
+      },
+      {
+        "command": "symit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 1
+      },
+      {
+        "command": "symbfup",
+        "count": 44,
+        "alpha": "1D6C2",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfit",
+        "count": 44,
+        "alpha": "1D736",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symsfup",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symsfit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfsfup",
+        "count": 38,
+        "alpha": "1D770",
+        "changedCodepoints": 38
+      },
+      {
+        "command": "symbfsfit",
+        "count": 38,
+        "alpha": "1D7AA",
+        "changedCodepoints": 38
+      },
+      {
+        "command": "symbb",
+        "count": 40,
+        "alpha": "1D6FC",
+        "changedCodepoints": 38
+      },
+      {
+        "command": "symcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symfrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbffrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symtt",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      }
+    ]
+  },
+  {
+    "font": "FiraMath-Regular.otf",
+    "location": "c:/texlive/2026/texmf-dist/fonts/opentype/public/firamath/FiraMath-Regular.otf",
+    "job": "font-07",
+    "missing": 22,
+    "rows": [
+      {
+        "command": "symnormal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symup",
+        "count": 44,
+        "alpha": "3B1",
+        "changedCodepoints": 43
+      },
+      {
+        "command": "symit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 1
+      },
+      {
+        "command": "symbfup",
+        "count": 44,
+        "alpha": "1D6C2",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfit",
+        "count": 44,
+        "alpha": "1D736",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symsfup",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symsfit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfsfup",
+        "count": 42,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfsfit",
+        "count": 42,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbb",
+        "count": 40,
+        "alpha": "1D6FC",
+        "changedCodepoints": 38
+      },
+      {
+        "command": "symcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symfrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbffrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symtt",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      }
+    ]
+  },
+  {
+    "font": "LeteSansMath.otf",
+    "location": "c:/texlive/2026/texmf-dist/fonts/opentype/public/lete-sans-math/LeteSansMath.otf",
+    "job": "font-08",
+    "missing": 8,
+    "rows": [
+      {
+        "command": "symnormal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symup",
+        "count": 44,
+        "alpha": "3B1",
+        "changedCodepoints": 43
+      },
+      {
+        "command": "symit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 1
+      },
+      {
+        "command": "symbfup",
+        "count": 44,
+        "alpha": "1D6C2",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfit",
+        "count": 44,
+        "alpha": "1D736",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symsfup",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symsfit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfsfup",
+        "count": 44,
+        "alpha": "1D770",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfsfit",
+        "count": 44,
+        "alpha": "1D7AA",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbb",
+        "count": 42,
+        "alpha": "1D6FC",
+        "changedCodepoints": 40
+      },
+      {
+        "command": "symcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symfrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbffrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symtt",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      }
+    ]
+  },
+  {
+    "font": "KpMath-Regular.otf",
+    "location": "c:/texlive/2026/texmf-dist/fonts/opentype/public/kpfonts-otf/KpMath-Regular.otf",
+    "job": "font-09",
+    "missing": 16,
+    "rows": [
+      {
+        "command": "symnormal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symup",
+        "count": 44,
+        "alpha": "3B1",
+        "changedCodepoints": 43
+      },
+      {
+        "command": "symit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 1
+      },
+      {
+        "command": "symbfup",
+        "count": 44,
+        "alpha": "1D6C2",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfit",
+        "count": 44,
+        "alpha": "1D736",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symsfup",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symsfit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfsfup",
+        "count": 44,
+        "alpha": "1D770",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfsfit",
+        "count": 44,
+        "alpha": "1D7AA",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbb",
+        "count": 40,
+        "alpha": "1D6FC",
+        "changedCodepoints": 38
+      },
+      {
+        "command": "symcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symfrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbffrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symtt",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      }
+    ]
+  },
+  {
+    "font": "KpMath-Sans.otf",
+    "location": "c:/texlive/2026/texmf-dist/fonts/opentype/public/kpfonts-otf/KpMath-Sans.otf",
+    "job": "font-10",
+    "missing": 16,
+    "rows": [
+      {
+        "command": "symnormal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symup",
+        "count": 44,
+        "alpha": "3B1",
+        "changedCodepoints": 43
+      },
+      {
+        "command": "symit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 1
+      },
+      {
+        "command": "symbfup",
+        "count": 44,
+        "alpha": "1D6C2",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfit",
+        "count": 44,
+        "alpha": "1D736",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symsfup",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symsfit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfsfup",
+        "count": 44,
+        "alpha": "1D770",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfsfit",
+        "count": 44,
+        "alpha": "1D7AA",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbb",
+        "count": 40,
+        "alpha": "1D6FC",
+        "changedCodepoints": 38
+      },
+      {
+        "command": "symcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symfrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbffrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symtt",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      }
+    ]
+  },
+  {
+    "font": "GFSNeohellenicMath.otf",
+    "location": "c:/texlive/2026/texmf-dist/fonts/opentype/public/gfsneohellenicmath/GFSNeohellenicMath.otf",
+    "job": "font-11",
+    "missing": 22,
+    "rows": [
+      {
+        "command": "symnormal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symup",
+        "count": 44,
+        "alpha": "3B1",
+        "changedCodepoints": 43
+      },
+      {
+        "command": "symit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 1
+      },
+      {
+        "command": "symbfup",
+        "count": 44,
+        "alpha": "1D6C2",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfit",
+        "count": 44,
+        "alpha": "1D736",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symsfup",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symsfit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfsfup",
+        "count": 42,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfsfit",
+        "count": 42,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbb",
+        "count": 40,
+        "alpha": "1D6FC",
+        "changedCodepoints": 38
+      },
+      {
+        "command": "symcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symfrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbffrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symtt",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      }
+    ]
+  },
+  {
+    "font": "IBMPlexMath-Regular.otf",
+    "location": "c:/texlive/2026/texmf-dist/fonts/opentype/ibm/plex/IBMPlexMath-Regular.otf",
+    "job": "font-12",
+    "missing": 0,
+    "rows": [
+      {
+        "command": "symnormal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symup",
+        "count": 44,
+        "alpha": "3B1",
+        "changedCodepoints": 43
+      },
+      {
+        "command": "symit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 1
+      },
+      {
+        "command": "symbfup",
+        "count": 44,
+        "alpha": "1D6C2",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfit",
+        "count": 44,
+        "alpha": "1D736",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symsfup",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symsfit",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfsfup",
+        "count": 44,
+        "alpha": "1D770",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbfsfit",
+        "count": 44,
+        "alpha": "1D7AA",
+        "changedCodepoints": 44
+      },
+      {
+        "command": "symbb",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 4
+      },
+      {
+        "command": "symcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfcal",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbfscr",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symfrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symbffrak",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      },
+      {
+        "command": "symtt",
+        "count": 44,
+        "alpha": "1D6FC",
+        "changedCodepoints": 0
+      }
+    ]
+  }
+]

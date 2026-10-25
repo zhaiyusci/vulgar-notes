@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MathJax 连续序列原位编辑</title>
+<style>
+body{font:16px system-ui,sans-serif;max-width:850px;margin:35px auto;padding:0 20px;color:#222}
+button,textarea{font:inherit}button{padding:8px 13px;margin:4px;cursor:pointer}
+textarea{width:100%;box-sizing:border-box;padding:10px;font-family:monospace}
+#preview{position:relative;padding:30px 20px;min-height:100px;border:1px solid #bbb;border-radius:8px;text-align:center;font-size:1.5em;overflow-x:auto}
+#formula{min-height:100px;outline:none;cursor:text}
+.math-region,.math-item{cursor:text}.math-selected{background:rgba(36,110,194,.2)}
+.font-warning{position:relative}
+.font-warning::after{content:"";position:absolute;left:0;right:0;bottom:-.13em;height:3px;pointer-events:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='3'%3E%3Cpath d='M0 2Q1.5 0 3 2T6 2' fill='none' stroke='%23c83535' stroke-width='1'/%3E%3C/svg%3E") repeat-x left bottom}
+#fontHint{font-size:13px;color:#a52d2d;min-height:1.4em;margin:4px 0}#fontHint:empty{display:none}
+.math-boundary{cursor:text}
+/* MathJax's zero-width root-index wrapper overlaps the following radical.
+   Keep the index above that sibling for pointer hit testing, without reflow. */
+#formula mjx-root{position:relative;z-index:1}
+#mathInput{position:absolute;width:1px;height:1px;margin:0;padding:0;border:0;opacity:0;pointer-events:none}
+#mathInput[hidden]{display:none}
+.command-menu{position:fixed;z-index:1000;width:260px;max-width:calc(100vw - 16px);max-height:220px;overflow-y:auto;overscroll-behavior:contain;padding:4px;background:white;border:1px solid #d8dfe8;border-radius:7px;box-shadow:0 5px 18px #0002;font:13px system-ui,sans-serif}
+.command-menu[hidden]{display:none}
+.command-menu [role=option]{display:flex;justify-content:space-between;gap:12px;padding:6px 9px;border-radius:4px;cursor:pointer}
+.command-menu [aria-selected=true]{background:#e3edff;color:#174d92}
+.command-menu [role=option]:hover{background:#eef3fa}
+.command-menu span{color:#687386;font-size:12px}.command-empty{padding:8px;color:#687386}
+.math-caret{position:relative!important;pointer-events:none}
+.math-caret::after{content:'';position:absolute;left:0;bottom:-.2em;width:1px;height:1em;background:#246ec2;pointer-events:none}
+#renderStage{position:fixed;left:-100000px;top:0;visibility:hidden;font-size:24px;text-align:center;pointer-events:none}
+#error{color:#ad2222;min-height:1.5em}.note{color:#666;font-size:14px;line-height:1.6}
+.board-heading{display:flex;align-items:baseline;justify-content:space-between;margin:22px 0 10px}.board-heading h3{font-size:17px;margin:0}.board-heading span{font-size:13px;color:#6b7280}
+#insertToolbar{border:1px solid #d8dfe8;border-radius:12px;overflow:hidden;background:#f8fafc;margin-bottom:12px}
+.structure-categories{display:flex;flex-wrap:wrap;gap:3px;padding:6px;border-bottom:1px solid #e2e8f0}
+.structure-categories button{border:0;background:transparent;border-radius:5px;font-size:12px;margin:0;padding:5px 8px;color:#475569}
+.structure-categories button[aria-pressed=true]{background:#e3edff;color:#1e54a0;font-weight:600}
+.structure-group{display:flex;flex-wrap:wrap;gap:5px;padding:8px;max-height:210px;overflow-y:auto}.structure-group[hidden]{display:none}
+.structure-card{margin:0;padding:4px;box-sizing:border-box;width:60px;height:64px;border:1px solid #e0e6ef;border-radius:5px;background:#fff;display:flex;align-items:center;justify-content:center}
+.structure-card:hover{border-color:#3c7fd3;background:#f3f7ff}.structure-card:focus-visible{outline:2px solid #246ec2;outline-offset:-2px}
+.structure-card.compact-card{width:52px;height:40px}.structure-group[data-group="数学字体"] .structure-card{width:68px}
+.structure-group[data-group="函数名称"] .structure-card{width:auto;min-width:52px;padding:4px 9px}
+.structure-card[aria-haspopup]{position:relative}.structure-card[aria-haspopup]::after{content:'';position:absolute;right:4px;bottom:4px;border-left:4px solid transparent;border-bottom:4px solid #9ba9bc}
+.variant-menu{position:fixed;z-index:1000;min-width:160px;max-height:calc(100vh - 16px);overflow:auto;padding:4px;border:1px solid #d8dfe8;border-radius:7px;background:white;box-shadow:0 5px 20px #0002}
+.variant-menu[hidden]{display:none}.variant-menu button{display:block;width:100%;margin:0;padding:7px 12px;border:0;border-radius:4px;background:transparent;text-align:left;font-size:13px;color:#334155}.variant-menu button:hover,.variant-menu button:focus{background:#e3edff;outline:none}
+.variant-menu button[aria-checked=true]::after{content:' ✓';color:#246ec2}.variant-menu button:disabled{color:#9ba9bc;cursor:not-allowed;background:transparent}
+.variant-menu{max-width:min(460px,calc(100vw - 16px));max-height:min(520px,calc(100vh - 16px))}
+.variant-menu button.rendered-variant{display:flex;align-items:center;gap:12px;padding:6px 10px;min-height:36px}
+.variant-preview{display:flex;align-items:center;justify-content:center;min-width:48px;font-size:18px;pointer-events:none}
+.rendered-variant code{font:12px ui-monospace,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;flex:1;min-width:0}
+.variant-menu .menu-heading{padding:7px 12px;font-size:12px;color:#64748b}.variant-menu [role=separator]{border-top:1px solid #e2e8f0;margin:4px 0}
+.structure-preview{font-size:14px;display:flex;align-items:center;justify-content:center;pointer-events:none}.structure-label{display:none}
+.structure-group[data-group="矩阵与多行"] .structure-preview{font-size:12px}
+.structure-card[data-insert="matrix3"] .structure-preview{font-size:8.5px}
+details{margin:22px 0;font-size:14px;line-height:1.6}summary{cursor:pointer;font-weight:600}table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border-bottom:1px solid #e5e7eb;text-align:left;padding:9px;vertical-align:top}th{background:#f8fafc}a{color:#246ec2}
+@media(max-width:600px){body{padding:0 12px;margin:20px auto}.board-heading{align-items:start;gap:8px}.structure-categories button{padding:5px 7px}}
+</style>
+<script src="mathjax-config.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-chtml.js" onerror="mathjaxLoadFailed()"></script>
+</head>
+<body>
+<h2>MathJax：连续序列原位编辑</h2>
+<p class="note">点击公式直接输入。左右键连续移动、进出分式和根号，上下键切换结构内的区域；Shift + 左右键选择，Tab 切换编辑区域。Enter 完成，Esc 取消本次编辑，Ctrl+Z 撤销。</p>
+<div class="board-heading"><h3>数学输入板</h3><span id="structureCount"></span></div>
+<div id="insertToolbar" role="group" aria-label="在光标处插入结构"></div>
+<p class="note">在光标处插入结构，可继续嵌套。选中内容后插入，会将选区放进新结构；未进入编辑时使用上次光标位置，首次插入默认在公式末尾。</p>
+<div id="preview"><div id="formula" tabindex="0" aria-label="可编辑公式">正在加载 MathJax…</div><textarea id="mathInput" hidden autocomplete="off" spellcheck="false" aria-label="编辑公式"></textarea></div>
+<p id="error" role="status" aria-live="polite"></p>
+<p><strong>导出的 LaTeX：</strong></p><textarea id="latex" rows="3" readonly aria-label="导出的 LaTeX"></textarea>
+<button onclick="navigator.clipboard.writeText(document.getElementById('latex').value)">复制 LaTeX</button>
+<p class="note">输入反斜杠显示命令候选，继续输入筛选，上下键选择，Tab 或 Enter 确认，Esc 收起。完整命令也可按空格转换；输入 +、(、^ 等也会确认命令并继续输入。未识别的命令保留为可编辑文字。结构命令进入内部区域；字母可右击切换可用字形；菜单中的等号表示本工具对该字符采用的等价写法，导出优先使用 math 命令。默认黑板体为 BBoldX；导出请配套使用下方配置。描述文字使用 \textnormal。化学与单位区域原位编辑源码，Enter 排版，再次点击可修改。尚不解析完整 LaTeX 的花括号参数。删除遇到整个结构时先选中，再次删除才移除。</p>
+<details><summary>MathJax 支持哪些结构？查看范围与官方文档</summary>
+<p>MathJax 的数学结构没有一个封闭的固定清单：基础 TeX、AMS 和其他扩展提供命令与环境，结构可以组合、嵌套。下表按用途归类；本输入板覆盖其中常用的可编辑结构，并非完整 LaTeX 命令表。</p>
+<table><thead><tr><th>类别</th><th>MathJax 支持的代表结构</th><th>本输入板</th></tr></thead><tbody>
+<tr><td>分式与根式</td><td>frac/dfrac/tfrac、cfrac（居中/左/右）、binom/dbinom/tbinom、splitfrac/splitdfrac、无横线分式、平方根和 n 次根</td><td data-count-category="分式与根式"></td></tr>
+<tr><td>上下标</td><td>右侧、左侧、算符四角上下标，多行上下标 substack/subarray</td><td data-count-category="上下标"></td></tr>
+<tr><td>定界符</td><td>伸缩括号、尖括号、单侧括号、求值竖线、绝对值、范数、取整及 big/Big/bigg/Bigg 固定尺寸</td><td data-count-category="括号与定界符"></td></tr>
+<tr><td>大型算符</td><td>求和、连乘、余积、并交集、逻辑与积算符；单至四重积分、点省略积分；上下/侧上下限；极限、上下极限与确界</td><td data-count-category="大型算符"></td></tr>
+<tr><td>矩阵与多行</td><td>matrix/pmatrix/bmatrix/Bmatrix/vmatrix/Vmatrix 及 small 形式、左右对齐矩阵、cases/rcases/dcases/drcases、array、aligned/alignedat、gathered 及左右对齐、多行首尾对齐</td><td data-count-category="矩阵与多行"></td></tr>
+<tr><td>重音与修饰</td><td>普通/宽帽子、普通/宽波浪线、短横线/上划线、锐音/重音/短音/抑扬符、圆圈、单至四点、上下单向/双向箭头</td><td data-count-category="重音与修饰"></td></tr>
+<tr><td>标注与箭头</td><td>上下花/方括号、上下方标注、单线/双线/钩形/映射/鱼叉/平衡/长箭头、方框及 cancel/bcancel/xcancel/cancelto</td><td data-count-category="标注与箭头"></td></tr>
+<tr><td>数学字体</td><td>默认、正体、斜体、粗体、粗斜体；Sans 正/斜/粗/粗斜；等宽、黑板粗体、花体、手写花体、哥特体及符号加粗</td><td>选区应用；无选区时在该字体中输入；右击已有字体内容可切换</td></tr>
+<tr><td>符号与函数</td><td>希腊字母及变体、运算与关系符、箭头、集合与逻辑符号；sin、exp、log 等函数名</td><td>作为连续序列中的符号插入，左右键跨过、退格删除，不创建参数槽</td></tr>
+<tr><td>物理与化学</td><td>physics 常用结构；mhchem 的 ce 化学式和 pu 单位</td><td>物理参数原位编辑；化学源码在原位输入，完成后排版</td></tr><tr><td>其他能力与扩展</td><td>文本、颜色、间距、幻影占位；交换图 amscd、证明树 bussproofs 等</td><td>本板尚未提供；需要相应编辑模型或扩展配置</td></tr>
+</tbody></table>
+<p>普通字母、数字、运算符、希腊字母仍属于连续内容，不为每个符号创建独立区域。MathJax 的排版能力与本编辑器已实现的交互能力是两个范围。</p>
+<p>本轮核对范围：基础 TeX、AMS、mathtools 和 cancel 中可嵌套的结构及不同形式。相同效果的旧语法别名不重复放按钮；矩阵可右击单元格增删行列，至少保留一行一列，删除行列可撤销；定界符和 genfrac 参数提供预设。全文级编号/引用环境、文本模式 cases*、自定义宏和其他专用扩展尚未纳入，不能把按钮数量视为全部 MathJax 命令数量。</p>
+<p><a href="https://docs.mathjax.org/en/v4.0/input/tex/extensions/mathtools.html" target="_blank" rel="noopener">mathtools 结构与变体清单</a> · <a href="https://docs.mathjax.org/en/v4.0/input/tex/extensions/cancel.html" target="_blank" rel="noopener">cancel 的四种形式</a></p>
+<p>依据：<a href="https://docs.mathjax.org/en/stable/input/tex/macros/" target="_blank" rel="noopener">官方命令与环境清单</a> · <a href="https://docs.mathjax.org/en/v4.0/input/tex/extensions/ams.html" target="_blank" rel="noopener">AMS 扩展</a> · <a href="https://docs.mathjax.org/en/v4.0/input/tex/extensions/" target="_blank" rel="noopener">扩展列表</a></p>
+</details>
+<script src="editor-ui.js"></script>
+</body></html>

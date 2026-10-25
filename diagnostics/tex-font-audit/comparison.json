@@ -1,0 +1,4016 @@
+[
+  {
+    "style": "TeX",
+    "command": "symnormal",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 0,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symnormal",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D6FC"
+    },
+    "details": []
+  },
+  {
+    "style": "TeX",
+    "command": "symup",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 0,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symup",
+        "input": "macro",
+        "index": 1,
+        "char": "3B1",
+        "unicode": "03B1",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c3B1"
+    },
+    "details": []
+  },
+  {
+    "style": "TeX",
+    "command": "symrm",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 0,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symrm",
+        "input": "macro",
+        "index": 1,
+        "char": "3B1",
+        "unicode": "03B1",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c3B1"
+    },
+    "details": []
+  },
+  {
+    "style": "TeX",
+    "command": "symit",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 0,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symit",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D6FC"
+    },
+    "details": []
+  },
+  {
+    "style": "TeX",
+    "command": "symbf",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 0,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symbf",
+        "input": "macro",
+        "index": 1,
+        "char": "1D736",
+        "unicode": "D835DF36",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D736"
+    },
+    "details": []
+  },
+  {
+    "style": "TeX",
+    "command": "symbfup",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 0,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symbfup",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6C2",
+        "unicode": "D835DEC2",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D6C2"
+    },
+    "details": []
+  },
+  {
+    "style": "TeX",
+    "command": "symbfit",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 0,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symbfit",
+        "input": "macro",
+        "index": 1,
+        "char": "1D736",
+        "unicode": "D835DF36",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D736"
+    },
+    "details": []
+  },
+  {
+    "style": "TeX",
+    "command": "symsf",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 31,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symsf",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c3B1 NCM-SSI"
+    },
+    "details": [
+      {
+        "index": 1,
+        "tex": "1D6FC",
+        "mathjax": "mjx-c3B1 NCM-SSI"
+      },
+      {
+        "index": 2,
+        "tex": "1D6FD",
+        "mathjax": "mjx-c3B2 NCM-SSI"
+      },
+      {
+        "index": 3,
+        "tex": "1D6FE",
+        "mathjax": "mjx-c3B3 NCM-SSI"
+      },
+      {
+        "index": 4,
+        "tex": "1D6FF",
+        "mathjax": "mjx-c3B4 NCM-SSI"
+      },
+      {
+        "index": 5,
+        "tex": "1D716",
+        "mathjax": "mjx-c3F5 NCM-SSI"
+      },
+      {
+        "index": 6,
+        "tex": "1D700",
+        "mathjax": "mjx-c3B5 NCM-SSI"
+      },
+      {
+        "index": 7,
+        "tex": "1D701",
+        "mathjax": "mjx-c3B6 NCM-SSI"
+      },
+      {
+        "index": 8,
+        "tex": "1D702",
+        "mathjax": "mjx-c3B7 NCM-SSI"
+      },
+      {
+        "index": 9,
+        "tex": "1D703",
+        "mathjax": "mjx-c3B8 NCM-SSI"
+      },
+      {
+        "index": 10,
+        "tex": "1D717",
+        "mathjax": "mjx-c3D1 NCM-SSI"
+      },
+      {
+        "index": 11,
+        "tex": "1D704",
+        "mathjax": "mjx-c3B9 NCM-SSI"
+      },
+      {
+        "index": 12,
+        "tex": "1D705",
+        "mathjax": "mjx-c3BA NCM-SSI"
+      },
+      {
+        "index": 13,
+        "tex": "1D718",
+        "mathjax": "mjx-c3F0 NCM-SSI"
+      },
+      {
+        "index": 14,
+        "tex": "1D706",
+        "mathjax": "mjx-c3BB NCM-SSI"
+      },
+      {
+        "index": 15,
+        "tex": "1D707",
+        "mathjax": "mjx-c3BC NCM-SSI"
+      },
+      {
+        "index": 16,
+        "tex": "1D708",
+        "mathjax": "mjx-c3BD NCM-SSI"
+      },
+      {
+        "index": 17,
+        "tex": "1D709",
+        "mathjax": "mjx-c3BE NCM-SSI"
+      },
+      {
+        "index": 18,
+        "tex": "1D70A",
+        "mathjax": "mjx-c3BF NCM-SSI"
+      },
+      {
+        "index": 19,
+        "tex": "1D70B",
+        "mathjax": "mjx-c3C0 NCM-SSI"
+      },
+      {
+        "index": 20,
+        "tex": "1D71B",
+        "mathjax": "mjx-c3D6 NCM-SSI"
+      },
+      {
+        "index": 21,
+        "tex": "1D70C",
+        "mathjax": "mjx-c3C1 NCM-SSI"
+      },
+      {
+        "index": 22,
+        "tex": "1D71A",
+        "mathjax": "mjx-c3F1 NCM-SSI"
+      },
+      {
+        "index": 23,
+        "tex": "1D70E",
+        "mathjax": "mjx-c3C3 NCM-SSI"
+      },
+      {
+        "index": 24,
+        "tex": "1D70D",
+        "mathjax": "mjx-c3C2 NCM-SSI"
+      },
+      {
+        "index": 25,
+        "tex": "1D70F",
+        "mathjax": "mjx-c3C4 NCM-SSI"
+      },
+      {
+        "index": 26,
+        "tex": "1D710",
+        "mathjax": "mjx-c3C5 NCM-SSI"
+      },
+      {
+        "index": 27,
+        "tex": "1D719",
+        "mathjax": "mjx-c3D5 NCM-SSI"
+      },
+      {
+        "index": 28,
+        "tex": "1D711",
+        "mathjax": "mjx-c3C6 NCM-SSI"
+      },
+      {
+        "index": 29,
+        "tex": "1D712",
+        "mathjax": "mjx-c3C7 NCM-SSI"
+      },
+      {
+        "index": 30,
+        "tex": "1D713",
+        "mathjax": "mjx-c3C8 NCM-SSI"
+      },
+      {
+        "index": 31,
+        "tex": "1D714",
+        "mathjax": "mjx-c3C9 NCM-SSI"
+      }
+    ]
+  },
+  {
+    "style": "TeX",
+    "command": "symsfup",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 32,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symsfup",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c3B1 NCM-SS"
+    },
+    "details": [
+      {
+        "index": 1,
+        "tex": "1D6FC",
+        "mathjax": "mjx-c3B1 NCM-SS"
+      },
+      {
+        "index": 2,
+        "tex": "1D6FD",
+        "mathjax": "mjx-c3B2 NCM-SS"
+      },
+      {
+        "index": 3,
+        "tex": "1D6FE",
+        "mathjax": "mjx-c3B3 NCM-SS"
+      },
+      {
+        "index": 4,
+        "tex": "1D6FF",
+        "mathjax": "mjx-c3B4 NCM-SS"
+      },
+      {
+        "index": 5,
+        "tex": "1D716",
+        "mathjax": "mjx-c3F5 NCM-SS"
+      },
+      {
+        "index": 6,
+        "tex": "1D700",
+        "mathjax": "mjx-c3B5 NCM-SS"
+      },
+      {
+        "index": 7,
+        "tex": "1D701",
+        "mathjax": "mjx-c3B6 NCM-SS"
+      },
+      {
+        "index": 8,
+        "tex": "1D702",
+        "mathjax": "mjx-c3B7 NCM-SS"
+      },
+      {
+        "index": 9,
+        "tex": "1D703",
+        "mathjax": "mjx-c3B8 NCM-SS"
+      },
+      {
+        "index": 10,
+        "tex": "1D717",
+        "mathjax": "mjx-c3D1 NCM-SS"
+      },
+      {
+        "index": 11,
+        "tex": "1D704",
+        "mathjax": "mjx-c3B9 NCM-SS"
+      },
+      {
+        "index": 12,
+        "tex": "1D705",
+        "mathjax": "mjx-c3BA NCM-SS"
+      },
+      {
+        "index": 13,
+        "tex": "1D718",
+        "mathjax": "mjx-c3F0 NCM-SS"
+      },
+      {
+        "index": 14,
+        "tex": "1D706",
+        "mathjax": "mjx-c3BB NCM-SS"
+      },
+      {
+        "index": 15,
+        "tex": "1D707",
+        "mathjax": "mjx-c3BC NCM-SS"
+      },
+      {
+        "index": 16,
+        "tex": "1D708",
+        "mathjax": "mjx-c3BD NCM-SS"
+      },
+      {
+        "index": 17,
+        "tex": "1D709",
+        "mathjax": "mjx-c3BE NCM-SS"
+      },
+      {
+        "index": 18,
+        "tex": "1D70A",
+        "mathjax": "mjx-c3BF NCM-SS"
+      },
+      {
+        "index": 19,
+        "tex": "1D70B",
+        "mathjax": "mjx-c3C0 NCM-SS"
+      },
+      {
+        "index": 20,
+        "tex": "1D71B",
+        "mathjax": "mjx-c3D6 NCM-SS"
+      },
+      {
+        "index": 21,
+        "tex": "1D70C",
+        "mathjax": "mjx-c3C1 NCM-SS"
+      },
+      {
+        "index": 22,
+        "tex": "1D71A",
+        "mathjax": "mjx-c3F1 NCM-SS"
+      },
+      {
+        "index": 23,
+        "tex": "1D70E",
+        "mathjax": "mjx-c3C3 NCM-SS"
+      },
+      {
+        "index": 24,
+        "tex": "1D70D",
+        "mathjax": "mjx-c3C2 NCM-SS"
+      },
+      {
+        "index": 25,
+        "tex": "1D70F",
+        "mathjax": "mjx-c3C4 NCM-SS"
+      },
+      {
+        "index": 26,
+        "tex": "1D710",
+        "mathjax": "mjx-c3C5 NCM-SS"
+      },
+      {
+        "index": 27,
+        "tex": "1D719",
+        "mathjax": "mjx-c3D5 NCM-SS"
+      },
+      {
+        "index": 28,
+        "tex": "1D711",
+        "mathjax": "mjx-c3C6 NCM-SS"
+      },
+      {
+        "index": 29,
+        "tex": "1D712",
+        "mathjax": "mjx-c3C7 NCM-SS"
+      },
+      {
+        "index": 30,
+        "tex": "1D713",
+        "mathjax": "mjx-c3C8 NCM-SS"
+      },
+      {
+        "index": 31,
+        "tex": "1D714",
+        "mathjax": "mjx-c3C9 NCM-SS"
+      },
+      {
+        "index": 43,
+        "tex": "1D715",
+        "mathjax": "mjx-c2202"
+      }
+    ]
+  },
+  {
+    "style": "TeX",
+    "command": "symsfit",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 32,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symsfit",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c3B1 NCM-SSI"
+    },
+    "details": [
+      {
+        "index": 1,
+        "tex": "1D6FC",
+        "mathjax": "mjx-c3B1 NCM-SSI"
+      },
+      {
+        "index": 2,
+        "tex": "1D6FD",
+        "mathjax": "mjx-c3B2 NCM-SSI"
+      },
+      {
+        "index": 3,
+        "tex": "1D6FE",
+        "mathjax": "mjx-c3B3 NCM-SSI"
+      },
+      {
+        "index": 4,
+        "tex": "1D6FF",
+        "mathjax": "mjx-c3B4 NCM-SSI"
+      },
+      {
+        "index": 5,
+        "tex": "1D716",
+        "mathjax": "mjx-c3F5 NCM-SSI"
+      },
+      {
+        "index": 6,
+        "tex": "1D700",
+        "mathjax": "mjx-c3B5 NCM-SSI"
+      },
+      {
+        "index": 7,
+        "tex": "1D701",
+        "mathjax": "mjx-c3B6 NCM-SSI"
+      },
+      {
+        "index": 8,
+        "tex": "1D702",
+        "mathjax": "mjx-c3B7 NCM-SSI"
+      },
+      {
+        "index": 9,
+        "tex": "1D703",
+        "mathjax": "mjx-c3B8 NCM-SSI"
+      },
+      {
+        "index": 10,
+        "tex": "1D717",
+        "mathjax": "mjx-c3D1 NCM-SSI"
+      },
+      {
+        "index": 11,
+        "tex": "1D704",
+        "mathjax": "mjx-c3B9 NCM-SSI"
+      },
+      {
+        "index": 12,
+        "tex": "1D705",
+        "mathjax": "mjx-c3BA NCM-SSI"
+      },
+      {
+        "index": 13,
+        "tex": "1D718",
+        "mathjax": "mjx-c3F0 NCM-SSI"
+      },
+      {
+        "index": 14,
+        "tex": "1D706",
+        "mathjax": "mjx-c3BB NCM-SSI"
+      },
+      {
+        "index": 15,
+        "tex": "1D707",
+        "mathjax": "mjx-c3BC NCM-SSI"
+      },
+      {
+        "index": 16,
+        "tex": "1D708",
+        "mathjax": "mjx-c3BD NCM-SSI"
+      },
+      {
+        "index": 17,
+        "tex": "1D709",
+        "mathjax": "mjx-c3BE NCM-SSI"
+      },
+      {
+        "index": 18,
+        "tex": "1D70A",
+        "mathjax": "mjx-c3BF NCM-SSI"
+      },
+      {
+        "index": 19,
+        "tex": "1D70B",
+        "mathjax": "mjx-c3C0 NCM-SSI"
+      },
+      {
+        "index": 20,
+        "tex": "1D71B",
+        "mathjax": "mjx-c3D6 NCM-SSI"
+      },
+      {
+        "index": 21,
+        "tex": "1D70C",
+        "mathjax": "mjx-c3C1 NCM-SSI"
+      },
+      {
+        "index": 22,
+        "tex": "1D71A",
+        "mathjax": "mjx-c3F1 NCM-SSI"
+      },
+      {
+        "index": 23,
+        "tex": "1D70E",
+        "mathjax": "mjx-c3C3 NCM-SSI"
+      },
+      {
+        "index": 24,
+        "tex": "1D70D",
+        "mathjax": "mjx-c3C2 NCM-SSI"
+      },
+      {
+        "index": 25,
+        "tex": "1D70F",
+        "mathjax": "mjx-c3C4 NCM-SSI"
+      },
+      {
+        "index": 26,
+        "tex": "1D710",
+        "mathjax": "mjx-c3C5 NCM-SSI"
+      },
+      {
+        "index": 27,
+        "tex": "1D719",
+        "mathjax": "mjx-c3D5 NCM-SSI"
+      },
+      {
+        "index": 28,
+        "tex": "1D711",
+        "mathjax": "mjx-c3C6 NCM-SSI"
+      },
+      {
+        "index": 29,
+        "tex": "1D712",
+        "mathjax": "mjx-c3C7 NCM-SSI"
+      },
+      {
+        "index": 30,
+        "tex": "1D713",
+        "mathjax": "mjx-c3C8 NCM-SSI"
+      },
+      {
+        "index": 31,
+        "tex": "1D714",
+        "mathjax": "mjx-c3C9 NCM-SSI"
+      },
+      {
+        "index": 44,
+        "tex": "2207",
+        "mathjax": "mjx-c1D6FB"
+      }
+    ]
+  },
+  {
+    "style": "TeX",
+    "command": "symbfsf",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 31,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symbfsf",
+        "input": "macro",
+        "index": 1,
+        "char": "1D770",
+        "unicode": "D835DF70",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D7AA NCM-SSBI"
+    },
+    "details": [
+      {
+        "index": 1,
+        "tex": "1D770",
+        "mathjax": "mjx-c1D7AA NCM-SSBI"
+      },
+      {
+        "index": 2,
+        "tex": "1D771",
+        "mathjax": "mjx-c1D7AB NCM-SSBI"
+      },
+      {
+        "index": 3,
+        "tex": "1D772",
+        "mathjax": "mjx-c1D7AC NCM-SSBI"
+      },
+      {
+        "index": 4,
+        "tex": "1D773",
+        "mathjax": "mjx-c1D7AD NCM-SSBI"
+      },
+      {
+        "index": 5,
+        "tex": "1D78A",
+        "mathjax": "mjx-c1D7C4 NCM-SSBI"
+      },
+      {
+        "index": 6,
+        "tex": "1D774",
+        "mathjax": "mjx-c1D7AE NCM-SSBI"
+      },
+      {
+        "index": 7,
+        "tex": "1D775",
+        "mathjax": "mjx-c1D7AF NCM-SSBI"
+      },
+      {
+        "index": 8,
+        "tex": "1D776",
+        "mathjax": "mjx-c1D7B0 NCM-SSBI"
+      },
+      {
+        "index": 9,
+        "tex": "1D777",
+        "mathjax": "mjx-c1D7B1 NCM-SSBI"
+      },
+      {
+        "index": 10,
+        "tex": "1D78B",
+        "mathjax": "mjx-c1D7C5 NCM-SSBI"
+      },
+      {
+        "index": 11,
+        "tex": "1D778",
+        "mathjax": "mjx-c1D7B2 NCM-SSBI"
+      },
+      {
+        "index": 12,
+        "tex": "1D779",
+        "mathjax": "mjx-c1D7B3 NCM-SSBI"
+      },
+      {
+        "index": 13,
+        "tex": "1D78C",
+        "mathjax": "mjx-c1D7C6 NCM-SSBI"
+      },
+      {
+        "index": 14,
+        "tex": "1D77A",
+        "mathjax": "mjx-c1D7B4 NCM-SSBI"
+      },
+      {
+        "index": 15,
+        "tex": "1D77B",
+        "mathjax": "mjx-c1D7B5 NCM-SSBI"
+      },
+      {
+        "index": 16,
+        "tex": "1D77C",
+        "mathjax": "mjx-c1D7B6 NCM-SSBI"
+      },
+      {
+        "index": 17,
+        "tex": "1D77D",
+        "mathjax": "mjx-c1D7B7 NCM-SSBI"
+      },
+      {
+        "index": 18,
+        "tex": "1D77E",
+        "mathjax": "mjx-c1D7B8 NCM-SSBI"
+      },
+      {
+        "index": 19,
+        "tex": "1D77F",
+        "mathjax": "mjx-c1D7B9 NCM-SSBI"
+      },
+      {
+        "index": 20,
+        "tex": "1D78F",
+        "mathjax": "mjx-c1D7C9 NCM-SSBI"
+      },
+      {
+        "index": 21,
+        "tex": "1D780",
+        "mathjax": "mjx-c1D7BA NCM-SSBI"
+      },
+      {
+        "index": 22,
+        "tex": "1D78E",
+        "mathjax": "mjx-c1D7C8 NCM-SSBI"
+      },
+      {
+        "index": 23,
+        "tex": "1D782",
+        "mathjax": "mjx-c1D7BC NCM-SSBI"
+      },
+      {
+        "index": 24,
+        "tex": "1D781",
+        "mathjax": "mjx-c1D7BB NCM-SSBI"
+      },
+      {
+        "index": 25,
+        "tex": "1D783",
+        "mathjax": "mjx-c1D7BD NCM-SSBI"
+      },
+      {
+        "index": 26,
+        "tex": "1D784",
+        "mathjax": "mjx-c1D7BE NCM-SSBI"
+      },
+      {
+        "index": 27,
+        "tex": "1D78D",
+        "mathjax": "mjx-c1D7C7 NCM-SSBI"
+      },
+      {
+        "index": 28,
+        "tex": "1D785",
+        "mathjax": "mjx-c1D7BF NCM-SSBI"
+      },
+      {
+        "index": 29,
+        "tex": "1D786",
+        "mathjax": "mjx-c1D7C0 NCM-SSBI"
+      },
+      {
+        "index": 30,
+        "tex": "1D787",
+        "mathjax": "mjx-c1D7C1 NCM-SSBI"
+      },
+      {
+        "index": 31,
+        "tex": "1D788",
+        "mathjax": "mjx-c1D7C2 NCM-SSBI"
+      }
+    ]
+  },
+  {
+    "style": "TeX",
+    "command": "symbfsfup",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 0,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symbfsfup",
+        "input": "macro",
+        "index": 1,
+        "char": "1D770",
+        "unicode": "D835DF70",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D770 NCM-SSB"
+    },
+    "details": []
+  },
+  {
+    "style": "TeX",
+    "command": "symbfsfit",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 0,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symbfsfit",
+        "input": "macro",
+        "index": 1,
+        "char": "1D7AA",
+        "unicode": "D835DFAA",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D7AA NCM-SSBI"
+    },
+    "details": []
+  },
+  {
+    "style": "TeX",
+    "command": "symbb",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 40,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symbb",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D736"
+    },
+    "details": [
+      {
+        "index": 1,
+        "tex": "1D6FC",
+        "mathjax": "mjx-c1D736"
+      },
+      {
+        "index": 2,
+        "tex": "1D6FD",
+        "mathjax": "mjx-c1D737"
+      },
+      {
+        "index": 4,
+        "tex": "1D6FF",
+        "mathjax": "mjx-c1D739"
+      },
+      {
+        "index": 5,
+        "tex": "1D716",
+        "mathjax": "mjx-c1D750"
+      },
+      {
+        "index": 6,
+        "tex": "1D700",
+        "mathjax": "mjx-c1D73A"
+      },
+      {
+        "index": 7,
+        "tex": "1D701",
+        "mathjax": "mjx-c1D73B"
+      },
+      {
+        "index": 8,
+        "tex": "1D702",
+        "mathjax": "mjx-c1D73C"
+      },
+      {
+        "index": 9,
+        "tex": "1D703",
+        "mathjax": "mjx-c1D73D"
+      },
+      {
+        "index": 10,
+        "tex": "1D717",
+        "mathjax": "mjx-c1D751"
+      },
+      {
+        "index": 11,
+        "tex": "1D704",
+        "mathjax": "mjx-c1D73E"
+      },
+      {
+        "index": 12,
+        "tex": "1D705",
+        "mathjax": "mjx-c1D73F"
+      },
+      {
+        "index": 13,
+        "tex": "1D718",
+        "mathjax": "mjx-c1D752"
+      },
+      {
+        "index": 14,
+        "tex": "1D706",
+        "mathjax": "mjx-c1D740"
+      },
+      {
+        "index": 15,
+        "tex": "1D707",
+        "mathjax": "mjx-c1D741"
+      },
+      {
+        "index": 16,
+        "tex": "1D708",
+        "mathjax": "mjx-c1D742"
+      },
+      {
+        "index": 17,
+        "tex": "1D709",
+        "mathjax": "mjx-c1D743"
+      },
+      {
+        "index": 18,
+        "tex": "1D70A",
+        "mathjax": "mjx-c1D744"
+      },
+      {
+        "index": 20,
+        "tex": "1D71B",
+        "mathjax": "mjx-c1D755"
+      },
+      {
+        "index": 21,
+        "tex": "1D70C",
+        "mathjax": "mjx-c1D746"
+      },
+      {
+        "index": 22,
+        "tex": "1D71A",
+        "mathjax": "mjx-c1D754"
+      },
+      {
+        "index": 23,
+        "tex": "1D70E",
+        "mathjax": "mjx-c1D748"
+      },
+      {
+        "index": 24,
+        "tex": "1D70D",
+        "mathjax": "mjx-c1D747"
+      },
+      {
+        "index": 25,
+        "tex": "1D70F",
+        "mathjax": "mjx-c1D749"
+      },
+      {
+        "index": 26,
+        "tex": "1D710",
+        "mathjax": "mjx-c1D74A"
+      },
+      {
+        "index": 27,
+        "tex": "1D719",
+        "mathjax": "mjx-c1D753"
+      },
+      {
+        "index": 28,
+        "tex": "1D711",
+        "mathjax": "mjx-c1D74B"
+      },
+      {
+        "index": 29,
+        "tex": "1D712",
+        "mathjax": "mjx-c1D74C"
+      },
+      {
+        "index": 30,
+        "tex": "1D713",
+        "mathjax": "mjx-c1D74D"
+      },
+      {
+        "index": 31,
+        "tex": "1D714",
+        "mathjax": "mjx-c1D74E"
+      },
+      {
+        "index": 33,
+        "tex": "394",
+        "mathjax": "mjx-c1D6AB"
+      },
+      {
+        "index": 34,
+        "tex": "398",
+        "mathjax": "mjx-c1D6AF"
+      },
+      {
+        "index": 35,
+        "tex": "39B",
+        "mathjax": "mjx-c1D6B2"
+      },
+      {
+        "index": 36,
+        "tex": "39E",
+        "mathjax": "mjx-c1D6B5"
+      },
+      {
+        "index": 38,
+        "tex": "3A3",
+        "mathjax": "mjx-c2140 NCM-DS"
+      },
+      {
+        "index": 39,
+        "tex": "3A5",
+        "mathjax": "mjx-c1D6BC"
+      },
+      {
+        "index": 40,
+        "tex": "3A6",
+        "mathjax": "mjx-c1D6BD"
+      },
+      {
+        "index": 41,
+        "tex": "3A8",
+        "mathjax": "mjx-c1D6BF"
+      },
+      {
+        "index": 42,
+        "tex": "3A9",
+        "mathjax": "mjx-c1D6C0"
+      },
+      {
+        "index": 43,
+        "tex": "1D715",
+        "mathjax": "mjx-c1D74F"
+      },
+      {
+        "index": 44,
+        "tex": "2207",
+        "mathjax": "mjx-c1D6C1"
+      }
+    ]
+  },
+  {
+    "style": "TeX",
+    "command": "symcal",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 12,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symcal",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D6FC"
+    },
+    "details": [
+      {
+        "index": 32,
+        "tex": "393",
+        "mathjax": "mjx-c1D6E4"
+      },
+      {
+        "index": 33,
+        "tex": "394",
+        "mathjax": "mjx-c1D6E5"
+      },
+      {
+        "index": 34,
+        "tex": "398",
+        "mathjax": "mjx-c1D6E9"
+      },
+      {
+        "index": 35,
+        "tex": "39B",
+        "mathjax": "mjx-c1D6EC"
+      },
+      {
+        "index": 36,
+        "tex": "39E",
+        "mathjax": "mjx-c1D6EF"
+      },
+      {
+        "index": 37,
+        "tex": "3A0",
+        "mathjax": "mjx-c1D6F1"
+      },
+      {
+        "index": 38,
+        "tex": "3A3",
+        "mathjax": "mjx-c1D6F4"
+      },
+      {
+        "index": 39,
+        "tex": "3A5",
+        "mathjax": "mjx-c1D6F6"
+      },
+      {
+        "index": 40,
+        "tex": "3A6",
+        "mathjax": "mjx-c1D6F7"
+      },
+      {
+        "index": 41,
+        "tex": "3A8",
+        "mathjax": "mjx-c1D6F9"
+      },
+      {
+        "index": 42,
+        "tex": "3A9",
+        "mathjax": "mjx-c1D6FA"
+      },
+      {
+        "index": 44,
+        "tex": "2207",
+        "mathjax": "mjx-c1D6FB"
+      }
+    ]
+  },
+  {
+    "style": "TeX",
+    "command": "symscr",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 12,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symscr",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D6FC"
+    },
+    "details": [
+      {
+        "index": 32,
+        "tex": "393",
+        "mathjax": "mjx-c1D6E4"
+      },
+      {
+        "index": 33,
+        "tex": "394",
+        "mathjax": "mjx-c1D6E5"
+      },
+      {
+        "index": 34,
+        "tex": "398",
+        "mathjax": "mjx-c1D6E9"
+      },
+      {
+        "index": 35,
+        "tex": "39B",
+        "mathjax": "mjx-c1D6EC"
+      },
+      {
+        "index": 36,
+        "tex": "39E",
+        "mathjax": "mjx-c1D6EF"
+      },
+      {
+        "index": 37,
+        "tex": "3A0",
+        "mathjax": "mjx-c1D6F1"
+      },
+      {
+        "index": 38,
+        "tex": "3A3",
+        "mathjax": "mjx-c1D6F4"
+      },
+      {
+        "index": 39,
+        "tex": "3A5",
+        "mathjax": "mjx-c1D6F6"
+      },
+      {
+        "index": 40,
+        "tex": "3A6",
+        "mathjax": "mjx-c1D6F7"
+      },
+      {
+        "index": 41,
+        "tex": "3A8",
+        "mathjax": "mjx-c1D6F9"
+      },
+      {
+        "index": 42,
+        "tex": "3A9",
+        "mathjax": "mjx-c1D6FA"
+      },
+      {
+        "index": 44,
+        "tex": "2207",
+        "mathjax": "mjx-c1D6FB"
+      }
+    ]
+  },
+  {
+    "style": "TeX",
+    "command": "symfrak",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 0,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symfrak",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D6FC"
+    },
+    "details": []
+  },
+  {
+    "style": "TeX",
+    "command": "symtt",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 0,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symtt",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D6FC"
+    },
+    "details": []
+  },
+  {
+    "style": "TeX",
+    "command": "symbfcal",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 44,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symbfcal",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D736"
+    },
+    "details": [
+      {
+        "index": 1,
+        "tex": "1D6FC",
+        "mathjax": "mjx-c1D736"
+      },
+      {
+        "index": 2,
+        "tex": "1D6FD",
+        "mathjax": "mjx-c1D737"
+      },
+      {
+        "index": 3,
+        "tex": "1D6FE",
+        "mathjax": "mjx-c1D738"
+      },
+      {
+        "index": 4,
+        "tex": "1D6FF",
+        "mathjax": "mjx-c1D739"
+      },
+      {
+        "index": 5,
+        "tex": "1D716",
+        "mathjax": "mjx-c1D750"
+      },
+      {
+        "index": 6,
+        "tex": "1D700",
+        "mathjax": "mjx-c1D73A"
+      },
+      {
+        "index": 7,
+        "tex": "1D701",
+        "mathjax": "mjx-c1D73B"
+      },
+      {
+        "index": 8,
+        "tex": "1D702",
+        "mathjax": "mjx-c1D73C"
+      },
+      {
+        "index": 9,
+        "tex": "1D703",
+        "mathjax": "mjx-c1D73D"
+      },
+      {
+        "index": 10,
+        "tex": "1D717",
+        "mathjax": "mjx-c1D751"
+      },
+      {
+        "index": 11,
+        "tex": "1D704",
+        "mathjax": "mjx-c1D73E"
+      },
+      {
+        "index": 12,
+        "tex": "1D705",
+        "mathjax": "mjx-c1D73F"
+      },
+      {
+        "index": 13,
+        "tex": "1D718",
+        "mathjax": "mjx-c1D752"
+      },
+      {
+        "index": 14,
+        "tex": "1D706",
+        "mathjax": "mjx-c1D740"
+      },
+      {
+        "index": 15,
+        "tex": "1D707",
+        "mathjax": "mjx-c1D741"
+      },
+      {
+        "index": 16,
+        "tex": "1D708",
+        "mathjax": "mjx-c1D742"
+      },
+      {
+        "index": 17,
+        "tex": "1D709",
+        "mathjax": "mjx-c1D743"
+      },
+      {
+        "index": 18,
+        "tex": "1D70A",
+        "mathjax": "mjx-c1D744"
+      },
+      {
+        "index": 19,
+        "tex": "1D70B",
+        "mathjax": "mjx-c1D745"
+      },
+      {
+        "index": 20,
+        "tex": "1D71B",
+        "mathjax": "mjx-c1D755"
+      },
+      {
+        "index": 21,
+        "tex": "1D70C",
+        "mathjax": "mjx-c1D746"
+      },
+      {
+        "index": 22,
+        "tex": "1D71A",
+        "mathjax": "mjx-c1D754"
+      },
+      {
+        "index": 23,
+        "tex": "1D70E",
+        "mathjax": "mjx-c1D748"
+      },
+      {
+        "index": 24,
+        "tex": "1D70D",
+        "mathjax": "mjx-c1D747"
+      },
+      {
+        "index": 25,
+        "tex": "1D70F",
+        "mathjax": "mjx-c1D749"
+      },
+      {
+        "index": 26,
+        "tex": "1D710",
+        "mathjax": "mjx-c1D74A"
+      },
+      {
+        "index": 27,
+        "tex": "1D719",
+        "mathjax": "mjx-c1D753"
+      },
+      {
+        "index": 28,
+        "tex": "1D711",
+        "mathjax": "mjx-c1D74B"
+      },
+      {
+        "index": 29,
+        "tex": "1D712",
+        "mathjax": "mjx-c1D74C"
+      },
+      {
+        "index": 30,
+        "tex": "1D713",
+        "mathjax": "mjx-c1D74D"
+      },
+      {
+        "index": 31,
+        "tex": "1D714",
+        "mathjax": "mjx-c1D74E"
+      },
+      {
+        "index": 32,
+        "tex": "393",
+        "mathjax": "mjx-c1D71E"
+      },
+      {
+        "index": 33,
+        "tex": "394",
+        "mathjax": "mjx-c1D71F"
+      },
+      {
+        "index": 34,
+        "tex": "398",
+        "mathjax": "mjx-c1D723"
+      },
+      {
+        "index": 35,
+        "tex": "39B",
+        "mathjax": "mjx-c1D726"
+      },
+      {
+        "index": 36,
+        "tex": "39E",
+        "mathjax": "mjx-c1D729"
+      },
+      {
+        "index": 37,
+        "tex": "3A0",
+        "mathjax": "mjx-c1D72B"
+      },
+      {
+        "index": 38,
+        "tex": "3A3",
+        "mathjax": "mjx-c1D72E"
+      },
+      {
+        "index": 39,
+        "tex": "3A5",
+        "mathjax": "mjx-c1D730"
+      },
+      {
+        "index": 40,
+        "tex": "3A6",
+        "mathjax": "mjx-c1D731"
+      },
+      {
+        "index": 41,
+        "tex": "3A8",
+        "mathjax": "mjx-c1D733"
+      },
+      {
+        "index": 42,
+        "tex": "3A9",
+        "mathjax": "mjx-c1D734"
+      },
+      {
+        "index": 43,
+        "tex": "1D715",
+        "mathjax": "mjx-c1D74F"
+      },
+      {
+        "index": 44,
+        "tex": "2207",
+        "mathjax": "mjx-c1D735"
+      }
+    ]
+  },
+  {
+    "style": "TeX",
+    "command": "symbfscr",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 44,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symbfscr",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D736"
+    },
+    "details": [
+      {
+        "index": 1,
+        "tex": "1D6FC",
+        "mathjax": "mjx-c1D736"
+      },
+      {
+        "index": 2,
+        "tex": "1D6FD",
+        "mathjax": "mjx-c1D737"
+      },
+      {
+        "index": 3,
+        "tex": "1D6FE",
+        "mathjax": "mjx-c1D738"
+      },
+      {
+        "index": 4,
+        "tex": "1D6FF",
+        "mathjax": "mjx-c1D739"
+      },
+      {
+        "index": 5,
+        "tex": "1D716",
+        "mathjax": "mjx-c1D750"
+      },
+      {
+        "index": 6,
+        "tex": "1D700",
+        "mathjax": "mjx-c1D73A"
+      },
+      {
+        "index": 7,
+        "tex": "1D701",
+        "mathjax": "mjx-c1D73B"
+      },
+      {
+        "index": 8,
+        "tex": "1D702",
+        "mathjax": "mjx-c1D73C"
+      },
+      {
+        "index": 9,
+        "tex": "1D703",
+        "mathjax": "mjx-c1D73D"
+      },
+      {
+        "index": 10,
+        "tex": "1D717",
+        "mathjax": "mjx-c1D751"
+      },
+      {
+        "index": 11,
+        "tex": "1D704",
+        "mathjax": "mjx-c1D73E"
+      },
+      {
+        "index": 12,
+        "tex": "1D705",
+        "mathjax": "mjx-c1D73F"
+      },
+      {
+        "index": 13,
+        "tex": "1D718",
+        "mathjax": "mjx-c1D752"
+      },
+      {
+        "index": 14,
+        "tex": "1D706",
+        "mathjax": "mjx-c1D740"
+      },
+      {
+        "index": 15,
+        "tex": "1D707",
+        "mathjax": "mjx-c1D741"
+      },
+      {
+        "index": 16,
+        "tex": "1D708",
+        "mathjax": "mjx-c1D742"
+      },
+      {
+        "index": 17,
+        "tex": "1D709",
+        "mathjax": "mjx-c1D743"
+      },
+      {
+        "index": 18,
+        "tex": "1D70A",
+        "mathjax": "mjx-c1D744"
+      },
+      {
+        "index": 19,
+        "tex": "1D70B",
+        "mathjax": "mjx-c1D745"
+      },
+      {
+        "index": 20,
+        "tex": "1D71B",
+        "mathjax": "mjx-c1D755"
+      },
+      {
+        "index": 21,
+        "tex": "1D70C",
+        "mathjax": "mjx-c1D746"
+      },
+      {
+        "index": 22,
+        "tex": "1D71A",
+        "mathjax": "mjx-c1D754"
+      },
+      {
+        "index": 23,
+        "tex": "1D70E",
+        "mathjax": "mjx-c1D748"
+      },
+      {
+        "index": 24,
+        "tex": "1D70D",
+        "mathjax": "mjx-c1D747"
+      },
+      {
+        "index": 25,
+        "tex": "1D70F",
+        "mathjax": "mjx-c1D749"
+      },
+      {
+        "index": 26,
+        "tex": "1D710",
+        "mathjax": "mjx-c1D74A"
+      },
+      {
+        "index": 27,
+        "tex": "1D719",
+        "mathjax": "mjx-c1D753"
+      },
+      {
+        "index": 28,
+        "tex": "1D711",
+        "mathjax": "mjx-c1D74B"
+      },
+      {
+        "index": 29,
+        "tex": "1D712",
+        "mathjax": "mjx-c1D74C"
+      },
+      {
+        "index": 30,
+        "tex": "1D713",
+        "mathjax": "mjx-c1D74D"
+      },
+      {
+        "index": 31,
+        "tex": "1D714",
+        "mathjax": "mjx-c1D74E"
+      },
+      {
+        "index": 32,
+        "tex": "393",
+        "mathjax": "mjx-c1D71E"
+      },
+      {
+        "index": 33,
+        "tex": "394",
+        "mathjax": "mjx-c1D71F"
+      },
+      {
+        "index": 34,
+        "tex": "398",
+        "mathjax": "mjx-c1D723"
+      },
+      {
+        "index": 35,
+        "tex": "39B",
+        "mathjax": "mjx-c1D726"
+      },
+      {
+        "index": 36,
+        "tex": "39E",
+        "mathjax": "mjx-c1D729"
+      },
+      {
+        "index": 37,
+        "tex": "3A0",
+        "mathjax": "mjx-c1D72B"
+      },
+      {
+        "index": 38,
+        "tex": "3A3",
+        "mathjax": "mjx-c1D72E"
+      },
+      {
+        "index": 39,
+        "tex": "3A5",
+        "mathjax": "mjx-c1D730"
+      },
+      {
+        "index": 40,
+        "tex": "3A6",
+        "mathjax": "mjx-c1D731"
+      },
+      {
+        "index": 41,
+        "tex": "3A8",
+        "mathjax": "mjx-c1D733"
+      },
+      {
+        "index": 42,
+        "tex": "3A9",
+        "mathjax": "mjx-c1D734"
+      },
+      {
+        "index": 43,
+        "tex": "1D715",
+        "mathjax": "mjx-c1D74F"
+      },
+      {
+        "index": 44,
+        "tex": "2207",
+        "mathjax": "mjx-c1D735"
+      }
+    ]
+  },
+  {
+    "style": "TeX",
+    "command": "symbffrak",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 44,
+    "alpha": {
+      "tex": {
+        "style": "TeX",
+        "command": "symbffrak",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D736"
+    },
+    "details": [
+      {
+        "index": 1,
+        "tex": "1D6FC",
+        "mathjax": "mjx-c1D736"
+      },
+      {
+        "index": 2,
+        "tex": "1D6FD",
+        "mathjax": "mjx-c1D737"
+      },
+      {
+        "index": 3,
+        "tex": "1D6FE",
+        "mathjax": "mjx-c1D738"
+      },
+      {
+        "index": 4,
+        "tex": "1D6FF",
+        "mathjax": "mjx-c1D739"
+      },
+      {
+        "index": 5,
+        "tex": "1D716",
+        "mathjax": "mjx-c1D750"
+      },
+      {
+        "index": 6,
+        "tex": "1D700",
+        "mathjax": "mjx-c1D73A"
+      },
+      {
+        "index": 7,
+        "tex": "1D701",
+        "mathjax": "mjx-c1D73B"
+      },
+      {
+        "index": 8,
+        "tex": "1D702",
+        "mathjax": "mjx-c1D73C"
+      },
+      {
+        "index": 9,
+        "tex": "1D703",
+        "mathjax": "mjx-c1D73D"
+      },
+      {
+        "index": 10,
+        "tex": "1D717",
+        "mathjax": "mjx-c1D751"
+      },
+      {
+        "index": 11,
+        "tex": "1D704",
+        "mathjax": "mjx-c1D73E"
+      },
+      {
+        "index": 12,
+        "tex": "1D705",
+        "mathjax": "mjx-c1D73F"
+      },
+      {
+        "index": 13,
+        "tex": "1D718",
+        "mathjax": "mjx-c1D752"
+      },
+      {
+        "index": 14,
+        "tex": "1D706",
+        "mathjax": "mjx-c1D740"
+      },
+      {
+        "index": 15,
+        "tex": "1D707",
+        "mathjax": "mjx-c1D741"
+      },
+      {
+        "index": 16,
+        "tex": "1D708",
+        "mathjax": "mjx-c1D742"
+      },
+      {
+        "index": 17,
+        "tex": "1D709",
+        "mathjax": "mjx-c1D743"
+      },
+      {
+        "index": 18,
+        "tex": "1D70A",
+        "mathjax": "mjx-c1D744"
+      },
+      {
+        "index": 19,
+        "tex": "1D70B",
+        "mathjax": "mjx-c1D745"
+      },
+      {
+        "index": 20,
+        "tex": "1D71B",
+        "mathjax": "mjx-c1D755"
+      },
+      {
+        "index": 21,
+        "tex": "1D70C",
+        "mathjax": "mjx-c1D746"
+      },
+      {
+        "index": 22,
+        "tex": "1D71A",
+        "mathjax": "mjx-c1D754"
+      },
+      {
+        "index": 23,
+        "tex": "1D70E",
+        "mathjax": "mjx-c1D748"
+      },
+      {
+        "index": 24,
+        "tex": "1D70D",
+        "mathjax": "mjx-c1D747"
+      },
+      {
+        "index": 25,
+        "tex": "1D70F",
+        "mathjax": "mjx-c1D749"
+      },
+      {
+        "index": 26,
+        "tex": "1D710",
+        "mathjax": "mjx-c1D74A"
+      },
+      {
+        "index": 27,
+        "tex": "1D719",
+        "mathjax": "mjx-c1D753"
+      },
+      {
+        "index": 28,
+        "tex": "1D711",
+        "mathjax": "mjx-c1D74B"
+      },
+      {
+        "index": 29,
+        "tex": "1D712",
+        "mathjax": "mjx-c1D74C"
+      },
+      {
+        "index": 30,
+        "tex": "1D713",
+        "mathjax": "mjx-c1D74D"
+      },
+      {
+        "index": 31,
+        "tex": "1D714",
+        "mathjax": "mjx-c1D74E"
+      },
+      {
+        "index": 32,
+        "tex": "393",
+        "mathjax": "mjx-c1D6AA"
+      },
+      {
+        "index": 33,
+        "tex": "394",
+        "mathjax": "mjx-c1D6AB"
+      },
+      {
+        "index": 34,
+        "tex": "398",
+        "mathjax": "mjx-c1D6AF"
+      },
+      {
+        "index": 35,
+        "tex": "39B",
+        "mathjax": "mjx-c1D6B2"
+      },
+      {
+        "index": 36,
+        "tex": "39E",
+        "mathjax": "mjx-c1D6B5"
+      },
+      {
+        "index": 37,
+        "tex": "3A0",
+        "mathjax": "mjx-c1D6B7"
+      },
+      {
+        "index": 38,
+        "tex": "3A3",
+        "mathjax": "mjx-c1D6BA"
+      },
+      {
+        "index": 39,
+        "tex": "3A5",
+        "mathjax": "mjx-c1D6BC"
+      },
+      {
+        "index": 40,
+        "tex": "3A6",
+        "mathjax": "mjx-c1D6BD"
+      },
+      {
+        "index": 41,
+        "tex": "3A8",
+        "mathjax": "mjx-c1D6BF"
+      },
+      {
+        "index": 42,
+        "tex": "3A9",
+        "mathjax": "mjx-c1D6C0"
+      },
+      {
+        "index": 43,
+        "tex": "1D715",
+        "mathjax": "mjx-c1D74F"
+      },
+      {
+        "index": 44,
+        "tex": "2207",
+        "mathjax": "mjx-c1D6C1"
+      }
+    ]
+  },
+  {
+    "style": "ISO",
+    "command": "symnormal",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 1,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symnormal",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D6FC"
+    },
+    "details": [
+      {
+        "index": 44,
+        "tex": "2207",
+        "mathjax": "mjx-c1D6FB"
+      }
+    ]
+  },
+  {
+    "style": "ISO",
+    "command": "symup",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 0,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symup",
+        "input": "macro",
+        "index": 1,
+        "char": "3B1",
+        "unicode": "03B1",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c3B1"
+    },
+    "details": []
+  },
+  {
+    "style": "ISO",
+    "command": "symrm",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 0,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symrm",
+        "input": "macro",
+        "index": 1,
+        "char": "3B1",
+        "unicode": "03B1",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c3B1"
+    },
+    "details": []
+  },
+  {
+    "style": "ISO",
+    "command": "symit",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 0,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symit",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D6FC"
+    },
+    "details": []
+  },
+  {
+    "style": "ISO",
+    "command": "symbf",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 1,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symbf",
+        "input": "macro",
+        "index": 1,
+        "char": "1D736",
+        "unicode": "D835DF36",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D736"
+    },
+    "details": [
+      {
+        "index": 44,
+        "tex": "1D6C1",
+        "mathjax": "mjx-c1D735"
+      }
+    ]
+  },
+  {
+    "style": "ISO",
+    "command": "symbfup",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 0,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symbfup",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6C2",
+        "unicode": "D835DEC2",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D6C2"
+    },
+    "details": []
+  },
+  {
+    "style": "ISO",
+    "command": "symbfit",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 0,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symbfit",
+        "input": "macro",
+        "index": 1,
+        "char": "1D736",
+        "unicode": "D835DF36",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D736"
+    },
+    "details": []
+  },
+  {
+    "style": "ISO",
+    "command": "symsf",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 43,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symsf",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c3B1 NCM-SSI"
+    },
+    "details": [
+      {
+        "index": 1,
+        "tex": "1D6FC",
+        "mathjax": "mjx-c3B1 NCM-SSI"
+      },
+      {
+        "index": 2,
+        "tex": "1D6FD",
+        "mathjax": "mjx-c3B2 NCM-SSI"
+      },
+      {
+        "index": 3,
+        "tex": "1D6FE",
+        "mathjax": "mjx-c3B3 NCM-SSI"
+      },
+      {
+        "index": 4,
+        "tex": "1D6FF",
+        "mathjax": "mjx-c3B4 NCM-SSI"
+      },
+      {
+        "index": 5,
+        "tex": "1D716",
+        "mathjax": "mjx-c3F5 NCM-SSI"
+      },
+      {
+        "index": 6,
+        "tex": "1D700",
+        "mathjax": "mjx-c3B5 NCM-SSI"
+      },
+      {
+        "index": 7,
+        "tex": "1D701",
+        "mathjax": "mjx-c3B6 NCM-SSI"
+      },
+      {
+        "index": 8,
+        "tex": "1D702",
+        "mathjax": "mjx-c3B7 NCM-SSI"
+      },
+      {
+        "index": 9,
+        "tex": "1D703",
+        "mathjax": "mjx-c3B8 NCM-SSI"
+      },
+      {
+        "index": 10,
+        "tex": "1D717",
+        "mathjax": "mjx-c3D1 NCM-SSI"
+      },
+      {
+        "index": 11,
+        "tex": "1D704",
+        "mathjax": "mjx-c3B9 NCM-SSI"
+      },
+      {
+        "index": 12,
+        "tex": "1D705",
+        "mathjax": "mjx-c3BA NCM-SSI"
+      },
+      {
+        "index": 13,
+        "tex": "1D718",
+        "mathjax": "mjx-c3F0 NCM-SSI"
+      },
+      {
+        "index": 14,
+        "tex": "1D706",
+        "mathjax": "mjx-c3BB NCM-SSI"
+      },
+      {
+        "index": 15,
+        "tex": "1D707",
+        "mathjax": "mjx-c3BC NCM-SSI"
+      },
+      {
+        "index": 16,
+        "tex": "1D708",
+        "mathjax": "mjx-c3BD NCM-SSI"
+      },
+      {
+        "index": 17,
+        "tex": "1D709",
+        "mathjax": "mjx-c3BE NCM-SSI"
+      },
+      {
+        "index": 18,
+        "tex": "1D70A",
+        "mathjax": "mjx-c3BF NCM-SSI"
+      },
+      {
+        "index": 19,
+        "tex": "1D70B",
+        "mathjax": "mjx-c3C0 NCM-SSI"
+      },
+      {
+        "index": 20,
+        "tex": "1D71B",
+        "mathjax": "mjx-c3D6 NCM-SSI"
+      },
+      {
+        "index": 21,
+        "tex": "1D70C",
+        "mathjax": "mjx-c3C1 NCM-SSI"
+      },
+      {
+        "index": 22,
+        "tex": "1D71A",
+        "mathjax": "mjx-c3F1 NCM-SSI"
+      },
+      {
+        "index": 23,
+        "tex": "1D70E",
+        "mathjax": "mjx-c3C3 NCM-SSI"
+      },
+      {
+        "index": 24,
+        "tex": "1D70D",
+        "mathjax": "mjx-c3C2 NCM-SSI"
+      },
+      {
+        "index": 25,
+        "tex": "1D70F",
+        "mathjax": "mjx-c3C4 NCM-SSI"
+      },
+      {
+        "index": 26,
+        "tex": "1D710",
+        "mathjax": "mjx-c3C5 NCM-SSI"
+      },
+      {
+        "index": 27,
+        "tex": "1D719",
+        "mathjax": "mjx-c3D5 NCM-SSI"
+      },
+      {
+        "index": 28,
+        "tex": "1D711",
+        "mathjax": "mjx-c3C6 NCM-SSI"
+      },
+      {
+        "index": 29,
+        "tex": "1D712",
+        "mathjax": "mjx-c3C7 NCM-SSI"
+      },
+      {
+        "index": 30,
+        "tex": "1D713",
+        "mathjax": "mjx-c3C8 NCM-SSI"
+      },
+      {
+        "index": 31,
+        "tex": "1D714",
+        "mathjax": "mjx-c3C9 NCM-SSI"
+      },
+      {
+        "index": 32,
+        "tex": "1D6E4",
+        "mathjax": "mjx-c393 NCM-SSI"
+      },
+      {
+        "index": 33,
+        "tex": "1D6E5",
+        "mathjax": "mjx-c394 NCM-SSI"
+      },
+      {
+        "index": 34,
+        "tex": "1D6E9",
+        "mathjax": "mjx-c398 NCM-SSI"
+      },
+      {
+        "index": 35,
+        "tex": "1D6EC",
+        "mathjax": "mjx-c39B NCM-SSI"
+      },
+      {
+        "index": 36,
+        "tex": "1D6EF",
+        "mathjax": "mjx-c39E NCM-SSI"
+      },
+      {
+        "index": 37,
+        "tex": "1D6F1",
+        "mathjax": "mjx-c3A0 NCM-SSI"
+      },
+      {
+        "index": 38,
+        "tex": "1D6F4",
+        "mathjax": "mjx-c3A3 NCM-SSI"
+      },
+      {
+        "index": 39,
+        "tex": "1D6F6",
+        "mathjax": "mjx-c3A5 NCM-SSI"
+      },
+      {
+        "index": 40,
+        "tex": "1D6F7",
+        "mathjax": "mjx-c3A6 NCM-SSI"
+      },
+      {
+        "index": 41,
+        "tex": "1D6F9",
+        "mathjax": "mjx-c3A8 NCM-SSI"
+      },
+      {
+        "index": 42,
+        "tex": "1D6FA",
+        "mathjax": "mjx-c3A9 NCM-SSI"
+      },
+      {
+        "index": 44,
+        "tex": "2207",
+        "mathjax": "mjx-c1D6FB"
+      }
+    ]
+  },
+  {
+    "style": "ISO",
+    "command": "symsfup",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 43,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symsfup",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c3B1 NCM-SS"
+    },
+    "details": [
+      {
+        "index": 1,
+        "tex": "1D6FC",
+        "mathjax": "mjx-c3B1 NCM-SS"
+      },
+      {
+        "index": 2,
+        "tex": "1D6FD",
+        "mathjax": "mjx-c3B2 NCM-SS"
+      },
+      {
+        "index": 3,
+        "tex": "1D6FE",
+        "mathjax": "mjx-c3B3 NCM-SS"
+      },
+      {
+        "index": 4,
+        "tex": "1D6FF",
+        "mathjax": "mjx-c3B4 NCM-SS"
+      },
+      {
+        "index": 5,
+        "tex": "1D716",
+        "mathjax": "mjx-c3F5 NCM-SS"
+      },
+      {
+        "index": 6,
+        "tex": "1D700",
+        "mathjax": "mjx-c3B5 NCM-SS"
+      },
+      {
+        "index": 7,
+        "tex": "1D701",
+        "mathjax": "mjx-c3B6 NCM-SS"
+      },
+      {
+        "index": 8,
+        "tex": "1D702",
+        "mathjax": "mjx-c3B7 NCM-SS"
+      },
+      {
+        "index": 9,
+        "tex": "1D703",
+        "mathjax": "mjx-c3B8 NCM-SS"
+      },
+      {
+        "index": 10,
+        "tex": "1D717",
+        "mathjax": "mjx-c3D1 NCM-SS"
+      },
+      {
+        "index": 11,
+        "tex": "1D704",
+        "mathjax": "mjx-c3B9 NCM-SS"
+      },
+      {
+        "index": 12,
+        "tex": "1D705",
+        "mathjax": "mjx-c3BA NCM-SS"
+      },
+      {
+        "index": 13,
+        "tex": "1D718",
+        "mathjax": "mjx-c3F0 NCM-SS"
+      },
+      {
+        "index": 14,
+        "tex": "1D706",
+        "mathjax": "mjx-c3BB NCM-SS"
+      },
+      {
+        "index": 15,
+        "tex": "1D707",
+        "mathjax": "mjx-c3BC NCM-SS"
+      },
+      {
+        "index": 16,
+        "tex": "1D708",
+        "mathjax": "mjx-c3BD NCM-SS"
+      },
+      {
+        "index": 17,
+        "tex": "1D709",
+        "mathjax": "mjx-c3BE NCM-SS"
+      },
+      {
+        "index": 18,
+        "tex": "1D70A",
+        "mathjax": "mjx-c3BF NCM-SS"
+      },
+      {
+        "index": 19,
+        "tex": "1D70B",
+        "mathjax": "mjx-c3C0 NCM-SS"
+      },
+      {
+        "index": 20,
+        "tex": "1D71B",
+        "mathjax": "mjx-c3D6 NCM-SS"
+      },
+      {
+        "index": 21,
+        "tex": "1D70C",
+        "mathjax": "mjx-c3C1 NCM-SS"
+      },
+      {
+        "index": 22,
+        "tex": "1D71A",
+        "mathjax": "mjx-c3F1 NCM-SS"
+      },
+      {
+        "index": 23,
+        "tex": "1D70E",
+        "mathjax": "mjx-c3C3 NCM-SS"
+      },
+      {
+        "index": 24,
+        "tex": "1D70D",
+        "mathjax": "mjx-c3C2 NCM-SS"
+      },
+      {
+        "index": 25,
+        "tex": "1D70F",
+        "mathjax": "mjx-c3C4 NCM-SS"
+      },
+      {
+        "index": 26,
+        "tex": "1D710",
+        "mathjax": "mjx-c3C5 NCM-SS"
+      },
+      {
+        "index": 27,
+        "tex": "1D719",
+        "mathjax": "mjx-c3D5 NCM-SS"
+      },
+      {
+        "index": 28,
+        "tex": "1D711",
+        "mathjax": "mjx-c3C6 NCM-SS"
+      },
+      {
+        "index": 29,
+        "tex": "1D712",
+        "mathjax": "mjx-c3C7 NCM-SS"
+      },
+      {
+        "index": 30,
+        "tex": "1D713",
+        "mathjax": "mjx-c3C8 NCM-SS"
+      },
+      {
+        "index": 31,
+        "tex": "1D714",
+        "mathjax": "mjx-c3C9 NCM-SS"
+      },
+      {
+        "index": 32,
+        "tex": "1D6E4",
+        "mathjax": "mjx-c393 NCM-SS"
+      },
+      {
+        "index": 33,
+        "tex": "1D6E5",
+        "mathjax": "mjx-c394 NCM-SS"
+      },
+      {
+        "index": 34,
+        "tex": "1D6E9",
+        "mathjax": "mjx-c398 NCM-SS"
+      },
+      {
+        "index": 35,
+        "tex": "1D6EC",
+        "mathjax": "mjx-c39B NCM-SS"
+      },
+      {
+        "index": 36,
+        "tex": "1D6EF",
+        "mathjax": "mjx-c39E NCM-SS"
+      },
+      {
+        "index": 37,
+        "tex": "1D6F1",
+        "mathjax": "mjx-c3A0 NCM-SS"
+      },
+      {
+        "index": 38,
+        "tex": "1D6F4",
+        "mathjax": "mjx-c3A3 NCM-SS"
+      },
+      {
+        "index": 39,
+        "tex": "1D6F6",
+        "mathjax": "mjx-c3A5 NCM-SS"
+      },
+      {
+        "index": 40,
+        "tex": "1D6F7",
+        "mathjax": "mjx-c3A6 NCM-SS"
+      },
+      {
+        "index": 41,
+        "tex": "1D6F9",
+        "mathjax": "mjx-c3A8 NCM-SS"
+      },
+      {
+        "index": 42,
+        "tex": "1D6FA",
+        "mathjax": "mjx-c3A9 NCM-SS"
+      },
+      {
+        "index": 43,
+        "tex": "1D715",
+        "mathjax": "mjx-c2202"
+      }
+    ]
+  },
+  {
+    "style": "ISO",
+    "command": "symsfit",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 43,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symsfit",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c3B1 NCM-SSI"
+    },
+    "details": [
+      {
+        "index": 1,
+        "tex": "1D6FC",
+        "mathjax": "mjx-c3B1 NCM-SSI"
+      },
+      {
+        "index": 2,
+        "tex": "1D6FD",
+        "mathjax": "mjx-c3B2 NCM-SSI"
+      },
+      {
+        "index": 3,
+        "tex": "1D6FE",
+        "mathjax": "mjx-c3B3 NCM-SSI"
+      },
+      {
+        "index": 4,
+        "tex": "1D6FF",
+        "mathjax": "mjx-c3B4 NCM-SSI"
+      },
+      {
+        "index": 5,
+        "tex": "1D716",
+        "mathjax": "mjx-c3F5 NCM-SSI"
+      },
+      {
+        "index": 6,
+        "tex": "1D700",
+        "mathjax": "mjx-c3B5 NCM-SSI"
+      },
+      {
+        "index": 7,
+        "tex": "1D701",
+        "mathjax": "mjx-c3B6 NCM-SSI"
+      },
+      {
+        "index": 8,
+        "tex": "1D702",
+        "mathjax": "mjx-c3B7 NCM-SSI"
+      },
+      {
+        "index": 9,
+        "tex": "1D703",
+        "mathjax": "mjx-c3B8 NCM-SSI"
+      },
+      {
+        "index": 10,
+        "tex": "1D717",
+        "mathjax": "mjx-c3D1 NCM-SSI"
+      },
+      {
+        "index": 11,
+        "tex": "1D704",
+        "mathjax": "mjx-c3B9 NCM-SSI"
+      },
+      {
+        "index": 12,
+        "tex": "1D705",
+        "mathjax": "mjx-c3BA NCM-SSI"
+      },
+      {
+        "index": 13,
+        "tex": "1D718",
+        "mathjax": "mjx-c3F0 NCM-SSI"
+      },
+      {
+        "index": 14,
+        "tex": "1D706",
+        "mathjax": "mjx-c3BB NCM-SSI"
+      },
+      {
+        "index": 15,
+        "tex": "1D707",
+        "mathjax": "mjx-c3BC NCM-SSI"
+      },
+      {
+        "index": 16,
+        "tex": "1D708",
+        "mathjax": "mjx-c3BD NCM-SSI"
+      },
+      {
+        "index": 17,
+        "tex": "1D709",
+        "mathjax": "mjx-c3BE NCM-SSI"
+      },
+      {
+        "index": 18,
+        "tex": "1D70A",
+        "mathjax": "mjx-c3BF NCM-SSI"
+      },
+      {
+        "index": 19,
+        "tex": "1D70B",
+        "mathjax": "mjx-c3C0 NCM-SSI"
+      },
+      {
+        "index": 20,
+        "tex": "1D71B",
+        "mathjax": "mjx-c3D6 NCM-SSI"
+      },
+      {
+        "index": 21,
+        "tex": "1D70C",
+        "mathjax": "mjx-c3C1 NCM-SSI"
+      },
+      {
+        "index": 22,
+        "tex": "1D71A",
+        "mathjax": "mjx-c3F1 NCM-SSI"
+      },
+      {
+        "index": 23,
+        "tex": "1D70E",
+        "mathjax": "mjx-c3C3 NCM-SSI"
+      },
+      {
+        "index": 24,
+        "tex": "1D70D",
+        "mathjax": "mjx-c3C2 NCM-SSI"
+      },
+      {
+        "index": 25,
+        "tex": "1D70F",
+        "mathjax": "mjx-c3C4 NCM-SSI"
+      },
+      {
+        "index": 26,
+        "tex": "1D710",
+        "mathjax": "mjx-c3C5 NCM-SSI"
+      },
+      {
+        "index": 27,
+        "tex": "1D719",
+        "mathjax": "mjx-c3D5 NCM-SSI"
+      },
+      {
+        "index": 28,
+        "tex": "1D711",
+        "mathjax": "mjx-c3C6 NCM-SSI"
+      },
+      {
+        "index": 29,
+        "tex": "1D712",
+        "mathjax": "mjx-c3C7 NCM-SSI"
+      },
+      {
+        "index": 30,
+        "tex": "1D713",
+        "mathjax": "mjx-c3C8 NCM-SSI"
+      },
+      {
+        "index": 31,
+        "tex": "1D714",
+        "mathjax": "mjx-c3C9 NCM-SSI"
+      },
+      {
+        "index": 32,
+        "tex": "1D6E4",
+        "mathjax": "mjx-c393 NCM-SSI"
+      },
+      {
+        "index": 33,
+        "tex": "1D6E5",
+        "mathjax": "mjx-c394 NCM-SSI"
+      },
+      {
+        "index": 34,
+        "tex": "1D6E9",
+        "mathjax": "mjx-c398 NCM-SSI"
+      },
+      {
+        "index": 35,
+        "tex": "1D6EC",
+        "mathjax": "mjx-c39B NCM-SSI"
+      },
+      {
+        "index": 36,
+        "tex": "1D6EF",
+        "mathjax": "mjx-c39E NCM-SSI"
+      },
+      {
+        "index": 37,
+        "tex": "1D6F1",
+        "mathjax": "mjx-c3A0 NCM-SSI"
+      },
+      {
+        "index": 38,
+        "tex": "1D6F4",
+        "mathjax": "mjx-c3A3 NCM-SSI"
+      },
+      {
+        "index": 39,
+        "tex": "1D6F6",
+        "mathjax": "mjx-c3A5 NCM-SSI"
+      },
+      {
+        "index": 40,
+        "tex": "1D6F7",
+        "mathjax": "mjx-c3A6 NCM-SSI"
+      },
+      {
+        "index": 41,
+        "tex": "1D6F9",
+        "mathjax": "mjx-c3A8 NCM-SSI"
+      },
+      {
+        "index": 42,
+        "tex": "1D6FA",
+        "mathjax": "mjx-c3A9 NCM-SSI"
+      },
+      {
+        "index": 44,
+        "tex": "2207",
+        "mathjax": "mjx-c1D6FB"
+      }
+    ]
+  },
+  {
+    "style": "ISO",
+    "command": "symbfsf",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 1,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symbfsf",
+        "input": "macro",
+        "index": 1,
+        "char": "1D7AA",
+        "unicode": "D835DFAA",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D7AA NCM-SSBI"
+    },
+    "details": [
+      {
+        "index": 44,
+        "tex": "1D76F",
+        "mathjax": "mjx-c1D7A9 NCM-SSBI"
+      }
+    ]
+  },
+  {
+    "style": "ISO",
+    "command": "symbfsfup",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 0,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symbfsfup",
+        "input": "macro",
+        "index": 1,
+        "char": "1D770",
+        "unicode": "D835DF70",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D770 NCM-SSB"
+    },
+    "details": []
+  },
+  {
+    "style": "ISO",
+    "command": "symbfsfit",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 0,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symbfsfit",
+        "input": "macro",
+        "index": 1,
+        "char": "1D7AA",
+        "unicode": "D835DFAA",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D7AA NCM-SSBI"
+    },
+    "details": []
+  },
+  {
+    "style": "ISO",
+    "command": "symbb",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 40,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symbb",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D736"
+    },
+    "details": [
+      {
+        "index": 1,
+        "tex": "1D6FC",
+        "mathjax": "mjx-c1D736"
+      },
+      {
+        "index": 2,
+        "tex": "1D6FD",
+        "mathjax": "mjx-c1D737"
+      },
+      {
+        "index": 4,
+        "tex": "1D6FF",
+        "mathjax": "mjx-c1D739"
+      },
+      {
+        "index": 5,
+        "tex": "1D716",
+        "mathjax": "mjx-c1D750"
+      },
+      {
+        "index": 6,
+        "tex": "1D700",
+        "mathjax": "mjx-c1D73A"
+      },
+      {
+        "index": 7,
+        "tex": "1D701",
+        "mathjax": "mjx-c1D73B"
+      },
+      {
+        "index": 8,
+        "tex": "1D702",
+        "mathjax": "mjx-c1D73C"
+      },
+      {
+        "index": 9,
+        "tex": "1D703",
+        "mathjax": "mjx-c1D73D"
+      },
+      {
+        "index": 10,
+        "tex": "1D717",
+        "mathjax": "mjx-c1D751"
+      },
+      {
+        "index": 11,
+        "tex": "1D704",
+        "mathjax": "mjx-c1D73E"
+      },
+      {
+        "index": 12,
+        "tex": "1D705",
+        "mathjax": "mjx-c1D73F"
+      },
+      {
+        "index": 13,
+        "tex": "1D718",
+        "mathjax": "mjx-c1D752"
+      },
+      {
+        "index": 14,
+        "tex": "1D706",
+        "mathjax": "mjx-c1D740"
+      },
+      {
+        "index": 15,
+        "tex": "1D707",
+        "mathjax": "mjx-c1D741"
+      },
+      {
+        "index": 16,
+        "tex": "1D708",
+        "mathjax": "mjx-c1D742"
+      },
+      {
+        "index": 17,
+        "tex": "1D709",
+        "mathjax": "mjx-c1D743"
+      },
+      {
+        "index": 18,
+        "tex": "1D70A",
+        "mathjax": "mjx-c1D744"
+      },
+      {
+        "index": 20,
+        "tex": "1D71B",
+        "mathjax": "mjx-c1D755"
+      },
+      {
+        "index": 21,
+        "tex": "1D70C",
+        "mathjax": "mjx-c1D746"
+      },
+      {
+        "index": 22,
+        "tex": "1D71A",
+        "mathjax": "mjx-c1D754"
+      },
+      {
+        "index": 23,
+        "tex": "1D70E",
+        "mathjax": "mjx-c1D748"
+      },
+      {
+        "index": 24,
+        "tex": "1D70D",
+        "mathjax": "mjx-c1D747"
+      },
+      {
+        "index": 25,
+        "tex": "1D70F",
+        "mathjax": "mjx-c1D749"
+      },
+      {
+        "index": 26,
+        "tex": "1D710",
+        "mathjax": "mjx-c1D74A"
+      },
+      {
+        "index": 27,
+        "tex": "1D719",
+        "mathjax": "mjx-c1D753"
+      },
+      {
+        "index": 28,
+        "tex": "1D711",
+        "mathjax": "mjx-c1D74B"
+      },
+      {
+        "index": 29,
+        "tex": "1D712",
+        "mathjax": "mjx-c1D74C"
+      },
+      {
+        "index": 30,
+        "tex": "1D713",
+        "mathjax": "mjx-c1D74D"
+      },
+      {
+        "index": 31,
+        "tex": "1D714",
+        "mathjax": "mjx-c1D74E"
+      },
+      {
+        "index": 33,
+        "tex": "1D6E5",
+        "mathjax": "mjx-c1D71F"
+      },
+      {
+        "index": 34,
+        "tex": "1D6E9",
+        "mathjax": "mjx-c1D723"
+      },
+      {
+        "index": 35,
+        "tex": "1D6EC",
+        "mathjax": "mjx-c1D726"
+      },
+      {
+        "index": 36,
+        "tex": "1D6EF",
+        "mathjax": "mjx-c1D729"
+      },
+      {
+        "index": 38,
+        "tex": "1D6F4",
+        "mathjax": "mjx-c2140 NCM-DS"
+      },
+      {
+        "index": 39,
+        "tex": "1D6F6",
+        "mathjax": "mjx-c1D730"
+      },
+      {
+        "index": 40,
+        "tex": "1D6F7",
+        "mathjax": "mjx-c1D731"
+      },
+      {
+        "index": 41,
+        "tex": "1D6F9",
+        "mathjax": "mjx-c1D733"
+      },
+      {
+        "index": 42,
+        "tex": "1D6FA",
+        "mathjax": "mjx-c1D734"
+      },
+      {
+        "index": 43,
+        "tex": "1D715",
+        "mathjax": "mjx-c1D74F"
+      },
+      {
+        "index": 44,
+        "tex": "2207",
+        "mathjax": "mjx-c1D735"
+      }
+    ]
+  },
+  {
+    "style": "ISO",
+    "command": "symcal",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 1,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symcal",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D6FC"
+    },
+    "details": [
+      {
+        "index": 44,
+        "tex": "2207",
+        "mathjax": "mjx-c1D6FB"
+      }
+    ]
+  },
+  {
+    "style": "ISO",
+    "command": "symscr",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 1,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symscr",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D6FC"
+    },
+    "details": [
+      {
+        "index": 44,
+        "tex": "2207",
+        "mathjax": "mjx-c1D6FB"
+      }
+    ]
+  },
+  {
+    "style": "ISO",
+    "command": "symfrak",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 1,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symfrak",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D6FC"
+    },
+    "details": [
+      {
+        "index": 44,
+        "tex": "2207",
+        "mathjax": "mjx-c1D6FB"
+      }
+    ]
+  },
+  {
+    "style": "ISO",
+    "command": "symtt",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 1,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symtt",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D6FC"
+    },
+    "details": [
+      {
+        "index": 44,
+        "tex": "2207",
+        "mathjax": "mjx-c1D6FB"
+      }
+    ]
+  },
+  {
+    "style": "ISO",
+    "command": "symbfcal",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 44,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symbfcal",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D736"
+    },
+    "details": [
+      {
+        "index": 1,
+        "tex": "1D6FC",
+        "mathjax": "mjx-c1D736"
+      },
+      {
+        "index": 2,
+        "tex": "1D6FD",
+        "mathjax": "mjx-c1D737"
+      },
+      {
+        "index": 3,
+        "tex": "1D6FE",
+        "mathjax": "mjx-c1D738"
+      },
+      {
+        "index": 4,
+        "tex": "1D6FF",
+        "mathjax": "mjx-c1D739"
+      },
+      {
+        "index": 5,
+        "tex": "1D716",
+        "mathjax": "mjx-c1D750"
+      },
+      {
+        "index": 6,
+        "tex": "1D700",
+        "mathjax": "mjx-c1D73A"
+      },
+      {
+        "index": 7,
+        "tex": "1D701",
+        "mathjax": "mjx-c1D73B"
+      },
+      {
+        "index": 8,
+        "tex": "1D702",
+        "mathjax": "mjx-c1D73C"
+      },
+      {
+        "index": 9,
+        "tex": "1D703",
+        "mathjax": "mjx-c1D73D"
+      },
+      {
+        "index": 10,
+        "tex": "1D717",
+        "mathjax": "mjx-c1D751"
+      },
+      {
+        "index": 11,
+        "tex": "1D704",
+        "mathjax": "mjx-c1D73E"
+      },
+      {
+        "index": 12,
+        "tex": "1D705",
+        "mathjax": "mjx-c1D73F"
+      },
+      {
+        "index": 13,
+        "tex": "1D718",
+        "mathjax": "mjx-c1D752"
+      },
+      {
+        "index": 14,
+        "tex": "1D706",
+        "mathjax": "mjx-c1D740"
+      },
+      {
+        "index": 15,
+        "tex": "1D707",
+        "mathjax": "mjx-c1D741"
+      },
+      {
+        "index": 16,
+        "tex": "1D708",
+        "mathjax": "mjx-c1D742"
+      },
+      {
+        "index": 17,
+        "tex": "1D709",
+        "mathjax": "mjx-c1D743"
+      },
+      {
+        "index": 18,
+        "tex": "1D70A",
+        "mathjax": "mjx-c1D744"
+      },
+      {
+        "index": 19,
+        "tex": "1D70B",
+        "mathjax": "mjx-c1D745"
+      },
+      {
+        "index": 20,
+        "tex": "1D71B",
+        "mathjax": "mjx-c1D755"
+      },
+      {
+        "index": 21,
+        "tex": "1D70C",
+        "mathjax": "mjx-c1D746"
+      },
+      {
+        "index": 22,
+        "tex": "1D71A",
+        "mathjax": "mjx-c1D754"
+      },
+      {
+        "index": 23,
+        "tex": "1D70E",
+        "mathjax": "mjx-c1D748"
+      },
+      {
+        "index": 24,
+        "tex": "1D70D",
+        "mathjax": "mjx-c1D747"
+      },
+      {
+        "index": 25,
+        "tex": "1D70F",
+        "mathjax": "mjx-c1D749"
+      },
+      {
+        "index": 26,
+        "tex": "1D710",
+        "mathjax": "mjx-c1D74A"
+      },
+      {
+        "index": 27,
+        "tex": "1D719",
+        "mathjax": "mjx-c1D753"
+      },
+      {
+        "index": 28,
+        "tex": "1D711",
+        "mathjax": "mjx-c1D74B"
+      },
+      {
+        "index": 29,
+        "tex": "1D712",
+        "mathjax": "mjx-c1D74C"
+      },
+      {
+        "index": 30,
+        "tex": "1D713",
+        "mathjax": "mjx-c1D74D"
+      },
+      {
+        "index": 31,
+        "tex": "1D714",
+        "mathjax": "mjx-c1D74E"
+      },
+      {
+        "index": 32,
+        "tex": "1D6E4",
+        "mathjax": "mjx-c1D71E"
+      },
+      {
+        "index": 33,
+        "tex": "1D6E5",
+        "mathjax": "mjx-c1D71F"
+      },
+      {
+        "index": 34,
+        "tex": "1D6E9",
+        "mathjax": "mjx-c1D723"
+      },
+      {
+        "index": 35,
+        "tex": "1D6EC",
+        "mathjax": "mjx-c1D726"
+      },
+      {
+        "index": 36,
+        "tex": "1D6EF",
+        "mathjax": "mjx-c1D729"
+      },
+      {
+        "index": 37,
+        "tex": "1D6F1",
+        "mathjax": "mjx-c1D72B"
+      },
+      {
+        "index": 38,
+        "tex": "1D6F4",
+        "mathjax": "mjx-c1D72E"
+      },
+      {
+        "index": 39,
+        "tex": "1D6F6",
+        "mathjax": "mjx-c1D730"
+      },
+      {
+        "index": 40,
+        "tex": "1D6F7",
+        "mathjax": "mjx-c1D731"
+      },
+      {
+        "index": 41,
+        "tex": "1D6F9",
+        "mathjax": "mjx-c1D733"
+      },
+      {
+        "index": 42,
+        "tex": "1D6FA",
+        "mathjax": "mjx-c1D734"
+      },
+      {
+        "index": 43,
+        "tex": "1D715",
+        "mathjax": "mjx-c1D74F"
+      },
+      {
+        "index": 44,
+        "tex": "2207",
+        "mathjax": "mjx-c1D735"
+      }
+    ]
+  },
+  {
+    "style": "ISO",
+    "command": "symbfscr",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 44,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symbfscr",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D736"
+    },
+    "details": [
+      {
+        "index": 1,
+        "tex": "1D6FC",
+        "mathjax": "mjx-c1D736"
+      },
+      {
+        "index": 2,
+        "tex": "1D6FD",
+        "mathjax": "mjx-c1D737"
+      },
+      {
+        "index": 3,
+        "tex": "1D6FE",
+        "mathjax": "mjx-c1D738"
+      },
+      {
+        "index": 4,
+        "tex": "1D6FF",
+        "mathjax": "mjx-c1D739"
+      },
+      {
+        "index": 5,
+        "tex": "1D716",
+        "mathjax": "mjx-c1D750"
+      },
+      {
+        "index": 6,
+        "tex": "1D700",
+        "mathjax": "mjx-c1D73A"
+      },
+      {
+        "index": 7,
+        "tex": "1D701",
+        "mathjax": "mjx-c1D73B"
+      },
+      {
+        "index": 8,
+        "tex": "1D702",
+        "mathjax": "mjx-c1D73C"
+      },
+      {
+        "index": 9,
+        "tex": "1D703",
+        "mathjax": "mjx-c1D73D"
+      },
+      {
+        "index": 10,
+        "tex": "1D717",
+        "mathjax": "mjx-c1D751"
+      },
+      {
+        "index": 11,
+        "tex": "1D704",
+        "mathjax": "mjx-c1D73E"
+      },
+      {
+        "index": 12,
+        "tex": "1D705",
+        "mathjax": "mjx-c1D73F"
+      },
+      {
+        "index": 13,
+        "tex": "1D718",
+        "mathjax": "mjx-c1D752"
+      },
+      {
+        "index": 14,
+        "tex": "1D706",
+        "mathjax": "mjx-c1D740"
+      },
+      {
+        "index": 15,
+        "tex": "1D707",
+        "mathjax": "mjx-c1D741"
+      },
+      {
+        "index": 16,
+        "tex": "1D708",
+        "mathjax": "mjx-c1D742"
+      },
+      {
+        "index": 17,
+        "tex": "1D709",
+        "mathjax": "mjx-c1D743"
+      },
+      {
+        "index": 18,
+        "tex": "1D70A",
+        "mathjax": "mjx-c1D744"
+      },
+      {
+        "index": 19,
+        "tex": "1D70B",
+        "mathjax": "mjx-c1D745"
+      },
+      {
+        "index": 20,
+        "tex": "1D71B",
+        "mathjax": "mjx-c1D755"
+      },
+      {
+        "index": 21,
+        "tex": "1D70C",
+        "mathjax": "mjx-c1D746"
+      },
+      {
+        "index": 22,
+        "tex": "1D71A",
+        "mathjax": "mjx-c1D754"
+      },
+      {
+        "index": 23,
+        "tex": "1D70E",
+        "mathjax": "mjx-c1D748"
+      },
+      {
+        "index": 24,
+        "tex": "1D70D",
+        "mathjax": "mjx-c1D747"
+      },
+      {
+        "index": 25,
+        "tex": "1D70F",
+        "mathjax": "mjx-c1D749"
+      },
+      {
+        "index": 26,
+        "tex": "1D710",
+        "mathjax": "mjx-c1D74A"
+      },
+      {
+        "index": 27,
+        "tex": "1D719",
+        "mathjax": "mjx-c1D753"
+      },
+      {
+        "index": 28,
+        "tex": "1D711",
+        "mathjax": "mjx-c1D74B"
+      },
+      {
+        "index": 29,
+        "tex": "1D712",
+        "mathjax": "mjx-c1D74C"
+      },
+      {
+        "index": 30,
+        "tex": "1D713",
+        "mathjax": "mjx-c1D74D"
+      },
+      {
+        "index": 31,
+        "tex": "1D714",
+        "mathjax": "mjx-c1D74E"
+      },
+      {
+        "index": 32,
+        "tex": "1D6E4",
+        "mathjax": "mjx-c1D71E"
+      },
+      {
+        "index": 33,
+        "tex": "1D6E5",
+        "mathjax": "mjx-c1D71F"
+      },
+      {
+        "index": 34,
+        "tex": "1D6E9",
+        "mathjax": "mjx-c1D723"
+      },
+      {
+        "index": 35,
+        "tex": "1D6EC",
+        "mathjax": "mjx-c1D726"
+      },
+      {
+        "index": 36,
+        "tex": "1D6EF",
+        "mathjax": "mjx-c1D729"
+      },
+      {
+        "index": 37,
+        "tex": "1D6F1",
+        "mathjax": "mjx-c1D72B"
+      },
+      {
+        "index": 38,
+        "tex": "1D6F4",
+        "mathjax": "mjx-c1D72E"
+      },
+      {
+        "index": 39,
+        "tex": "1D6F6",
+        "mathjax": "mjx-c1D730"
+      },
+      {
+        "index": 40,
+        "tex": "1D6F7",
+        "mathjax": "mjx-c1D731"
+      },
+      {
+        "index": 41,
+        "tex": "1D6F9",
+        "mathjax": "mjx-c1D733"
+      },
+      {
+        "index": 42,
+        "tex": "1D6FA",
+        "mathjax": "mjx-c1D734"
+      },
+      {
+        "index": 43,
+        "tex": "1D715",
+        "mathjax": "mjx-c1D74F"
+      },
+      {
+        "index": 44,
+        "tex": "2207",
+        "mathjax": "mjx-c1D735"
+      }
+    ]
+  },
+  {
+    "style": "ISO",
+    "command": "symbffrak",
+    "count": 44,
+    "texInputAgreement": true,
+    "codepointDifferences": 44,
+    "alpha": {
+      "tex": {
+        "style": "ISO",
+        "command": "symbffrak",
+        "input": "macro",
+        "index": 1,
+        "char": "1D6FC",
+        "unicode": "D835DEFC",
+        "font": "NewComputerModernMath-Regular-2"
+      },
+      "mathjax": "mjx-c1D736"
+    },
+    "details": [
+      {
+        "index": 1,
+        "tex": "1D6FC",
+        "mathjax": "mjx-c1D736"
+      },
+      {
+        "index": 2,
+        "tex": "1D6FD",
+        "mathjax": "mjx-c1D737"
+      },
+      {
+        "index": 3,
+        "tex": "1D6FE",
+        "mathjax": "mjx-c1D738"
+      },
+      {
+        "index": 4,
+        "tex": "1D6FF",
+        "mathjax": "mjx-c1D739"
+      },
+      {
+        "index": 5,
+        "tex": "1D716",
+        "mathjax": "mjx-c1D750"
+      },
+      {
+        "index": 6,
+        "tex": "1D700",
+        "mathjax": "mjx-c1D73A"
+      },
+      {
+        "index": 7,
+        "tex": "1D701",
+        "mathjax": "mjx-c1D73B"
+      },
+      {
+        "index": 8,
+        "tex": "1D702",
+        "mathjax": "mjx-c1D73C"
+      },
+      {
+        "index": 9,
+        "tex": "1D703",
+        "mathjax": "mjx-c1D73D"
+      },
+      {
+        "index": 10,
+        "tex": "1D717",
+        "mathjax": "mjx-c1D751"
+      },
+      {
+        "index": 11,
+        "tex": "1D704",
+        "mathjax": "mjx-c1D73E"
+      },
+      {
+        "index": 12,
+        "tex": "1D705",
+        "mathjax": "mjx-c1D73F"
+      },
+      {
+        "index": 13,
+        "tex": "1D718",
+        "mathjax": "mjx-c1D752"
+      },
+      {
+        "index": 14,
+        "tex": "1D706",
+        "mathjax": "mjx-c1D740"
+      },
+      {
+        "index": 15,
+        "tex": "1D707",
+        "mathjax": "mjx-c1D741"
+      },
+      {
+        "index": 16,
+        "tex": "1D708",
+        "mathjax": "mjx-c1D742"
+      },
+      {
+        "index": 17,
+        "tex": "1D709",
+        "mathjax": "mjx-c1D743"
+      },
+      {
+        "index": 18,
+        "tex": "1D70A",
+        "mathjax": "mjx-c1D744"
+      },
+      {
+        "index": 19,
+        "tex": "1D70B",
+        "mathjax": "mjx-c1D745"
+      },
+      {
+        "index": 20,
+        "tex": "1D71B",
+        "mathjax": "mjx-c1D755"
+      },
+      {
+        "index": 21,
+        "tex": "1D70C",
+        "mathjax": "mjx-c1D746"
+      },
+      {
+        "index": 22,
+        "tex": "1D71A",
+        "mathjax": "mjx-c1D754"
+      },
+      {
+        "index": 23,
+        "tex": "1D70E",
+        "mathjax": "mjx-c1D748"
+      },
+      {
+        "index": 24,
+        "tex": "1D70D",
+        "mathjax": "mjx-c1D747"
+      },
+      {
+        "index": 25,
+        "tex": "1D70F",
+        "mathjax": "mjx-c1D749"
+      },
+      {
+        "index": 26,
+        "tex": "1D710",
+        "mathjax": "mjx-c1D74A"
+      },
+      {
+        "index": 27,
+        "tex": "1D719",
+        "mathjax": "mjx-c1D753"
+      },
+      {
+        "index": 28,
+        "tex": "1D711",
+        "mathjax": "mjx-c1D74B"
+      },
+      {
+        "index": 29,
+        "tex": "1D712",
+        "mathjax": "mjx-c1D74C"
+      },
+      {
+        "index": 30,
+        "tex": "1D713",
+        "mathjax": "mjx-c1D74D"
+      },
+      {
+        "index": 31,
+        "tex": "1D714",
+        "mathjax": "mjx-c1D74E"
+      },
+      {
+        "index": 32,
+        "tex": "1D6E4",
+        "mathjax": "mjx-c1D71E"
+      },
+      {
+        "index": 33,
+        "tex": "1D6E5",
+        "mathjax": "mjx-c1D71F"
+      },
+      {
+        "index": 34,
+        "tex": "1D6E9",
+        "mathjax": "mjx-c1D723"
+      },
+      {
+        "index": 35,
+        "tex": "1D6EC",
+        "mathjax": "mjx-c1D726"
+      },
+      {
+        "index": 36,
+        "tex": "1D6EF",
+        "mathjax": "mjx-c1D729"
+      },
+      {
+        "index": 37,
+        "tex": "1D6F1",
+        "mathjax": "mjx-c1D72B"
+      },
+      {
+        "index": 38,
+        "tex": "1D6F4",
+        "mathjax": "mjx-c1D72E"
+      },
+      {
+        "index": 39,
+        "tex": "1D6F6",
+        "mathjax": "mjx-c1D730"
+      },
+      {
+        "index": 40,
+        "tex": "1D6F7",
+        "mathjax": "mjx-c1D731"
+      },
+      {
+        "index": 41,
+        "tex": "1D6F9",
+        "mathjax": "mjx-c1D733"
+      },
+      {
+        "index": 42,
+        "tex": "1D6FA",
+        "mathjax": "mjx-c1D734"
+      },
+      {
+        "index": 43,
+        "tex": "1D715",
+        "mathjax": "mjx-c1D74F"
+      },
+      {
+        "index": 44,
+        "tex": "2207",
+        "mathjax": "mjx-c1D735"
+      }
+    ]
+  }
+]

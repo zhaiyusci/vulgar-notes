@@ -1,0 +1,11 @@
+node_modules/
+editor-model.js
+editor-ui.js
+mathjax-config.js
+*.js.map
+diagnostics/font-coverage/python-lib/
+diagnostics/font-coverage/__pycache__/
+*.aux
+*.log
+*.console.txt
+*.synctex.gz

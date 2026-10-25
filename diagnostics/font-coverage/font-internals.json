@@ -1,0 +1,310 @@
+[
+  {
+    "font": "NewCMMath-Regular.otf",
+    "glyphs": 8603,
+    "coverage": {
+      "Greek-bold": 58,
+      "Greek-italic": 58,
+      "Greek-bolditalic": 58,
+      "Greek-sansbold": 58,
+      "Greek-sansbolditalic": 58,
+      "Greek-double-struck-special": 5
+    },
+    "alphaGlyphNames": [
+      "Alpha",
+      "alpha",
+      "Alpha.sts",
+      "Alpha.st",
+      "alpha.sts",
+      "alpha.st"
+    ],
+    "alphaGSUB": []
+  },
+  {
+    "font": "NewCMSansMath-Regular.otf",
+    "glyphs": 8937,
+    "coverage": {
+      "Greek-bold": 58,
+      "Greek-italic": 58,
+      "Greek-bolditalic": 58,
+      "Greek-sansbold": 58,
+      "Greek-sansbolditalic": 58,
+      "Greek-double-struck-special": 5
+    },
+    "alphaGlyphNames": [
+      "Alpha",
+      "alpha",
+      "Alpha.sts",
+      "Alpha.st",
+      "alpha.sts",
+      "alpha.st",
+      "Alpha.lx",
+      "alpha.lx"
+    ],
+    "alphaGSUB": [
+      [
+        "ss08",
+        "alpha",
+        "alpha.lx"
+      ]
+    ]
+  },
+  {
+    "font": "STIXTwoMath-Regular.otf",
+    "glyphs": 6760,
+    "coverage": {
+      "Greek-bold": 58,
+      "Greek-italic": 58,
+      "Greek-bolditalic": 58,
+      "Greek-sansbold": 58,
+      "Greek-sansbolditalic": 58,
+      "Greek-double-struck-special": 5
+    },
+    "alphaGlyphNames": [
+      "Alpha",
+      "Alphatonos",
+      "alpha",
+      "alphatonos",
+      "Alpha.ssty",
+      "alpha.ssty",
+      "Alpha.ssty2",
+      "alpha.ssty2",
+      "Alpha_uni0338"
+    ],
+    "alphaGSUB": []
+  },
+  {
+    "font": "XITSMath-Regular.otf",
+    "glyphs": 4559,
+    "coverage": {
+      "Greek-bold": 58,
+      "Greek-italic": 58,
+      "Greek-bolditalic": 58,
+      "Greek-sansbold": 58,
+      "Greek-sansbolditalic": 58,
+      "Greek-double-struck-special": 5
+    },
+    "alphaGlyphNames": [
+      "uni03B1",
+      "uni03B1.ss"
+    ],
+    "alphaGSUB": [
+      [
+        "ss02",
+        "uni03B1",
+        "uni03B1.ss"
+      ]
+    ]
+  },
+  {
+    "font": "Asana-Math.otf",
+    "glyphs": 3451,
+    "coverage": {
+      "Greek-bold": 58,
+      "Greek-italic": 58,
+      "Greek-bolditalic": 58,
+      "Greek-sansbold": 58,
+      "Greek-sansbolditalic": 58,
+      "Greek-double-struck-special": 5
+    },
+    "alphaGlyphNames": [
+      "Alphatonos",
+      "Alpha",
+      "alphatonos",
+      "alpha"
+    ],
+    "alphaGSUB": []
+  },
+  {
+    "font": "LibertinusMath-Regular.otf",
+    "glyphs": 4463,
+    "coverage": {
+      "Greek-bold": 58,
+      "Greek-italic": 58,
+      "Greek-bolditalic": 58,
+      "Greek-sansbold": 52,
+      "Greek-sansbolditalic": 52,
+      "Greek-double-struck-special": 0
+    },
+    "alphaGlyphNames": [
+      "Alphatonos",
+      "Alpha",
+      "alphatonos",
+      "alpha"
+    ],
+    "alphaGSUB": []
+  },
+  {
+    "font": "FiraMath-Regular.otf",
+    "glyphs": 2094,
+    "coverage": {
+      "Greek-bold": 58,
+      "Greek-italic": 58,
+      "Greek-bolditalic": 58,
+      "Greek-sansbold": 0,
+      "Greek-sansbolditalic": 0,
+      "Greek-double-struck-special": 1
+    },
+    "alphaGlyphNames": [
+      "uni03B1"
+    ],
+    "alphaGSUB": []
+  },
+  {
+    "font": "LeteSansMath.otf",
+    "glyphs": 4497,
+    "coverage": {
+      "Greek-bold": 58,
+      "Greek-italic": 58,
+      "Greek-bolditalic": 58,
+      "Greek-sansbold": 58,
+      "Greek-sansbolditalic": 58,
+      "Greek-double-struck-special": 3
+    },
+    "alphaGlyphNames": [
+      "mupAlpha",
+      "mupalpha",
+      "mupAlpha.st",
+      "mupalpha.st",
+      "mitAlpha.st",
+      "mitalpha.st",
+      "mupAlpha.sst",
+      "mupalpha.sst",
+      "mitAlpha.sst",
+      "mitalpha.sst",
+      "mbfAlpha",
+      "mbfalpha",
+      "mitAlpha",
+      "mitalpha",
+      "mbfitAlpha",
+      "mbfitalpha",
+      "mbfsansAlpha",
+      "mbfsansalpha",
+      "mbfitsansAlpha",
+      "mbfitsansalpha"
+    ],
+    "alphaGSUB": []
+  },
+  {
+    "font": "KpMath-Regular.otf",
+    "glyphs": 3509,
+    "coverage": {
+      "Greek-bold": 58,
+      "Greek-italic": 58,
+      "Greek-bolditalic": 58,
+      "Greek-sansbold": 58,
+      "Greek-sansbolditalic": 58,
+      "Greek-double-struck-special": 1
+    },
+    "alphaGlyphNames": [
+      "mupAlpha",
+      "mupalpha",
+      "mupsansAlpha",
+      "mupsansalpha",
+      "mitsansAlpha",
+      "mitsansalpha",
+      "mupAlpha.st",
+      "mbfAlpha.st",
+      "mitAlpha.st",
+      "mbfitAlpha.st",
+      "mupalpha.st",
+      "mbfalpha.st",
+      "mitalpha.st",
+      "mbfitalpha.st",
+      "mupAlpha.sst",
+      "mbfAlpha.sst",
+      "mitAlpha.sst",
+      "mbfitAlpha.sst",
+      "mupalpha.sst",
+      "mbfalpha.sst",
+      "mitalpha.sst",
+      "mbfitalpha.sst",
+      "mbfAlpha",
+      "mbfalpha",
+      "mitAlpha",
+      "mitalpha",
+      "mbfitAlpha",
+      "mbfitalpha",
+      "mbfsansAlpha",
+      "mbfsansalpha",
+      "mbfitsansAlpha",
+      "mbfitsansalpha"
+    ],
+    "alphaGSUB": []
+  },
+  {
+    "font": "KpMath-Sans.otf",
+    "glyphs": 2839,
+    "coverage": {
+      "Greek-bold": 58,
+      "Greek-italic": 58,
+      "Greek-bolditalic": 58,
+      "Greek-sansbold": 58,
+      "Greek-sansbolditalic": 58,
+      "Greek-double-struck-special": 1
+    },
+    "alphaGlyphNames": [
+      "mupAlpha",
+      "mupalpha",
+      "mupAlpha.st",
+      "mitAlpha.st",
+      "mupalpha.st",
+      "mitalpha.st",
+      "mupAlpha.sst",
+      "mitAlpha.sst",
+      "mupalpha.sst",
+      "mitalpha.sst",
+      "mbfAlpha",
+      "mbfalpha",
+      "mitAlpha",
+      "mitalpha",
+      "mbfitAlpha",
+      "mbfitalpha",
+      "mbfsansAlpha",
+      "mbfsansalpha",
+      "mbfitsansAlpha",
+      "mbfitsansalpha"
+    ],
+    "alphaGSUB": []
+  },
+  {
+    "font": "GFSNeohellenicMath.otf",
+    "glyphs": 3546,
+    "coverage": {
+      "Greek-bold": 58,
+      "Greek-italic": 58,
+      "Greek-bolditalic": 58,
+      "Greek-sansbold": 0,
+      "Greek-sansbolditalic": 0,
+      "Greek-double-struck-special": 0
+    },
+    "alphaGlyphNames": [
+      "Alphatonos",
+      "Alpha",
+      "alphatonos",
+      "alpha"
+    ],
+    "alphaGSUB": []
+  },
+  {
+    "font": "IBMPlexMath-Regular.otf",
+    "glyphs": 7092,
+    "coverage": {
+      "Greek-bold": 58,
+      "Greek-italic": 58,
+      "Greek-bolditalic": 58,
+      "Greek-sansbold": 58,
+      "Greek-sansbolditalic": 58,
+      "Greek-double-struck-special": 5
+    },
+    "alphaGlyphNames": [
+      "Alpha",
+      "Alphatonos",
+      "Alpha.ssty1",
+      "alpha",
+      "alphatonos",
+      "alpha.ssty1"
+    ],
+    "alphaGSUB": []
+  }
+]
