@@ -3,12 +3,18 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MathJax 连续序列原位编辑</title>
-<style>
-body{font:16px system-ui,sans-serif;max-width:850px;margin:35px auto;padding:0 20px;color:#222}
-button,textarea{font:inherit}button{padding:8px 13px;margin:4px;cursor:pointer}
+<link rel="stylesheet" href="editor-ui.css"><link rel="stylesheet" href="plate.css"><style>
+body{font:16px system-ui,sans-serif;max-width:1180px;margin:35px auto;padding:0 20px;color:#222}
+body>h2{font-size:24px;font-weight:650;margin-bottom:8px}button,textarea{font:inherit}button{cursor:pointer}
 textarea{width:100%;box-sizing:border-box;padding:10px;font-family:monospace}
-#preview{position:relative;padding:30px 20px;min-height:100px;border:1px solid #bbb;border-radius:8px;text-align:center;font-size:1.5em;overflow-x:auto}
-#formula{min-height:100px;outline:none;cursor:text}
+#preview{position:relative;padding:0;min-height:160px;border:1px solid #d8dfe8;border-radius:8px;overflow-x:auto}
+.inline-formula{display:inline-block;vertical-align:baseline;white-space:nowrap;line-height:normal;outline:none;cursor:text;margin:0 .12em;max-width:100%}
+.inline-formula.flow-selected{background:#dbeafe;outline:1px solid #7eabe3}
+.inline-formula mjx-container{margin:0!important}
+.inline-formula.display-formula{display:block;max-width:none;margin:.7em 0;text-align:center;overflow-x:auto;overflow-y:hidden;padding:.3em 0}
+.document-actions{display:flex;align-items:center;flex-wrap:wrap;gap:6px}.document-actions label{font-size:13px;color:#475569}.document-actions select{font:inherit;padding:4px;border:1px solid #cbd5e1;border-radius:5px;background:white}
+.document-heading{display:flex;align-items:center;justify-content:space-between;margin:18px 0 8px}.document-heading h3{font-size:17px;margin:0}
+.document-heading button{font-size:13px;padding:5px 10px;border:1px solid #cbd5e1;border-radius:5px;background:#fff}
 .math-region,.math-item{cursor:text}.math-selected{background:rgba(36,110,194,.2)}
 /* Mark only the sequence containing the caret, without changing math layout. */
 .math-active-region{background:rgba(36,110,194,.065);box-shadow:0 2px 0 rgba(36,110,194,.45);border-radius:2px}
@@ -19,7 +25,7 @@ textarea{width:100%;box-sizing:border-box;padding:10px;font-family:monospace}
 .math-boundary{cursor:text}
 /* MathJax's zero-width root-index wrapper overlaps the following radical.
    Keep the index above that sibling for pointer hit testing, without reflow. */
-#formula mjx-root{position:relative;z-index:1}
+.inline-formula mjx-root{position:relative;z-index:1}
 #mathInput{position:absolute;width:1px;height:1px;margin:0;padding:0;border:0;opacity:0;pointer-events:none}
 #mathInput[hidden]{display:none}
 .command-menu{position:fixed;z-index:1000;width:260px;max-width:calc(100vw - 16px);max-height:220px;overflow-y:auto;overscroll-behavior:contain;padding:4px;background:white;border:1px solid #d8dfe8;border-radius:7px;box-shadow:0 5px 18px #0002;font:13px system-ui,sans-serif}
@@ -54,42 +60,101 @@ textarea{width:100%;box-sizing:border-box;padding:10px;font-family:monospace}
 .structure-preview{font-size:14px;display:flex;align-items:center;justify-content:center;pointer-events:none}.structure-label{display:none}
 .structure-group[data-group="矩阵与多行"] .structure-preview{font-size:12px}
 .structure-card[data-insert="matrix3"] .structure-preview{font-size:8.5px}
-details{margin:22px 0;font-size:14px;line-height:1.6}summary{cursor:pointer;font-weight:600}table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border-bottom:1px solid #e5e7eb;text-align:left;padding:9px;vertical-align:top}th{background:#f8fafc}a{color:#246ec2}
+body>details{margin:22px 0;font-size:14px;line-height:1.6}summary{cursor:pointer;font-weight:600}body>details table{border-collapse:collapse;width:100%;margin:12px 0}body>details th,body>details td{border-bottom:1px solid #e5e7eb;text-align:left;padding:9px;vertical-align:top}body>details th{background:#f8fafc}a{color:#246ec2}
 @media(max-width:600px){body{padding:0 12px;margin:20px auto}.board-heading{align-items:start;gap:8px}.structure-categories button{padding:5px 7px}}
+#mathPanel{position:fixed;z-index:60;bottom:12px;left:50%;transform:translateX(-50%);width:min(1080px,calc(100vw - 24px));max-height:40vh;overflow:auto;background:white;border:1px solid #d8dfe8;border-radius:10px;padding:10px 12px;box-shadow:0 6px 28px #0002}
+#mathPanel[hidden]{display:none}
+#mathPanel .board-heading{margin:0 0 8px;align-items:center;gap:12px}
+#mathPanel .board-heading h3{font-size:13px;white-space:nowrap}
+#mathPanel #structureCount{font-size:11px}
+#mathPanel #insertToolbar{margin-bottom:0;border-radius:6px}
+#mathPanel .note{font-size:12px;margin:6px 0 0}
+/* Dense symbol keys; only templates with readable examples need wider cards. */
+.structure-group{gap:3px;padding:6px;max-height:none}
+.structure-card{width:44px;height:44px;padding:3px;border-color:transparent;background:transparent;border-radius:4px}
+.structure-card.compact-card{width:30px;height:30px}
+.structure-card:hover{background:#e8eff9;border-color:#bed0e8}
+.structure-card[aria-haspopup]::after{right:2px;bottom:2px;border-left-width:3px;border-bottom-width:3px;opacity:.6}
+.structure-group[data-group="函数名称"] .structure-card{min-width:40px;height:30px;padding:3px 6px}
+.structure-group[data-group="矩阵与多行"] .structure-card{width:48px;height:48px}
+.structure-group[data-group="字母与数字"]{display:flex;flex-direction:column;gap:4px}
+.structure-group[data-group="字母与数字"][hidden]{display:none}
+.alphabet-row{display:flex;align-items:flex-start;gap:8px}
+.alphabet-label{width:54px;flex:none;font-size:11px;color:#748093;line-height:30px}
+.alphabet-keys{display:flex;flex-wrap:wrap;gap:2px;min-width:0}
+.structure-categories .insert-text{margin-left:auto;border-left:1px solid #d8dfe8;border-radius:0;padding-left:12px;color:#334155}
+.structure-group .chemical-card{display:grid;grid-template-columns:1fr auto;gap:6px 14px;width:270px;max-width:100%;height:auto;min-height:80px;padding:10px 12px;background:white;border:1px solid #d8dfe8;text-align:left}
+.chemical-card .structure-preview{grid-column:1/-1;justify-content:flex-start;min-height:24px;font-size:16px}
+.chemical-card .structure-label{display:block;font-size:12px;color:#475569}
+.chemical-card code{font:11px ui-monospace,monospace;color:#64748b}
+.chemical-hint{flex-basis:100%;margin:3px 4px;font-size:12px;color:#64748b}
+@media(pointer:coarse){.structure-card.compact-card{width:36px;height:36px}.alphabet-label{line-height:36px}}
+.math-placeholder{outline:1px dashed #9aa9bb;outline-offset:1px;border-radius:1px;min-height:.65em;min-width:.4em}
+.math-active-region .math-placeholder{outline-color:#5686bc}
+.structure-preview .math-placeholder,.variant-preview .math-placeholder{outline-offset:0}
+body{max-width:1680px;margin:24px auto;padding:0 20px}
+.editor-workspace{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start;margin-top:18px}
+#preview{grid-column:1;grid-row:1;min-width:0}
+#mathPanel{grid-column:2;grid-row:1;position:sticky;top:16px;bottom:auto;left:auto;transform:none;width:auto;max-height:calc(100dvh - 32px);overflow:auto;box-shadow:none;padding:10px;border-radius:8px}
+#mathPanel .board-heading{align-items:flex-start;flex-wrap:wrap;gap:6px}
+#mathPanel #structureCount{display:none}
+#mathPanel .structure-categories{gap:2px;padding:4px}
+#mathPanel .structure-categories button{padding:4px 6px;font-size:11px}
+#mathPanel .alphabet-row{flex-direction:column;gap:0}
+#mathPanel .alphabet-label{line-height:22px;width:auto}
+#mathPanel .chemical-card{width:100%}
+#plateMount [data-slate-editor]{padding-left:40px;padding-right:40px}
+@media(max-width:850px){.editor-workspace{grid-template-columns:minmax(320px,1fr) 280px;gap:10px}body{padding:0 12px}#plateMount [data-slate-editor]{padding-left:24px;padding-right:24px}}
+html,body{width:100%;height:100%;margin:0;padding:0;max-width:none;overflow:hidden}
+body>h2,body>details{display:none}
+.editor-workspace{width:100%;height:100dvh;margin:0;gap:0;grid-template-columns:minmax(320px,1fr) 360px;overflow:auto}
+#preview{height:100%;border:0;border-radius:0;overflow:auto}
+#plateMount{min-height:100%}
+#plateMount [data-slate-editor]{min-height:calc(100dvh - 90px);max-width:none;padding:28px 40px}
+#mathPanel{position:relative;top:0;height:100%;max-height:none;border:0;border-left:1px solid #e2e8f0;border-radius:0;background:#fafbfd}
+#error,#fontHint{position:fixed;bottom:8px;left:12px;max-width:calc(100vw - 400px);z-index:70;background:#fff;margin:0;font-size:12px}
+#error:empty,#fontHint:empty{display:none}
+@media(max-width:850px){.editor-workspace{grid-template-columns:minmax(320px,1fr) 280px}#plateMount [data-slate-editor]{padding:24px}}
+#uiLocale{font:12px system-ui;border:1px solid #d8dfe8;border-radius:4px;padding:3px;background:white}
+#editorSidebar{grid-column:2;grid-row:1;height:100%;min-width:0;overflow:auto;border-left:1px solid #e2e8f0;background:#fafbfd}
+#documentToolsSection{padding:10px;border-bottom:1px solid #e2e8f0}
+#documentToolsSection h3{font-size:13px;font-weight:600;margin:0 0 8px}
+#documentTools [role=toolbar]{position:static;border:0;border-radius:6px;overflow:visible;background:transparent;padding:0}
+#documentTools [role=toolbar]>div{flex-wrap:wrap;gap:2px 0}
+#mathPanel{height:auto;overflow:visible;border:0;z-index:auto}
+#plateMount [data-slate-editor]{min-height:100dvh}
+.sidebar-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}#documentToolsSection .sidebar-heading h3{margin:0}
+/* Include the visible gutter and the space before the first paragraph in drop targets. */
+#textFlow .slate-blockWrapper{margin-left:-24px;padding-left:24px}
+#textFlow .first-block-drop-target{margin-top:-28px;padding-top:28px}
+@media(max-width:850px){#textFlow .first-block-drop-target{margin-top:-24px;padding-top:24px}}
 </style>
 <script src="mathjax-config.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-chtml.js" onerror="mathjaxLoadFailed()"></script>
 </head>
 <body>
-<h2>MathJax：连续序列原位编辑</h2>
-<p class="note">点击公式直接输入。左右键连续移动、进出分式和根号，上下键切换结构内的区域；Shift + 左右键选择，Tab 切换编辑区域。Enter 完成，Esc 取消本次编辑，Ctrl+Z 撤销。</p>
-<div class="board-heading"><h3>数学输入板</h3><span id="structureCount"></span></div>
+<h2>文字与公式原位编辑</h2>
+
+<div class="editor-workspace">
+<aside id="editorSidebar">
+<section id="documentToolsSection"><div class="sidebar-heading"><h3 data-i18n="Document tools">正文工具</h3><select id="uiLocale" aria-label="Language"><option value="zh-CN">中文</option><option value="en">English</option></select></div><div id="documentTools"></div></section>
+<section id="mathPanel" aria-label="数学输入板">
+<div class="board-heading"><h3 data-i18n="Math input">数学输入板</h3><div class="document-actions"><label><span data-i18n="Current formula">当前公式</span> <select id="formulaLayout" aria-label="当前公式排版"><option value="inline" data-i18n="Inline">行内</option><option value="display" data-i18n="Display">行间</option></select></label><span id="structureCount"></span></div></div>
 <div id="insertToolbar" role="group" aria-label="在光标处插入结构"></div>
 <div id="pendingFontHint" role="status" aria-live="polite"></div>
-<p class="note">在光标处插入结构，可继续嵌套。选中内容后插入，会将选区放进新结构；未进入编辑时使用上次光标位置，首次插入默认在公式末尾。</p>
-<div id="preview"><div id="formula" tabindex="0" aria-label="可编辑公式">正在加载 MathJax…</div><textarea id="mathInput" hidden autocomplete="off" spellcheck="false" aria-label="编辑公式"></textarea></div>
+
+</section>
+</aside>
+
+<div id="preview"><div id="textFlow" contenteditable="true" role="textbox" aria-multiline="true" aria-label="正文" spellcheck="false"><span id="formula" class="inline-formula" contenteditable="false" tabindex="0" aria-label="可编辑行内公式">正在加载 MathJax…</span></div><textarea id="mathInput" hidden autocomplete="off" spellcheck="false" aria-label="编辑公式"></textarea></div>
+</div>
 <p id="error" role="status" aria-live="polite"></p>
-<p><strong>导出的 LaTeX：</strong></p><textarea id="latex" rows="3" readonly aria-label="导出的 LaTeX"></textarea>
+<details id="documentExports"><summary>导出与 LaTeX 配置</summary><p><strong>正文 Markdown：</strong></p><textarea id="documentMarkdown" rows="4" readonly aria-label="正文 Markdown"></textarea>
+<button onclick="navigator.clipboard.writeText(document.getElementById('documentMarkdown').value)">复制 Markdown</button>
+<p><strong>正文 LaTeX：</strong></p><textarea id="documentLatex" rows="4" readonly aria-label="正文 LaTeX"></textarea>
+<button onclick="navigator.clipboard.writeText(document.getElementById('documentLatex').value)">复制正文 LaTeX</button>
+<p><strong>当前公式 LaTeX：</strong></p><textarea id="latex" rows="2" readonly aria-label="导出的 LaTeX"></textarea>
 <button onclick="navigator.clipboard.writeText(document.getElementById('latex').value)">复制 LaTeX</button>
-<p class="note">输入反斜杠显示命令候选，继续输入筛选，上下键选择，Tab 或 Enter 确认，Esc 收起。完整命令也可按空格转换；输入 +、(、^ 等也会确认命令并继续输入。未识别的命令保留为可编辑文字。结构命令进入内部区域；字母可右击切换可用字形；菜单中的等号表示本工具对该字符采用的等价写法，导出优先使用 math 命令。默认黑板体为 BBoldX；导出请配套使用下方配置。描述文字使用 \textnormal。化学与单位区域原位编辑源码，Enter 排版，再次点击可修改。尚不解析完整 LaTeX 的花括号参数。删除遇到整个结构时先选中，再次删除才移除。</p>
-<details><summary>MathJax 支持哪些结构？查看范围与官方文档</summary>
-<p>MathJax 的数学结构没有一个封闭的固定清单：基础 TeX、AMS 和其他扩展提供命令与环境，结构可以组合、嵌套。下表按用途归类；本输入板覆盖其中常用的可编辑结构，并非完整 LaTeX 命令表。</p>
-<table><thead><tr><th>类别</th><th>MathJax 支持的代表结构</th><th>本输入板</th></tr></thead><tbody>
-<tr><td>分式与根式</td><td>frac/dfrac/tfrac、cfrac（居中/左/右）、binom/dbinom/tbinom、splitfrac/splitdfrac、无横线分式、平方根和 n 次根</td><td data-count-category="分式与根式"></td></tr>
-<tr><td>上下标</td><td>右侧、左侧、算符四角上下标，多行上下标 substack/subarray</td><td data-count-category="上下标"></td></tr>
-<tr><td>定界符</td><td>伸缩括号、尖括号、单侧括号、求值竖线、绝对值、范数、取整及 big/Big/bigg/Bigg 固定尺寸</td><td data-count-category="括号与定界符"></td></tr>
-<tr><td>大型算符</td><td>求和、连乘、余积、并交集、逻辑与积算符；单至四重积分、点省略积分；上下/侧上下限；极限、上下极限与确界</td><td data-count-category="大型算符"></td></tr>
-<tr><td>矩阵与多行</td><td>matrix/pmatrix/bmatrix/Bmatrix/vmatrix/Vmatrix 及 small 形式、左右对齐矩阵、cases/rcases/dcases/drcases、array、aligned/alignedat、gathered 及左右对齐、多行首尾对齐</td><td data-count-category="矩阵与多行"></td></tr>
-<tr><td>重音与修饰</td><td>普通/宽帽子、普通/宽波浪线、短横线/上划线、锐音/重音/短音/抑扬符、圆圈、单至四点、上下单向/双向箭头</td><td data-count-category="重音与修饰"></td></tr>
-<tr><td>标注与箭头</td><td>上下花/方括号、上下方标注、单线/双线/钩形/映射/鱼叉/平衡/长箭头、方框及 cancel/bcancel/xcancel/cancelto</td><td data-count-category="标注与箭头"></td></tr>
-<tr><td>数学字体</td><td>默认、正体、斜体、粗体、粗斜体；Sans 正/斜/粗/粗斜；等宽、黑板粗体、花体、手写花体、哥特体及符号加粗</td><td>选区应用；无选区时在该字体中输入；右击已有字体内容可切换</td></tr>
-<tr><td>符号与函数</td><td>希腊字母及变体、运算与关系符、箭头、集合与逻辑符号；sin、exp、log 等函数名</td><td>作为连续序列中的符号插入，左右键跨过、退格删除，不创建参数槽</td></tr>
-<tr><td>物理与化学</td><td>physics 常用结构；mhchem 的 ce 化学式和 pu 单位</td><td>物理参数原位编辑；化学源码在原位输入，完成后排版</td></tr><tr><td>其他能力与扩展</td><td>文本、颜色、间距、幻影占位；交换图 amscd、证明树 bussproofs 等</td><td>本板尚未提供；需要相应编辑模型或扩展配置</td></tr>
-</tbody></table>
-<p>普通字母、数字、运算符、希腊字母仍属于连续内容，不为每个符号创建独立区域。MathJax 的排版能力与本编辑器已实现的交互能力是两个范围。</p>
-<p>本轮核对范围：基础 TeX、AMS、mathtools 和 cancel 中可嵌套的结构及不同形式。相同效果的旧语法别名不重复放按钮；矩阵可右击单元格增删行列，至少保留一行一列，删除行列可撤销；定界符和 genfrac 参数提供预设。全文级编号/引用环境、文本模式 cases*、自定义宏和其他专用扩展尚未纳入，不能把按钮数量视为全部 MathJax 命令数量。</p>
-<p><a href="https://docs.mathjax.org/en/v4.0/input/tex/extensions/mathtools.html" target="_blank" rel="noopener">mathtools 结构与变体清单</a> · <a href="https://docs.mathjax.org/en/v4.0/input/tex/extensions/cancel.html" target="_blank" rel="noopener">cancel 的四种形式</a></p>
-<p>依据：<a href="https://docs.mathjax.org/en/stable/input/tex/macros/" target="_blank" rel="noopener">官方命令与环境清单</a> · <a href="https://docs.mathjax.org/en/v4.0/input/tex/extensions/ams.html" target="_blank" rel="noopener">AMS 扩展</a> · <a href="https://docs.mathjax.org/en/v4.0/input/tex/extensions/" target="_blank" rel="noopener">扩展列表</a></p>
 </details>
-<script src="editor-ui.js"></script>
+<script type="module" src="editor-ui.js"></script>
 </body></html>

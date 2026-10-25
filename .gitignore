@@ -2,6 +2,11 @@ node_modules/
 editor-model.js
 editor-ui.js
 mathjax-config.js
+plate.css
+editor-ui.css
+editor-ui.css.map
+.plate-test.cjs
+dist/
 *.js.map
 diagnostics/font-coverage/python-lib/
 diagnostics/font-coverage/__pycache__/

@@ -635,3 +635,16 @@ test('named operators have one palette and command path with optional limits',()
  }
  assert.ok(symbols.some(e=>!e.hidden&&e.type==='symbol-sin'));
 });
+
+test('snapshots omit localized labels, preserve user text, and migrate legacy labels',()=>{
+ const model=new EditorModel();
+ model.setCursor(model.root.id,model.root.items.length);model.insertStructure('text-normal');model.insert('中文 note');
+ const source=model.exportLatex(),saved=JSON.parse(model.snapshot());
+ assert.equal(saved.version,2);
+ const visit=r=>{assert.equal(Object.hasOwn(r,'label'),false);for(const n of r.items)if(typeof n!=='string')n.regions.forEach(visit);};visit(saved.root);
+ const restored=new EditorModel();restored.restore(JSON.stringify(saved));assert.equal(restored.exportLatex(),source);
+ delete saved.version;
+ const legacy=r=>{r.label='旧的中文标签';for(const n of r.items)if(typeof n!=='string')n.regions.forEach(legacy);};legacy(saved.root);
+ restored.restore(JSON.stringify(saved));assert.equal(restored.exportLatex(),source);assert.ok(!restored.snapshot().includes('旧的中文标签'));assert.ok(restored.current.label);
+ restored.insert('字');restored.undo();assert.equal(restored.exportLatex(),source);
+});

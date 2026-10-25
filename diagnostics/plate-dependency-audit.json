@@ -1,0 +1,415 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "@excalidraw/excalidraw": {
+      "name": "@excalidraw/excalidraw",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "@excalidraw/mermaid-to-excalidraw",
+        "@excalidraw/mermaid-to-excalidraw",
+        {
+          "source": 1117037,
+          "name": "@excalidraw/excalidraw",
+          "dependency": "@excalidraw/excalidraw",
+          "title": "Excalidraw vulnerable to XSS via Mermaid sequence diagram labels (KaTeX rendering)",
+          "url": "https://github.com/advisories/GHSA-39h7-pwv7-rc3x",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-79",
+            "CWE-1395"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "=0.18.0"
+        }
+      ],
+      "effects": [
+        "@platejs/excalidraw"
+      ],
+      "range": "0.5.0-a78d45417 || 0.17.1-08b13f9 - 0.17.1-6e5aeb1 || >=0.18.0-699826",
+      "nodes": [
+        "node_modules/@excalidraw/excalidraw",
+        "node_modules/@platejs/excalidraw/node_modules/@excalidraw/excalidraw"
+      ],
+      "fixAvailable": {
+        "name": "@excalidraw/excalidraw",
+        "version": "0.17.6",
+        "isSemVerMajor": true
+      }
+    },
+    "@excalidraw/mermaid-to-excalidraw": {
+      "name": "@excalidraw/mermaid-to-excalidraw",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1117036,
+          "name": "@excalidraw/mermaid-to-excalidraw",
+          "dependency": "@excalidraw/mermaid-to-excalidraw",
+          "title": "Excalidraw vulnerable to XSS via Mermaid sequence diagram labels (KaTeX rendering)",
+          "url": "https://github.com/advisories/GHSA-39h7-pwv7-rc3x",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-79",
+            "CWE-1395"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": ">=0.3.0 <1.1.3"
+        },
+        "mermaid",
+        "mermaid"
+      ],
+      "effects": [
+        "@excalidraw/excalidraw"
+      ],
+      "range": ">=0.3.0",
+      "nodes": [
+        "node_modules/@excalidraw/mermaid-to-excalidraw",
+        "node_modules/@platejs/excalidraw/node_modules/@excalidraw/mermaid-to-excalidraw"
+      ],
+      "fixAvailable": {
+        "name": "@excalidraw/excalidraw",
+        "version": "0.17.6",
+        "isSemVerMajor": true
+      }
+    },
+    "@platejs/code-drawing": {
+      "name": "@platejs/code-drawing",
+      "severity": "low",
+      "isDirect": true,
+      "via": [
+        "mermaid"
+      ],
+      "effects": [],
+      "range": ">=52.3.10",
+      "nodes": [
+        "node_modules/@platejs/code-drawing"
+      ],
+      "fixAvailable": {
+        "name": "@platejs/code-drawing",
+        "version": "52.3.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@platejs/excalidraw": {
+      "name": "@platejs/excalidraw",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "@excalidraw/excalidraw"
+      ],
+      "effects": [],
+      "range": ">=50.3.0",
+      "nodes": [
+        "node_modules/@platejs/excalidraw"
+      ],
+      "fixAvailable": {
+        "name": "@platejs/excalidraw",
+        "version": "49.0.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@platejs/math": {
+      "name": "@platejs/math",
+      "severity": "low",
+      "isDirect": true,
+      "via": [
+        "katex"
+      ],
+      "effects": [],
+      "range": "*",
+      "nodes": [
+        "node_modules/@platejs/math"
+      ],
+      "fixAvailable": false
+    },
+    "katex": {
+      "name": "katex",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1241206,
+          "name": "katex",
+          "dependency": "katex",
+          "title": "KaTeX: Existing prototype pollution can bypass trust restrictions",
+          "url": "https://github.com/advisories/GHSA-238p-pmpm-9mq7",
+          "severity": "low",
+          "cwe": [
+            "CWE-807"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": ">=0.11.0 <0.18.2"
+        }
+      ],
+      "effects": [
+        "@platejs/math",
+        "mermaid",
+        "micromark-extension-math"
+      ],
+      "range": "0.11.0 - 0.18.1",
+      "nodes": [
+        "node_modules/katex",
+        "node_modules/mermaid/node_modules/katex"
+      ],
+      "fixAvailable": {
+        "name": "remark-math",
+        "version": "3.0.1",
+        "isSemVerMajor": true
+      }
+    },
+    "mermaid": {
+      "name": "mermaid",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1107246,
+          "name": "mermaid",
+          "dependency": "mermaid",
+          "title": "Mermaid improperly sanitizes sequence diagram labels leading to XSS",
+          "url": "https://github.com/advisories/GHSA-7rqq-prvp-x9jh",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-79"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": ">=10.9.0-rc.1 <10.9.4"
+        },
+        {
+          "source": 1120137,
+          "name": "mermaid",
+          "dependency": "mermaid",
+          "title": "Mermaid: Improper sanitization of `classDef` in state diagrams leads to HTML injection",
+          "url": "https://github.com/advisories/GHSA-ghcm-xqfw-q4vr",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-94"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<=10.9.5"
+        },
+        {
+          "source": 1120139,
+          "name": "mermaid",
+          "dependency": "mermaid",
+          "title": "Mermaid: Improper sanitization of `classDefs` in diagrams leads to CSS injection",
+          "url": "https://github.com/advisories/GHSA-xcj9-5m2h-648r",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-94"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<=10.9.5"
+        },
+        {
+          "source": 1120325,
+          "name": "mermaid",
+          "dependency": "mermaid",
+          "title": "Mermaid Gantt Charts are vulnerable to an Infinite Loop DoS",
+          "url": "https://github.com/advisories/GHSA-6m6c-36f7-fhxh",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-835"
+          ],
+          "cvss": {
+            "score": 5.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+          },
+          "range": "<=10.9.5"
+        },
+        {
+          "source": 1122161,
+          "name": "mermaid",
+          "dependency": "mermaid",
+          "title": "Mermaid: Improper sanitization of configuration leads to CSS injection",
+          "url": "https://github.com/advisories/GHSA-87f9-hvmw-gh4p",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-94"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<=10.9.5"
+        },
+        {
+          "source": 1138096,
+          "name": "mermaid",
+          "dependency": "mermaid",
+          "title": "Mermaid configuration APIs allow prototype pollution",
+          "url": "https://github.com/advisories/GHSA-c4c3-pg64-4m4v",
+          "severity": "low",
+          "cwe": [
+            "CWE-1321"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<10.9.8"
+        },
+        {
+          "source": 1138098,
+          "name": "mermaid",
+          "dependency": "mermaid",
+          "title": "Mermaid allows CSS injection applying to sibling elements of the diagram",
+          "url": "https://github.com/advisories/GHSA-6x64-9x62-f2gx",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-94"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<10.9.8"
+        },
+        {
+          "source": 1138102,
+          "name": "mermaid",
+          "dependency": "mermaid",
+          "title": "Mermaid XY Charts are vulnerable to an infinite loop DoS",
+          "url": "https://github.com/advisories/GHSA-2v8p-3f2j-5mp7",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-835",
+            "CWE-1325"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": ">=10.6.0 <10.9.8"
+        },
+        "katex",
+        "uuid"
+      ],
+      "effects": [
+        "@excalidraw/mermaid-to-excalidraw",
+        "@platejs/code-drawing"
+      ],
+      "range": "<=12.1.0",
+      "nodes": [
+        "node_modules/@platejs/excalidraw/node_modules/mermaid",
+        "node_modules/mermaid"
+      ],
+      "fixAvailable": {
+        "name": "@excalidraw/excalidraw",
+        "version": "0.17.6",
+        "isSemVerMajor": true
+      }
+    },
+    "micromark-extension-math": {
+      "name": "micromark-extension-math",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "katex"
+      ],
+      "effects": [
+        "remark-math"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/micromark-extension-math"
+      ],
+      "fixAvailable": {
+        "name": "remark-math",
+        "version": "3.0.1",
+        "isSemVerMajor": true
+      }
+    },
+    "remark-math": {
+      "name": "remark-math",
+      "severity": "low",
+      "isDirect": true,
+      "via": [
+        "micromark-extension-math"
+      ],
+      "effects": [],
+      "range": ">=4.0.0",
+      "nodes": [
+        "node_modules/remark-math"
+      ],
+      "fixAvailable": {
+        "name": "remark-math",
+        "version": "3.0.1",
+        "isSemVerMajor": true
+      }
+    },
+    "uuid": {
+      "name": "uuid",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1119441,
+          "name": "uuid",
+          "dependency": "uuid",
+          "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+          "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-787",
+            "CWE-1285"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+          },
+          "range": "<11.1.1"
+        }
+      ],
+      "effects": [
+        "mermaid"
+      ],
+      "range": "<11.1.1",
+      "nodes": [
+        "node_modules/@platejs/excalidraw/node_modules/uuid"
+      ],
+      "fixAvailable": {
+        "name": "@excalidraw/excalidraw",
+        "version": "0.17.6",
+        "isSemVerMajor": true
+      }
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 5,
+      "moderate": 5,
+      "high": 0,
+      "critical": 0,
+      "total": 10
+    },
+    "dependencies": {
+      "prod": 921,
+      "dev": 57,
+      "optional": 84,
+      "peer": 0,
+      "peerOptional": 0,
+      "total": 1015
+    }
+  }
+}

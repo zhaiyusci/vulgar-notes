@@ -1,0 +1,186 @@
+import {t} from './i18n';
+import React from 'react';
+import {HostContext} from './plate-math-element';
+import {createRoot,type Root} from 'react-dom/client';
+import {flushSync} from 'react-dom';
+import {createPlateEditor,Plate,type PlateEditor} from 'platejs/react';
+import {type TElement,type Value,NodeApi} from 'platejs';
+import {MarkdownPlugin} from '@platejs/markdown';
+import {Range,Path} from 'slate';
+import {EditorKit} from './components/editor/editor-kit';
+import {Editor,EditorContainer} from './components/ui/editor';
+import {TooltipProvider} from './components/ui/tooltip';
+import {Toaster} from 'sonner';
+import {EditorModel} from './editor-model';
+import type {DocumentHost,MathHostHooks,FormulaEntry} from './document-host';
+import {documentStorageKey,formulaNode,isFormula,newId,plateLatex,restoreDocument,type FormulaNode} from './plate-document';
+import {importMath} from './tex-import';
+
+export class PlateMathHost implements DocumentHost {
+  readonly editor:PlateEditor;
+  readonly models=new Map<string,EditorModel>();
+  readonly mounts=new Map<string,HTMLElement>();
+  readonly root:Root;
+  private syncing=false;
+  private initialized=false;
+  private pending=false;
+  private activeFormula:HTMLElement|undefined;
+  private pendingActivation=new Set<string>();
+  get readOnly(){return this.mount.querySelector('[data-slate-editor]')?.getAttribute('contenteditable')==='false';}
+  constructor(readonly mount:HTMLElement,initial:EditorModel,private hooks:MathHostHooks){
+    const value=restoreDocument(initial);
+    this.editor=createPlateEditor({plugins:EditorKit,value});
+    this.ensureFormulas();
+    const originalNormalize=this.editor.tf.normalizeNode.bind(this.editor);
+    this.editor.tf.normalizeNode=entry=>{
+      const [node,path]=entry;
+      if('type' in node&&isFormula(node)){
+        const n=node as FormulaNode;
+        const duplicate=[...NodeApi.nodes(this.editor)].some(([other,p])=>other!==node&&'type' in other&&isFormula(other)&&other.id===n.id&&Path.compare(p,path)<0);
+        if(!n.id||duplicate){this.editor.tf.setNodes({id:newId()},{at:path});return;}
+      }
+      originalNormalize(entry);
+    };
+    mount.removeAttribute('contenteditable');mount.removeAttribute('role');mount.removeAttribute('aria-label');mount.id='plateMount';
+    this.root=createRoot(mount);
+    flushSync(()=>this.root.render(<HostContext.Provider value={this}><TooltipProvider><Plate editor={this.editor} onChange={()=>this.changed()}>
+      <EditorContainer><Editor id="textFlow" aria-label={t("Body")} placeholder={t("Type here, or type / to insert…")}
+        onPointerDown={e=>{if(!(e.target as Element).closest('.inline-formula')){this.activeFormula=undefined;this.hooks.leave();}}}
+        onFocus={()=>{this.activeFormula=undefined;this.hooks.leave();}}
+        onKeyDown={e=>this.keyDown(e)} /></EditorContainer>
+    </Plate><Toaster /></TooltipProvider></HostContext.Provider>));
+    this.initialized=true;this.persist();
+  }
+  private ensureFormulas(){
+    for(const [raw,path] of NodeApi.nodes(this.editor)){
+      if(!('type' in raw)||!isFormula(raw))continue;
+      const node=raw as FormulaNode;
+      if(!node.snapshot){
+        const model=importMath(node.texExpression||'');
+        if(model){
+          const id=node.id||newId();
+          if(this.initialized&&!node.texExpression)this.pendingActivation.add(id);
+          this.editor.tf.withoutSaving(()=>this.editor.tf.setNodes({id,snapshot:model.snapshot(),texExpression:model.exportLatex(),numbered:node.numbered!==false},{at:path}));
+        }
+      }
+    }
+  }
+  attach(node:FormulaNode,element:HTMLElement){
+    this.mounts.set(node.id,element);
+    if(node.snapshot){
+      let model=this.models.get(node.id);
+      if(!model){model=new EditorModel();this.models.set(node.id,model);}
+      if(model.snapshot()!==node.snapshot)model.restore(node.snapshot);
+      if(this.pendingActivation.delete(node.id))queueMicrotask(()=>{if(element.isConnected)this.enter(element,'start');});
+    }else{
+      // Unsupported imported TeX is retained verbatim, never silently rewritten.
+      element.textContent='\\('+node.texExpression+'\\)';
+      element.title='此导入公式保留原始 LaTeX；尚不能转换为结构化编辑。';
+      if(window.ready)void MathJax.typesetPromise([element]);
+    }
+    this.scheduleChange();
+  }
+  detach(element:HTMLElement){if(element&&this.mounts.get(element.dataset.mathId!)===element)this.mounts.delete(element.dataset.mathId!);}
+  private scheduleChange(){
+    if(this.pending)return;this.pending=true;
+    queueMicrotask(()=>{this.pending=false;if(this.initialized)this.hooks.change();});
+  }
+  private changed(){
+    if(!this.initialized||this.syncing)return;
+    this.ensureFormulas();
+    // Document undo/redo is authoritative before the next math repaint.
+    for(const [raw] of NodeApi.nodes(this.editor)){
+      if(!isFormula(raw))continue;
+      const n=raw as FormulaNode,m=this.models.get(n.id);
+      if(m&&n.snapshot&&m.snapshot()!==n.snapshot)m.restore(n.snapshot);
+    }
+    this.save();this.scheduleChange();
+  }
+  entries():FormulaEntry[]{return [...this.mount.querySelectorAll<HTMLElement>('.inline-formula')].flatMap(element=>{
+    const model=this.models.get(element.dataset.mathId!);return model?[{element,model}]:[];
+  });}
+  private locate(element:HTMLElement){return [...NodeApi.nodes(this.editor)].find(([n])=>'type' in n&&isFormula(n)&&n.id===element.dataset.mathId) as [FormulaNode,number[]]|undefined;}
+  private save(){try{sessionStorage.setItem(documentStorageKey,JSON.stringify({version:1,value:this.editor.children}));}catch{document.getElementById('error')!.textContent='文档较大，浏览器草稿空间不足。请导出文档保存。';}}
+  persist(){
+    if(this.syncing||!this.initialized)return;this.syncing=true;
+    try{
+      for(const [raw,path] of NodeApi.nodes(this.editor)){
+        if(!('type' in raw)||!isFormula(raw))continue;
+        const node=raw as FormulaNode,model=this.models.get(node.id);if(!model)continue;
+        const snapshot=model.snapshot();if(snapshot===node.snapshot)continue;
+        const set=()=>this.editor.tf.setNodes({snapshot,texExpression:model.exportLatex()},{at:path});
+        if(node.snapshot&&JSON.stringify(JSON.parse(snapshot).root)===JSON.stringify(JSON.parse(node.snapshot).root))this.editor.tf.withoutSaving(set);
+        else this.editor.tf.withNewBatch(set);
+      }
+      this.save();
+    }finally{this.syncing=false;}
+  }
+  exportLatex(){return plateLatex(this.editor.children as Value);}
+  exportMarkdown(){return this.editor.getApi(MarkdownPlugin).markdown.serialize();}
+  isDisplay(element:HTMLElement){return element.dataset.display==='true';}
+  isNumbered(element:HTMLElement){return element.dataset.numbered!=='false';}
+  setNumbered(element:HTMLElement,numbered:boolean){const entry=this.locate(element);if(entry)this.editor.tf.withNewBatch(()=>this.editor.tf.setNodes({numbered},{at:entry[1]}));}
+  setDisplay(element:HTMLElement,display:boolean){
+    this.hooks.leave();this.persist();const entry=this.locate(element);if(!entry||this.isDisplay(element)===display)return;
+    const [node,path]=entry;
+    flushSync(()=>this.editor.tf.withNewBatch(()=>this.editor.tf.withoutNormalizing(()=>{
+      if(node.type==='equation'){
+        // Older block equations keep their paragraph boundary when converted.
+        this.editor.tf.removeNodes({at:path});
+        this.editor.tf.insertNodes({type:'p',children:[{text:''},{...node,type:'inline_equation',display},{text:''}]},{at:path,select:true});
+      }else this.editor.tf.setNodes({display},{at:path});
+      this.editor.api.onChange();
+    })));
+    const elementNext=this.mounts.get(node.id);if(elementNext)this.enter(elementNext,'end');
+  }
+  insertFormula(display=false):FormulaEntry{
+    if(this.readOnly)throw Error('Document is read-only');
+    if(this.activeFormula?.isConnected)this.exit(this.activeFormula,1,false);
+    this.hooks.leave();this.persist();
+    const model=new EditorModel();model.root.items=[];model.index();model.setCursor(model.root.id,0);
+    const node=formulaNode(model,display);this.models.set(node.id,model);
+    flushSync(()=>this.editor.tf.withNewBatch(()=>{
+      if(!this.editor.selection)this.editor.tf.select(this.editor.api.end([]));
+      this.editor.tf.insertNodes(node,{select:true});
+      this.editor.api.onChange();
+    }));
+    const element=this.mounts.get(node.id);if(!element)throw Error('Unable to mount formula');
+    this.enter(element,'start');return {element,model};
+  }
+  enter(element:HTMLElement,edge:'start'|'end'){
+    if(this.readOnly)return;
+    const entry=this.locate(element),model=this.models.get(element.dataset.mathId!);if(!entry||!model)return;
+    flushSync(()=>{this.editor.tf.deselect();this.editor.api.onChange();});this.activeFormula=element;this.hooks.activate(element,model,edge);
+  }
+  exit(element:HTMLElement,direction:-1|1,focus=true){
+    this.activeFormula=undefined;
+    this.hooks.leave();this.persist();const entry=this.locate(element);if(!entry)return;
+    const [node,path]=entry;
+    flushSync(()=>{
+      let point=direction<0?this.editor.api.before(path):this.editor.api.after(path);
+      if(node.type==='equation'){
+        const adjacent=path.slice();adjacent[adjacent.length-1]+=direction;
+        if(!this.editor.api.hasPath(adjacent)||isFormula(NodeApi.get(this.editor,adjacent) as TElement)){
+          const at=direction<0?path:Path.next(path);this.editor.tf.insertNodes({type:'p',children:[{text:''}]},{at});point=this.editor.api.start(at);
+        }
+      }
+      if(point)this.editor.tf.select(point);
+    });
+    if(focus)this.editor.tf.focus();
+  }
+  removeEmpty(element:HTMLElement){
+    this.hooks.leave();const entry=this.locate(element);if(!entry)return;
+    flushSync(()=>this.editor.tf.removeNodes({at:entry[1]}));this.editor.tf.focus();
+  }
+  private keyDown(event:React.KeyboardEvent){
+    if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();this.insertFormula(event.shiftKey);return;}
+    if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;
+    const selection=this.editor.selection;if(!selection||!Range.isCollapsed(selection))return;
+    const dir=event.key==='ArrowLeft'?-1:1;
+    const point=dir<0?this.editor.api.before(selection.anchor,{voids:true}):this.editor.api.after(selection.anchor,{voids:true});
+    if(!point)return;
+    const above=this.editor.api.above({at:point,match:n=>'type' in n&&isFormula(n),voids:true});
+    if(above){const el=this.mounts.get((above[0] as FormulaNode).id);if(el){event.preventDefault();this.enter(el,dir<0?'end':'start');}}
+  }
+  destroy(){this.initialized=false;this.root.unmount();}
+}

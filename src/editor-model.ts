@@ -273,6 +273,7 @@ export interface FontWarning {region:string;index:number;message:string}
   // Saved JSON is a runtime boundary: TypeScript cannot validate sessionStorage.
   function isSavedState(value:unknown):value is SavedState {
     if(!isObject(value) || !isObject(value.cursor))return false;
+    if(value.version!==undefined&&value.version!==2)return false;
     if(value.pendingFont!==undefined && (typeof value.pendingFont!=='string'||!definitions.get(value.pendingFont)?.font))return false;
     const ids=new Set<string>(),regionLengths=new Map<string,number>();
     const validId=(id:unknown,prefix:string):id is string=>{
@@ -280,7 +281,8 @@ export interface FontWarning {region:string;index:number;message:string}
       ids.add(id);return true;
     };
     const validRegion=(r:unknown,depth:number):boolean=>{
-      if(depth>200 || !isObject(r) || !validId(r.id,'r') || typeof r.label!=='string' || !Array.isArray(r.items))return false;
+      if(depth>200 || !isObject(r) || !validId(r.id,'r') || (r.label!==undefined&&typeof r.label!=='string') || !Array.isArray(r.items))return false;
+      r.label=''; // Display labels are derived from the registry, never document data.
       if(r.slot!==undefined && !['lower','upper','leftLower','leftUpper'].includes(String(r.slot)))return false;
       regionLengths.set(r.id,r.items.length);
       return r.items.every((item:unknown)=>{
@@ -313,6 +315,7 @@ export interface FontWarning {region:string;index:number;message:string}
       this.index();
     }
     index() {
+      this.root.label='公式';
       // Upgrade saved drafts: move the old body slot into its surrounding flow.
       const migrate=(r:Region)=>{
         for(let i=0;i<r.items.length;i++){
@@ -355,6 +358,10 @@ export interface FontWarning {region:string;index:number;message:string}
             });
           }
           item.regions.forEach((child, childIndex) => {
+            if(!definition?.matrixEnvironment&&!definition?.rowEnvironment){
+              const slotIndex=child.slot?definition?.scriptSlots?.indexOf(child.slot):undefined;
+              child.label=slotIndex!==undefined&&slotIndex>=0?definition?.scriptLabels?.[slotIndex]||child.slot!:definition?.labels[childIndex]||'内容';
+            }
             this.parents.set(child.id, {region: r, index, node: item, childIndex}); visit(child);
           });
         });
@@ -368,7 +375,7 @@ export interface FontWarning {region:string;index:number;message:string}
       const clamp = (x:number) => Math.max(0, Math.min(r.items.length, x));
       this.cursor = {region: id, offset: clamp(offset), anchor: clamp(anchor)};
     }
-    snapshot() { return JSON.stringify({root: this.root, cursor: this.cursor,...(this.pendingFont?{pendingFont:this.pendingFont}:{})}); }
+    snapshot() { return JSON.stringify({version:2,root: this.root, cursor: this.cursor,...(this.pendingFont?{pendingFont:this.pendingFont}:{})},(key,value)=>key==='label'?undefined:value); }
     restore(snapshot:string) {
       const state:unknown=JSON.parse(snapshot);
       if(!isSavedState(state))throw new Error('Invalid editor snapshot');
