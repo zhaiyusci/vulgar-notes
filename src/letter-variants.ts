@@ -61,13 +61,14 @@ export function registerLetterVariants(catalog:Definition[],symbols:Definition[]
       const def={...base,type:base.type+'--'+key,label:base.label+' · '+label,variantLabel:label,command:'',tex,commandCandidate:false,...extra};symbols.push(def);return def;
     };
     for(const style of styles){
-      if(style.command==='\\symnormal'||style.command==='\\symrm'||style.command==='\\symbb'||fontDiagnostic(style.command,base.letter!))continue;
+      if(style.command==='\\symnormal'||style.command==='\\symrm'||style.command==='\\symbb')continue;
+      const unsupported=!!fontDiagnostic(style.command,base.letter!);
       const command=style.command.slice(1),arg=base.tex!.trim(),preferred=preferredMathCommand(command);
       const exportTex='\\'+preferred+'{'+arg+'}',equivalentTex=[exportTex,style.command+'{'+arg+'}'];
       const key=glyphKey(command,base.letter!);
       const same=symbols.find(d=>d.variantOf===base.type&&d.glyphKey===key&&!d.hidden);
-      if(same)same.equivalentTex=[...new Set([...same.equivalentTex!,...equivalentTex])];
-      add(command,style.label,style.command+'{'+arg+'}',{exportTex:same?.exportTex??exportTex,equivalentTex,glyphKey:key,hidden:!!same});
+      if(same&&!unsupported)same.equivalentTex=[...new Set([...same.equivalentTex!,...equivalentTex])];
+      add(command,style.label,style.command+'{'+arg+'}',{exportTex:unsupported?exportTex:same?.exportTex??exportTex,equivalentTex,glyphKey:key,fontCommand:style.command,hidden:unsupported||!!same});
     }
     for(const [command,label,variant] of extraLetterStyles){
       if(!extensionHasLetter(variant,base.letter!))continue;
@@ -90,6 +91,10 @@ export function registerLetterVariants(catalog:Definition[],symbols:Definition[]
         const name=base.type.slice(7).replace('varepsilon','epsilon').replace('varphi','phi');
         def.command='\\'+(command==='editorbboldx'?'bb':'bfbb')+name;def.commandCandidate=true;
       }
+    }
+    if(!symbols.some(d=>d.type===base.type+'--symbb')){
+      const tex='\\symbb{'+base.tex!.trim()+'}';
+      add('symbb','黑板体',tex,{exportTex:'\\mathbb{'+base.tex!.trim()+'}',fontCommand:'\\symbb',hidden:true});
     }
   }
 }

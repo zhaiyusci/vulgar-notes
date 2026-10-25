@@ -5,7 +5,8 @@ const empty=()=>{const m=new EditorModel();m.root.items=[];m.index();m.setCursor
 test('letter palette filters each alphabet and keeps Unicode legacy slots',()=>{
  assert.equal(symbols.filter(d=>d.category==='拉丁字母'&&d.type===d.variantOf).length,52);
  for(const key of ['symbol-letter-h--symit','symbol-letter-B--symscr','symbol-letter-R--symbb','symbol-alpha--editorbboldx'])assert.ok(symbols.some(d=>d.type===key),key);
- for(const key of ['symbol-letter-h--mathds','symbol-letter-b--mathds','symbol-alpha--mathbbm','symbol-alpha--symsf'])assert.ok(!symbols.some(d=>d.type===key),key);
+ for(const key of ['symbol-letter-h--mathds','symbol-letter-b--mathds','symbol-alpha--mathbbm'])assert.ok(!symbols.some(d=>d.type===key),key);
+ assert.ok(symbols.find(d=>d.type==='symbol-alpha--symsf').hidden);
  assert.ok(catalog.filter(d=>d.font).every(d=>d.hidden));
 });
 test('one-letter variant changes preserve neighboring sequence and undo',()=>{
@@ -52,4 +53,29 @@ test('native blackboard symbols match menu previews and delimit adjacent Latin l
   assert.ok(/^\\bb[A-Za-z]+ $/.test(d.exportTex));assert.equal(d.tex,d.exportTex);assert.deepEqual(d.equivalentTex,[d.exportTex]);
  }
  const m=empty();m.replaceInput(0,0,'\\bbalpha ');m.insert('x');assert.equal(m.exportLatex(),'\\bbalpha x');
+});
+
+test('font command input styles one atom and keeps later input in the surrounding sequence',()=>{
+ for(const source of ['\\mathfrak abc','\\symfrak abc'])for(const chunks of [[source],Array.from(source)]){
+  const m=empty();for(const chunk of chunks)m.replaceInput(...m.range,chunk);
+  assert.equal(m.exportLatex(),'\\mathfrak{a}bc');assert.equal(m.current,m.root);
+  assert.ok(m.root.items[0].atom);assert.equal(m.root.items[0].regions.length,0);
+ }
+ const m=empty();m.replaceInput(0,0,'\\mathfrak');m.commitCommand();assert.equal(m.current,m.root);assert.equal(m.root.items.length,0);
+ const waiting=m.snapshot();m.replaceInput(...m.range,'abc');assert.equal(m.exportLatex(),'\\mathfrak{a}bc');
+ m.undo();assert.equal(m.snapshot(),waiting);m.redo();assert.equal(m.exportLatex(),'\\mathfrak{a}bc');
+});
+test('single-letter font input accepts Greek commands and warns without opening a font region',()=>{
+ for(const chunks of [['\\mathfrak \\alpha x'],Array.from('\\mathfrak \\alpha x')]){
+  const m=empty();for(const chunk of chunks)m.replaceInput(...m.range,chunk);
+  assert.equal(m.exportLatex(),'\\mathfrak{\\alpha}x');assert.equal(m.current,m.root);
+  assert.equal(m.fontWarnings().length,1);assert.equal(m.root.items[0].regions.length,0);
+ }
+ const m=empty();m.replaceInput(0,0,'\\mathbb αβ');assert.equal(m.exportLatex(),'\\bbalpha β');
+});
+test('pending letter style cancels on navigation, deletion and structure insertion',()=>{
+ for(const cancel of [m=>m.move(-1),m=>m.remove(-1),m=>m.tab(1),m=>m.insertStructure('frac')]){
+  const m=empty();m.replaceInput(0,0,'\\mathfrak ');cancel(m);assert.equal(m.pendingFont,undefined);
+  m.replaceInput(...m.range,'a');assert.ok(!m.exportLatex().includes('mathfrak'));
+ }
 });

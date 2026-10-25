@@ -1,6 +1,6 @@
 import {elementById, eventElement} from './dom';
 import {fontPresentation} from './font-diagnostics';
-import {textNormal} from './letter-variants';
+import {textNormal,preferredMathCommand} from './letter-variants';
 import {letterPreamble} from './letter-preamble';
 import {EditorModel, texChar, structureTex, catalog, symbols, type Region, type MathNode, type CommandCandidate} from './editor-model';
 const palette=[...catalog,...symbols];
@@ -107,7 +107,7 @@ function regionTex(region:Region):string {
   });
   if (active && model.cursor.offset === region.items.length) tex += caretTex;
   if (!region.items.length) tex += descriptive?'\\unicode{x25A1}':'\\square';
-  const result=`\\class{math-region region-${region.id}}{${tex}}`;
+  const result=`\\class{math-region region-${region.id}${active?' math-active-region':''}}{${tex}}`;
   return descriptive?`\\textnormal{${result}}`:result;
 }
 function syncInput() {
@@ -125,6 +125,8 @@ function update(sync = true) {
   syncCommands();
   try { sessionStorage.setItem('math-editor-state',model.snapshot()); } catch { /* Editing also works without storage. */ }
   if (sync) syncInput();
+  const pending=model.pendingFont?catalog.find(d=>d.type===model.pendingFont)?.command:null;
+  elementById('pendingFontHint',HTMLElement).textContent=editing&&pending?`\\${preferredMathCommand(pending.slice(1))}：仅作用于下一个字母或数字；方向键或 Backspace 取消。`:'';
   elementById('latex', HTMLTextAreaElement).value = model.exportLatex();
   preambleDetails.hidden=!/\\(?:math|sym|bb|bfbb)/.test(model.exportLatex());
   revision++;
@@ -147,6 +149,7 @@ function annotateFontWarnings() {
   fontHint.textContent=active?.message || (warnings.length?`${warnings.length} 处数学样式命令未作用于字符（按 unicode-math 默认映射），已标红线；悬停可查看原因。输入不受影响。`:'');
 }
 function begin(id:string, offset:number, anchor = offset) {
+  model.pendingFont=undefined;
   if (!editing) sessionStart = model.snapshot();
   editing = true; model.setCursor(id, offset, anchor);
   input.hidden = false; syncInput(); input.focus({preventScroll:true}); update();
@@ -154,6 +157,7 @@ function begin(id:string, offset:number, anchor = offset) {
 function finish(cancel = false) {
   if (!editing) return;
   editing = false;
+  model.pendingFont=undefined;
   if (cancel && sessionStart) { model.record(); model.restore(sessionStart); }
   sessionStart = null; input.hidden = true; update();
 }
@@ -459,6 +463,7 @@ input.addEventListener('keydown', event => {
   } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
     event.preventDefault(); model.vertical(event.key === 'ArrowUp' ? -1 : 1);
   } else if (event.key === 'Home' || event.key === 'End') {
+    model.pendingFont=undefined;
     event.preventDefault(); model.setCursor(model.cursor.region, event.key === 'Home' ? 0 : model.current.items.length, event.shiftKey ? model.cursor.anchor : undefined);
   } else if (event.key === 'Tab') {
     event.preventDefault(); if(event.shiftKey || !model.commitCommand())model.tab(event.shiftKey ? -1 : 1);

@@ -6,8 +6,8 @@ const denominator = m => m.root.items[0].regions[1];
 test('legacy font commands normalize to Unicode-math and existing drafts retain content',()=>{
   for(const [old,next] of [['mathbf','symbf'],['mathrm','symup'],['mathbb','symbb'],['mathbfit','symbfit'],['mathsf','symsf'],['mathbfsfup','symbfsfup']]){
     const m=new EditorModel();m.root.items=[];m.index();m.setCursor(m.root.id,0);
-    m.replaceInput(0,0,'\\'+old+' x');assert.equal(m.exportLatex(),'\\'+old+'{x}');
-    assert.equal(m.root.items[0].type,'font-'+next);
+    m.replaceInput(0,0,'\\'+old+' x');assert.equal(m.exportLatex(),'\\'+(old==='mathbfsfup'?'mathbfsf':old)+'{x}');
+    assert.equal(m.root.items[0].type,'symbol-letter-x--'+next);assert.equal(m.root.items[0].regions.length,0);
   }
   const m=new EditorModel();m.setCursor(m.root.id,1,0);m.insertStructure('font-mathbf');
   const snapshot=m.snapshot(),n=new EditorModel();n.restore(snapshot);
@@ -112,7 +112,7 @@ test('structure and font commands enter editable arguments and preserve surround
   const m=new EditorModel();m.root.items=['a','+','b'];m.index();m.setCursor(m.root.id,2);
   m.replaceInput(...m.range,'\\frac \\sqrt x');
   assert.equal(m.exportLatex(),'a+\\frac{\\sqrt{x}}{}b');
-  m.replaceInput(...m.range,'\\mathbf y');assert.equal(m.current.label,'字体内容');
+  m.replaceInput(...m.range,'\\mathbf y');assert.equal(m.current.label,'根号内');
   assert.equal(m.exportLatex(),'a+\\frac{\\sqrt{x\\mathbf{y}}}{}b');
 });
 test('command conversion is one undo step and selection replacement retains neighbors',()=>{
@@ -617,4 +617,21 @@ test('symbol commands, nested style overrides, old aliases, and restored drafts 
   m.insertStructure('font-symit');m.insertSymbol('symbol-partial');m.insertSymbol('symbol-imath');assert.equal(m.fontWarnings().length,3);
   m.insertSymbol('symbol-sin');m.insertSymbol('symbol-infty');assert.equal(m.fontWarnings().length,3);
   const n=new EditorModel();n.restore(m.snapshot());assert.deepEqual(n.fontWarnings(),m.fontWarnings());
+});
+
+test('named operators have one palette and command path with optional limits',()=>{
+ const {catalog,symbols}=require('./editor-model');
+ const names=['lim','limsup','liminf','sup','inf','max','min'];
+ for(const name of names){
+  assert.ok(!symbols.some(e=>!e.hidden&&e.command==='\\'+name));
+  const op=catalog.find(e=>e.operatorCommand===name&&e.variantOf===e.type);
+  assert.ok(op);
+  const m=new EditorModel();m.root.items=[];m.index();m.setCursor(m.root.id,0);
+  m.replaceInput(0,0,'\\'+name);
+  const candidates=m.commandCandidates().filter(e=>e.name===name);
+  assert.equal(candidates.length,1);assert.equal(candidates[0].type,op.type);
+  m.commitCommand();const node=m.root.items[0];assert.equal(node.type,op.type);assert.equal(node.regions.length,0);
+  m.replaceInput(...m.range,'_i');assert.equal(node.regions[0].slot,'lower');
+ }
+ assert.ok(symbols.some(e=>!e.hidden&&e.type==='symbol-sin'));
 });

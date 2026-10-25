@@ -7,13 +7,13 @@ export type MathItem = string | MathNode;
 export interface Region {id:string; label:string; items:MathItem[]; slot?:ScriptSlot}
 export interface MathNode {id:string; type:string; regions:Region[]; atom?:boolean; operatorLayout?:boolean; rows?:number; columns?:number}
 export interface Cursor {region:string; offset:number; anchor:number}
-interface SavedState {root:Region;cursor:Cursor}
+interface SavedState {root:Region;cursor:Cursor;pendingFont?:string}
 interface Parent {region:Region; index:number; node:MathNode; childIndex:number}
 export interface Definition {
  type:string; label:string; category:string; labels:string[]; render:(r:string[])=>string;
  selectedIndex:number; command:string; tex?:string; atom?:boolean; font?:boolean;
  aliases?:string[]; raw?:boolean; commandCandidate?:boolean; legacy?:boolean;
- hidden?:boolean;letter?:string;exportTex?:string;equivalentTex?:string[];glyphKey?:string;
+ hidden?:boolean;letter?:string;exportTex?:string;equivalentTex?:string[];glyphKey?:string;fontCommand?:string;
  previewArgs?:string[]; variantOf?:string; variantLabel?:string; columns?:number;
  matrixEnvironment?:string; matrixAlign?:string; rowEnvironment?:string; rowOptions?:string;
  operator?:boolean; operatorCommand?:string; operatorPlacement?:string;
@@ -205,6 +205,14 @@ export interface FontWarning {region:string;index:number;message:string}
       catalog.push(variant);definitions.set(variant.type,variant);
     }
   }
+  // A named operator has one insertion path, including command completion.
+  // Keep retired atoms readable for saved drafts, but do not offer duplicates.
+  const operatorCommands=new Set(catalog.filter(e=>e.operator).map(e=>e.operatorCommand));
+  for(const entry of symbols.filter(e=>e.category==='函数名称')){
+    if(operatorCommands.has(entry.command.slice(1))){
+      entry.hidden=true;entry.commandCandidate=false;
+    }
+  }
   function example(kind:string) {
     let node;
     if (kind === 'frac') node = frac('a+b', 'c');
@@ -265,6 +273,7 @@ export interface FontWarning {region:string;index:number;message:string}
   // Saved JSON is a runtime boundary: TypeScript cannot validate sessionStorage.
   function isSavedState(value:unknown):value is SavedState {
     if(!isObject(value) || !isObject(value.cursor))return false;
+    if(value.pendingFont!==undefined && (typeof value.pendingFont!=='string'||!definitions.get(value.pendingFont)?.font))return false;
     const ids=new Set<string>(),regionLengths=new Map<string,number>();
     const validId=(id:unknown,prefix:string):id is string=>{
       if(typeof id!=='string' || !new RegExp(`^${prefix}\\d+$`).test(id) || ids.has(id))return false;
@@ -294,6 +303,7 @@ export interface FontWarning {region:string;index:number;message:string}
     return [cursor.offset,cursor.anchor].every(n=>typeof n==='number' && Number.isSafeInteger(n) && n>=0 && n<=length);
   }
   class EditorModel {
+ pendingFont:string|undefined;
  root:Region; cursor:Cursor; undoStack:string[]=[]; redoStack:string[]=[];
  regions=new Map<string,Region>(); parents=new Map<string,Parent>(); nodes=new Map<string,MathNode>(); order:string[]=[];
     constructor(kind = 'nested') {
@@ -358,11 +368,11 @@ export interface FontWarning {region:string;index:number;message:string}
       const clamp = (x:number) => Math.max(0, Math.min(r.items.length, x));
       this.cursor = {region: id, offset: clamp(offset), anchor: clamp(anchor)};
     }
-    snapshot() { return JSON.stringify({root: this.root, cursor: this.cursor}); }
+    snapshot() { return JSON.stringify({root: this.root, cursor: this.cursor,...(this.pendingFont?{pendingFont:this.pendingFont}:{})}); }
     restore(snapshot:string) {
       const state:unknown=JSON.parse(snapshot);
       if(!isSavedState(state))throw new Error('Invalid editor snapshot');
-      this.root=state.root;this.cursor=state.cursor;this.index();
+      this.root=state.root;this.cursor=state.cursor;this.pendingFont=state.pendingFont;this.index();
     }
     record() { this.undoStack.push(this.snapshot()); if (this.undoStack.length > 100) this.undoStack.shift(); this.redoStack = []; }
     undo() { if (!this.undoStack.length) return; this.redoStack.push(this.snapshot()); this.restore(this.undoStack.pop()!); }
@@ -443,19 +453,33 @@ export interface FontWarning {region:string;index:number;message:string}
       if(record)this.record();
       this.current.items.splice(query.from,query.end-query.from);
       this.setCursor(this.cursor.region,query.from);this.index();
-      if(command.atom)this.insertSymbol(command.type,false);else this.insertStructure(command.type,false);
+      if(definitions.get(command.type)?.font)this.pendingFont=command.type;
+      else if(command.atom)this.insertSymbol(command.type,false);else {this.pendingFont=undefined;this.insertStructure(command.type,false);}
       return true;
+    }
+    styledLetter(char:string):Definition|undefined {
+      const font=this.pendingFont;this.pendingFont=undefined;
+      if(!font)return;
+      const base=symbols.find(d=>d.letter===char&&d.variantOf===d.type);
+      if(!base)return;
+      const command=definitions.get(font)!.command.slice(1);
+      if(command==='symnormal')return base;
+      const key=command==='symrm'?'symup':command;
+      return symbolDefinitions.get(base.type+'--'+key);
     }
     replaceInput(start:number,end:number,text:string) {
       if(this.rawInput){this.replace(start,end,text);return;}
+      if(!text){this.replace(start,end,text);this.pendingFont=undefined;return;}
       const hasCommand=text.includes('\\') || this.current.items.slice(0,start).includes('\\');
-      if(!/[\^_]/.test(text) && (!hasCommand || !text)){this.replace(start,end,text);return;}
+      if(!this.pendingFont && !/[\^_]/.test(text) && (!hasCommand || !text)){this.replace(start,end,text);return;}
       this.record();this.setCursor(this.cursor.region,end,start);
       for(const ch of Array.from(text)){
         if(!/[a-zA-Z]/.test(ch) && this.commitCommand(false) && /\s/.test(ch))continue;
-        if(!this.rawInput && (ch==='^' || ch==='_')){this.enterScript(ch);continue;}
+        if(!this.rawInput && (ch==='^' || ch==='_')){this.pendingFont=undefined;this.enterScript(ch);continue;}
         if(['\uFFFC','\r','\n'].includes(ch))continue;
-        const [a,b]=this.range;this.current.items.splice(a,b-a,ch);this.setCursor(this.cursor.region,a+1);this.index();
+        const variant=ch==='\\'||this.commandQuery()?undefined:this.styledLetter(ch);
+        const item:MathItem=variant?{id:'n'+ ++serial,type:variant.type,atom:true,regions:[]}:ch;
+        const [a,b]=this.range;this.current.items.splice(a,b-a,item);this.setCursor(this.cursor.region,a+1);this.index();
       }
     }
     enterScript(marker:string) {
@@ -491,6 +515,8 @@ export interface FontWarning {region:string;index:number;message:string}
       if(!symbolDefinitions.has(type))throw new Error('Unknown symbol: '+type);
       if(this.rawInput){this.insert(symbolDefinitions.get(type)!.tex!);return;}
       if(record)this.record();const [start,end]=this.range;
+      const styled=this.styledLetter(symbolDefinitions.get(type)!.letter||'');
+      if(styled)type=styled.type;
       this.current.items.splice(start,end-start,{id:'n'+ ++serial,type,atom:true,regions:[]});
       this.setCursor(this.cursor.region,start+1);this.index();
     }
@@ -498,6 +524,7 @@ export interface FontWarning {region:string;index:number;message:string}
       const definition = definitions.get(type);
       if (!definition) throw new Error('Unknown structure: ' + type);
       if(this.rawInput){this.insert(definition.render(definition.labels.map(()=>'')));return;}
+      this.pendingFont=undefined;
       const [start, end] = this.range, parent = this.current;
       const selected = parent.items.slice(start, end);
       const contents=definition.raw?Array.from(selected.map(item=>typeof item==='string'?item:structureTex(item,latex)).join('')):selected;
@@ -609,6 +636,7 @@ export interface FontWarning {region:string;index:number;message:string}
       return true;
     }
     remove(direction:Direction) {
+      if(this.pendingFont){this.record();this.pendingFont=undefined;return;}
       const [start, end] = this.range;
       if (start !== end) { this.replace(start, end, ''); return; }
       if(this.emptyScriptParent()){
@@ -622,6 +650,7 @@ export interface FontWarning {region:string;index:number;message:string}
       } else this.replace(index, index + 1, '');
     }
     move(direction:Direction, extend = false) {
+      this.pendingFont=undefined;
       const {region: id, offset, anchor} = this.cursor, r = this.current;
       if (extend) { this.setCursor(id, offset + direction, anchor); return; }
       const [start, end] = this.range;
@@ -638,6 +667,7 @@ export interface FontWarning {region:string;index:number;message:string}
       else this.setCursor(parent.region.id, parent.index + (direction > 0 ? 1 : 0));
     }
     vertical(direction:Direction) {
+      this.pendingFont=undefined;
       let id = this.cursor.region, parent;
       while ((parent = this.parents.get(id))) {
         const step = parent.node.columns || definitions.get(parent.node.type)?.columns || 1;
@@ -647,6 +677,7 @@ export interface FontWarning {region:string;index:number;message:string}
       }
     }
     tab(direction:Direction) {
+      this.pendingFont=undefined;
       const ids = this.order.filter(id => id !== this.root.id), index = ids.indexOf(this.cursor.region);
       if (!ids.length) return;
       this.setCursor(ids[(index + direction + ids.length) % ids.length], 0);
@@ -668,10 +699,12 @@ export interface FontWarning {region:string;index:number;message:string}
             if(def?.raw)return;
             item.regions.forEach(child=>visit(child,def?.font?def:font));return;
           }
-          if(!font)return;
-          const char=typeof item==='string'?item:diagnosticSymbol(item.type);
+          const atom=typeof item==='string'?undefined:symbolDefinitions.get(item.type);
+          const effectiveFont=atom?.fontCommand?{command:atom.fontCommand}:font;
+          if(!effectiveFont)return;
+          const char=typeof item==='string'?item:atom?.letter||diagnosticSymbol(item.type);
           if(!char)return;
-          const message=font.command==='\\symbb'||font.command==='\\mathbfbb'?(/^[\p{Letter}\p{Number}]$/u.test(char)&&!extensionHasLetter('-bboldx',char)?'本工具的黑板体使用 BBoldX；它没有为“'+char+'”提供对应字形，输入保留。':undefined):fontDiagnostic(font.command,char);
+          const message=effectiveFont.command==='\\symbb'||effectiveFont.command==='\\mathbfbb'?(/^[\p{Letter}\p{Number}]$/u.test(char)&&!extensionHasLetter('-bboldx',char)?'本工具的黑板体使用 BBoldX；它没有为“'+char+'”提供对应字形，输入保留。':undefined):fontDiagnostic(effectiveFont.command,char);
           if(message)warnings.push({region:r.id,index,message});
         });
       };
