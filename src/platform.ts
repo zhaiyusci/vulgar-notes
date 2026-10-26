@@ -7,29 +7,39 @@ export const defaultDocumentName = 'document.vulgar';
 const documentFilePattern = /\.(vulgar|json)$/i;
 const documentName = (name: string): string => name.replace(documentFilePattern, '') + '.vulgar';
 
-export async function openDocumentFile(): Promise<OpenedDocument | null> {
+async function openTextFile(extensions:string[],filterName:string,accept:string,errorMessage:string):Promise<OpenedDocument|null>{
+  const supported=(name:string)=>extensions.some(extension=>name.toLowerCase().endsWith('.'+extension));
   if (isTauri()) {
     const [{open}, {readTextFile}] = await Promise.all([import('@tauri-apps/plugin-dialog'), import('@tauri-apps/plugin-fs')]);
-    const path = await open({multiple:false, directory:false, filters:[{name:t('Vulgar Notes document'),extensions:['vulgar','json']}]});
+    const path = await open({multiple:false, directory:false, filters:[{name:t(filterName),extensions}]});
     if (!path) return null;
-    if (!documentFilePattern.test(path)) throw Error(t('Please choose a Vulgar Notes document (.vulgar or legacy .json).'));
+    if (!supported(path)) throw Error(t(errorMessage));
     return {path, name:path.split(/[\\/]/).pop()!, text:await readTextFile(path)};
   }
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
-    input.type = 'file'; input.accept = '.vulgar,.json,application/json'; input.hidden = true;
+    input.type = 'file'; input.accept = accept; input.hidden = true;
     document.body.append(input);
     input.addEventListener('cancel', () => {input.remove(); resolve(null);}, {once:true});
     input.addEventListener('change', async () => {
       const file = input.files?.[0]; input.remove();
       if (!file) {resolve(null); return;}
       try {
-        if (!documentFilePattern.test(file.name)) throw Error(t('Please choose a Vulgar Notes document (.vulgar or legacy .json).'));
+        if (!supported(file.name)) throw Error(t(errorMessage));
         resolve({name:file.name, text:await file.text()});
       } catch (error) {reject(error);}
     }, {once:true});
     input.click();
   });
+}
+
+export async function openDocumentFile():Promise<OpenedDocument|null>{
+  return openTextFile(['vulgar','json'],'Vulgar Notes document','.vulgar,.json,application/json','Please choose a Vulgar Notes document (.vulgar or legacy .json).');
+}
+
+/** Adding a bibliography source is separate from opening a native document. */
+export async function openBibtexFile():Promise<OpenedDocument|null>{
+  return openTextFile(['bib'],'BibTeX library','.bib,application/x-bibtex,text/x-bibtex','Please choose a BibTeX library (.bib).');
 }
 
 export async function confirmReplaceDocument(): Promise<boolean> {

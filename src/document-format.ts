@@ -1,6 +1,7 @@
 export interface JSONContent { type?:string; text?:string; attrs?:Record<string,any>; marks?:{type:string;attrs?:Record<string,any>}[]; content?:JSONContent[] }
 import {EditorModel} from './editor-model';
 import {referenceTex,validReferenceKey,type ReferenceNode} from './references';
+import {validCitationKey} from './bibtex';
 
 export const isMath=(type?:string)=>type==='inlineMath'||type==='displayMath';
 export function mathSource(snapshot:string):string {
@@ -66,7 +67,7 @@ export function documentLatex(node:JSONContent,formatMath:(source:string)=>strin
     const entries:JSONContent[]=[];
     const collect=(n:JSONContent)=>{if(n.type==='bibliographyEntry')entries.push(n);else n.content?.forEach(collect);};collect(node);
     const bibliography=entries.map(entry=>{
-      if(!validReferenceKey(entry.attrs?.citeKey))throw Error('Invalid citation key');
+      if(!validCitationKey(entry.attrs?.citeKey))throw Error('Invalid citation key');
       return '\\bibitem{'+entry.attrs.citeKey+'} '+(entry.content||[]).map(child=>documentLatex(child,formatMath)).join('').trim();
     }).join('\n');
     return body+(entries.length?'\n\\begin{thebibliography}{'+String(entries.length)+'}\n'+bibliography+'\n\\end{thebibliography}\n':'');

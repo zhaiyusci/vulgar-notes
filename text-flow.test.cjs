@@ -32,6 +32,43 @@ test('bibliography numbers, multiple citations and missing keys resolve independ
  assert.throws(()=>api.referenceTex({command:'cite',keys:['a}\\input{x}']}));
 });
 
+test('BibTeX citations follow first appearance after manual references and expose uncited picker entries',()=>{
+ const api=load('references',storage());
+ const libraries=[{id:'lib',name:'Papers.bib',source:'@article{earlier,title={Earlier}}\n@book{2026:最后,title={Last}}\n@book{unused,title={Uncited}}'}];
+ const cite=keys=>({type:'tex_reference',command:'cite',keys,children:[{text:''}]});
+ const value=[{type:'p',children:[cite(['2026:最后','earlier']),cite(['2026:最后','missing'])]},{type:'bibliography_entry',citeKey:'manual',children:[{text:'Manual entry'}]}];
+ const targets=api.referenceTargets(value,libraries);
+ assert.equal(targets.find(target=>target.key==='manual').number,'1');
+ assert.equal(targets.find(target=>target.key==='2026:最后').number,'2');
+ assert.equal(targets.find(target=>target.key==='earlier').number,'3');
+ assert.equal(targets.find(target=>target.key==='unused').number,'');
+ assert.equal(targets.find(target=>target.key==='2026:最后').libraryId,'lib');
+ assert.equal(api.resolveReference(value,cite(['2026:最后','earlier']),libraries).text,'[2, 3]');
+ assert.equal(api.resolveReference(value,cite(['2026:最后','missing']),libraries).text,'[2, ??]');
+ assert.equal(api.resolveReference(value,cite(['2026:最后','missing']),libraries).invalid,true);
+ assert.equal(api.referenceTex(cite(['2026:最后'])),'\\cite{2026:最后}');
+ assert.throws(()=>api.referenceTex({command:'ref',keys:['2026:最后']}),'broader citation keys must not broaden TeX labels');
+ value[0].children=[cite(['earlier','2026:最后'])];
+ assert.equal(api.resolveReference(value,cite(['2026:最后']),libraries).text,'[3]');
+});
+
+test('native documents validate attached BibTeX before accepting text and preserve corrupt drafts',()=>{
+ const s=storage(),api=load('plate-document',s);
+ const value=[{type:'p',children:[{text:'Saved text'}]}];
+ const library={id:'papers',name:'Papers.bib',source:'@article{2026:论文,title={Title}}'};
+ const envelope={version:1,value,bibliographyLibraries:[library]};
+ const parsed=api.parseDocumentEnvelope(JSON.stringify(envelope));
+ assert.equal(parsed.bibliographyLibraries[0].source,library.source);
+ assert.equal(JSON.stringify(parsed.value),JSON.stringify(value));
+ assert.equal(api.parseDocumentEnvelope(JSON.stringify({version:1,value})).bibliographyLibraries.length,0);
+ assert.throws(()=>api.parseDocumentFile(JSON.stringify({...envelope,bibliographyLibraries:'invalid'})));
+ assert.throws(()=>api.parseDocumentFile(JSON.stringify({...envelope,bibliographyLibraries:[{...library,source:'@article{broken,title='}]})));
+ assert.equal(api.parseDocumentFile(JSON.stringify({...envelope,value:[{type:'bibliography_entry',citeKey:'2026:论文',children:[{text:'Manual'}]}]}))[0].citeKey,'2026:论文');
+ const corrupt=JSON.stringify({...envelope,bibliographyLibraries:[{...library,source:'@article{broken,title='}]});
+ s.setItem(api.documentStorageKey,corrupt);api.restoreDocumentEnvelope(model());
+ assert.equal(s.getItem(api.documentStorageKey+'-recovery'),corrupt);
+});
+
 test('labels and citations survive JSON and export as native LaTeX commands',()=>{
  const api=load('plate-document',storage()),latex=load('latex-document',storage());
  const ref=(command,keys)=>({type:'tex_reference',command,keys,children:[{text:''}]});

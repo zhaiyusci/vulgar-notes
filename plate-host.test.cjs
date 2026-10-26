@@ -143,6 +143,77 @@ test('Plate document / independent MathJax mount integration',async t=>{
   editor.tf.insertText('more');await tick();flow.markDocumentSaved(saved);assert.equal(flow.hasUnsavedChanges(),true);
   flow.destroy();
  });
+ await t.test('attached BibTeX sources stay in session while native files and drafts capture only cited entries',async()=>{
+  const {flow,editor}=setup();flow.markDocumentSaved(flow.serializeDocument());
+  const library={id:'papers',name:'Papers.bib',source:'@article{cited,title={Cited title},author={Writer, One},year={2026}}\n@book{later,title={Later title}}\n@book{unused,title={UNUSED_PRIVATE_ENTRY}}'};
+  flow.setBibliographyLibraries([library]);await tick();
+  assert.equal(flow.hasUnsavedChanges(),false,'attaching uncited sources does not alter native content');
+  assert.equal(JSON.parse(flow.serializeDocument()).bibliographyLibraries,undefined);
+  const ref=keys=>({type:'tex_reference',command:'cite',keys,children:[{text:''}]});
+  editor.tf.select(editor.api.end([]));editor.tf.insertNodes(ref(['cited']));await tick();
+  assert.equal(flow.hasUnsavedChanges(),true);
+  const saved=flow.serializeDocument(),draft=sessionStorage.getItem('math-plate-document-v1');
+  for(const source of [saved,draft]){
+   const libraries=JSON.parse(source).bibliographyLibraries;
+   assert.equal(libraries.length,1);assert.match(libraries[0].source,/Cited title/);
+   assert.doesNotMatch(source,/UNUSED_PRIVATE_ENTRY|Later title/);
+  }
+  assert.equal(flow.getBibliographyLibraries()[0].source,library.source,'saving must not narrow the session source');
+  flow.markDocumentSaved(saved);editor.tf.insertText(' ');editor.tf.insertNodes(ref(['later']));await tick();
+  assert.match(flow.serializeDocument(),/Later title/);assert.doesNotMatch(flow.serializeDocument(),/UNUSED_PRIVATE_ENTRY/);
+  assert.match(flow.exportMarkdown(),/\\bibitem\{cited\}/);assert.match(flow.exportMarkdown(),/\\bibitem\{later\}/);assert.doesNotMatch(flow.exportMarkdown(),/UNUSED_PRIVATE_ENTRY/);
+  flow.destroy();
+  const mount=document.createElement('div');document.body.append(mount);
+  const restored=new PlateMathHost(mount,new EditorModel(),{activate(){},leave(){},change(){}});await tick();
+  assert.match(restored.getBibliographyLibraries()[0].source,/Cited title/);assert.match(restored.getBibliographyLibraries()[0].source,/Later title/);
+  assert.doesNotMatch(restored.getBibliographyLibraries()[0].source,/UNUSED_PRIVATE_ENTRY/);restored.destroy();
+ });
+ await t.test('BibTeX citation resolution, generated bibliography and source updates react without changing prose',async()=>{
+  const {flow,editor}=setup();
+  editor.tf.setValue([{type:'p',children:[{text:'Cite '},{type:'tex_reference',command:'cite',keys:['2026:论文'],children:[{text:''}]},{text:''}]}]);await tick();
+  const prose=JSON.stringify(editor.children);assert.equal(flow.mount.querySelector('[role="link"]').textContent,'[??]');
+  let changes=0;const unsubscribe=flow.subscribeBibliography(()=>changes++);
+  flow.setBibliographyLibraries([{id:'papers',name:'Papers.bib',source:'@book{2026:论文,title={First title}}\n@book{unused,title={Hidden title}}'}]);await tick();
+  assert.equal(JSON.stringify(editor.children),prose);assert.equal(changes,1);
+  assert.equal(flow.mount.querySelector('[role="link"]').textContent,'[1]');
+  const row=flow.mount.querySelector('[id="bibtex-'+encodeURIComponent('2026:论文')+'"]');assert.ok(row);assert.match(row.textContent,/First title/);
+  assert.doesNotMatch(flow.mount.querySelector('.bibtex-bibliography').textContent,/Hidden title/);
+  let jumped=false;row.scrollIntoView=()=>{jumped=true;};
+  flow.mount.querySelector('[role="link"]').dispatchEvent(new window.MouseEvent('click',{bubbles:true,button:0,ctrlKey:true}));assert.equal(jumped,true);
+  flow.setBibliographyLibraries([{id:'papers',name:'Papers.bib',source:'@book{2026:论文,title={Updated title}}'}]);await tick();
+  assert.match(flow.mount.querySelector('.bibtex-bibliography').textContent,/Updated title/);assert.equal(changes,2);
+  unsubscribe();flow.setBibliographyLibraries([]);await tick();assert.equal(changes,2);assert.equal(flow.mount.querySelector('[role="link"]').textContent,'[??]');
+  assert.equal(flow.mount.querySelector('.bibtex-bibliography'),null);flow.destroy();
+ });
+ await t.test('invalid or duplicate libraries never replace existing body or attached citation data',async()=>{
+  const {flow,editor}=setup();
+  flow.setBibliographyLibraries([{id:'papers',name:'Papers.bib',source:'@book{a,title={Kept}}'}]);
+  const source=flow.serializeDocument(),attached=flow.getBibliographyLibraries();
+  assert.throws(()=>flow.setBibliographyLibraries([{id:'bad',name:'Bad.bib',source:'@book{broken,title='}]));
+  assert.equal(flow.getBibliographyLibraries(),attached);assert.equal(flow.serializeDocument(),source);
+  const invalid=JSON.parse(source);invalid.bibliographyLibraries=[{id:'bad',name:'Bad.bib',source:'@book{broken,title='}];
+  assert.throws(()=>flow.openDocument(JSON.stringify(invalid)));assert.equal(flow.serializeDocument(),source);assert.equal(flow.getBibliographyLibraries(),attached);
+  editor.tf.insertNodes({type:'bibliography_entry',citeKey:'manual',children:[{text:'Manual entry'}]},{at:[editor.children.length]});await tick();
+  assert.throws(()=>flow.setBibliographyLibraries([{id:'conflict',name:'Conflict.bib',source:'@book{manual,title={Duplicate}}'}]));
+  assert.equal(flow.getBibliographyLibraries(),attached);flow.destroy();
+ });
+ await t.test('citation undo and redo update embedded snapshots while retaining attached source choices',async()=>{
+  const {flow,editor}=setup();flow.setBibliographyLibraries([{id:'papers',name:'Papers.bib',source:'@book{a,title={Title A}}\n@book{b,title={Title B}}'}]);
+  editor.tf.select(editor.api.end([]));editor.tf.withNewBatch(()=>editor.tf.insertNodes({type:'tex_reference',command:'cite',keys:['a'],children:[{text:''}]}));await tick();
+  assert.match(flow.serializeDocument(),/Title A/);assert.doesNotMatch(flow.serializeDocument(),/Title B/);
+  editor.tf.undo();await tick();assert.equal(JSON.parse(flow.serializeDocument()).bibliographyLibraries,undefined);assert.match(flow.getBibliographyLibraries()[0].source,/Title B/);
+  editor.tf.redo();await tick();assert.match(flow.serializeDocument(),/Title A/);assert.doesNotMatch(flow.serializeDocument(),/Title B/);flow.destroy();
+ });
+ await t.test('pasted bibliography duplicates remain diagnosable and saved documents can still reopen',async()=>{
+  const {flow,editor}=setup();flow.setBibliographyLibraries([{id:'papers',name:'Papers.bib',source:'@book{a,title={Library title}}'}]);
+  editor.tf.setValue([{type:'p',children:[{text:'See '},{type:'tex_reference',command:'cite',keys:['a'],children:[{text:''}]},{text:''}]}]);await tick();
+  assert.equal(flow.mount.querySelector('[role="link"]').textContent,'[1]');
+  editor.tf.insertNodes({type:'bibliography_entry',citeKey:'a',children:[{text:'Pasted manual title'}]},{at:[editor.children.length]});await tick();
+  assert.equal(flow.mount.querySelector('[role="link"]').textContent,'[??]');
+  const saved=flow.serializeDocument();assert.match(saved,/Library title/);assert.match(saved,/Pasted manual title/);
+  flow.openDocument(saved);await tick();assert.equal(flow.mount.querySelector('[role="link"]').textContent,'[??]');
+  assert.match(flow.serializeDocument(),/Library title/);assert.match(flow.serializeDocument(),/Pasted manual title/);flow.destroy();
+ });
  await t.test('reference nodes render, renumber on changes and survive undo and file opening',async()=>{
   const {flow,editor}=setup();
   const initial=editor.children[0].children.find(n=>n.type==='inline_equation');
@@ -167,6 +238,14 @@ test('Plate document / independent MathJax mount integration',async t=>{
   assert.deepEqual(editor.children[0].children[1].keys,['paper']);
   editor.tf.undo();await tick();assert.equal(editor.children[0].children[0].text,'See \\cite{paper');
   flow.destroy();
+ });
+ await t.test('typed citations accept numeric Unicode keys without broadening label syntax',async()=>{
+  const {flow,editor}=setup();
+  editor.tf.setValue([{type:'p',children:[{text:'\\cite{2026:论文'}]}]);editor.tf.select(editor.api.end([]));
+  let prevented=false;flow.keyDown({key:'}',nativeEvent:{isComposing:false},preventDefault(){prevented=true;}});await tick();
+  assert.equal(prevented,true);assert.deepEqual(editor.children[0].children[1].keys,['2026:论文']);
+  editor.tf.setValue([{type:'p',children:[{text:'\\label{2026:论文'}]}]);editor.tf.select(editor.api.end([]));prevented=false;
+  flow.keyDown({key:'}',nativeEvent:{isComposing:false},preventDefault(){prevented=true;}});assert.equal(prevented,false);flow.destroy();
  });
  await t.test('reference and citation clicks distinguish the selected node from its empty trailing text',async()=>{
   for(const command of ['eqref','ref','cite']){

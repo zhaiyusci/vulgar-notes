@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { saveExport } from '@/platform';
 import { latexDocument } from '@/latex-document';
 import { t } from '@/i18n';
+import { HostContext } from '@/plate-math-element';
+import { useBibliographyLibraries } from '@/use-bibliography';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuGroup,
   DropdownMenuItem, DropdownMenuTrigger,
@@ -19,13 +21,14 @@ type ExportFormat = 'markdown' | 'latex';
 
 export function ExportToolbarButton(props: DropdownMenuProps) {
   const editor = useEditorRef();
+  const host = React.useContext(HostContext),libraries=useBibliographyLibraries();
   const [open, setOpen] = React.useState(false);
 
   const exportDocument = async (format: ExportFormat) => {
     try {
       const content = format === 'markdown'
-          ? editor.getApi(MarkdownPlugin).markdown.serialize()
-          : latexDocument(editor.children);
+          ? host?.exportMarkdown()??editor.getApi(MarkdownPlugin).markdown.serialize()
+          : latexDocument(editor.children,libraries);
       const extension = {markdown: 'md', latex: 'tex'}[format];
       const mime = {markdown: 'text/markdown', latex: 'application/x-tex'}[format];
       await saveExport(new Blob([content], {type: `${mime};charset=utf-8`}), `document.${extension}`);

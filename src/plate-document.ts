@@ -3,6 +3,7 @@ import type {TElement, Value, Descendant} from 'platejs';
 import {type JSONContent, migrateLegacy, documentLatex} from './document-format';
 import {EditorModel} from './editor-model';
 import {referenceTex,validReferenceKey,type ReferenceNode} from './references';
+import {parseBibLibraries,validateBibLibraries,validCitationKey,type BibLibrary} from './bibtex';
 
 export const documentStorageKey='math-plate-document-v1';
 export function documentContentKey(source:string):string {
@@ -11,12 +12,24 @@ export function documentContentKey(source:string):string {
     return value;
   });
 }
-export function parseDocumentFile(source:string):Value {
+export interface DocumentEnvelope {version:1;value:Value;bibliographyLibraries:BibLibrary[]}
+/** Validate both text and its attached source libraries before replacing a document. */
+export function parseDocumentEnvelope(source:string):DocumentEnvelope {
   const saved=JSON.parse(source);
   if(saved?.version!==1||!Array.isArray(saved.value)||!saved.value.length)throw Error('Invalid document format');
   validate(saved.value);
   if(saved.value.some((node:any)=>typeof node.type!=='string'||!Array.isArray(node.children)))throw Error('Invalid document root');
-  return saved.value;
+  const bibliographyLibraries=validateBibLibraries(saved.bibliographyLibraries);
+  // A paste can introduce a manual key already present in a source library.
+  // Preserve both on reopen; reference resolution flags that ambiguity.
+  return {version:1,value:saved.value,bibliographyLibraries};
+}
+export function parseDocumentFile(source:string):Value {return parseDocumentEnvelope(source).value;}
+/** Libraries share a citation namespace with existing hand-written bibliography entries. */
+export function validateDocumentLibraries(value:Value,libraries:readonly BibLibrary[]):void {
+  const keys=new Set<string>();
+  const walk=(nodes:any[])=>{for(const node of nodes){if(node.type==='bibliography_entry')keys.add(node.citeKey);if(Array.isArray(node.children))walk(node.children);}};walk(value);
+  for(const entry of parseBibLibraries(libraries))if(keys.has(entry.key))throw Error('Duplicate citation key: '+entry.key);
 }
 export const isFormula=(n:unknown):boolean=>!!n&&typeof n==='object'&&'type' in n&&(n.type==='equation'||n.type==='inline_equation');
 export type FormulaNode=TElement & {id:string; snapshot?:string;texExpression:string;numbered:boolean;display?:boolean;texLabel?:string};
@@ -68,19 +81,20 @@ export function fromTiptap(doc:JSONContent):Value {
   function childrenOf(n:JSONContent){return n.content?.flatMap(c=>read(c))||[{text:''}];}
   return read(doc) as Value;
 }
-export function restoreDocument(initial:EditorModel):Value {
+export function restoreDocumentEnvelope(initial:EditorModel):DocumentEnvelope {
   try {
     const current=draftStorage().getItem(documentStorageKey);
-    if(current){const saved=JSON.parse(current);if(saved.version!==1||!Array.isArray(saved.value))throw Error('Invalid Plate document');validate(saved.value);return saved.value;}
+    if(current)return parseDocumentEnvelope(current);
     const tiptap=draftStorage().getItem('math-tiptap-document-v1');
-    if(tiptap){const saved=JSON.parse(tiptap);if(saved.version!==2)throw Error('Invalid previous document');return fromTiptap(saved.doc);}
-    const legacy=draftStorage().getItem('math-text-flow-state');if(legacy)return fromTiptap(migrateLegacy(legacy));
+    if(tiptap){const saved=JSON.parse(tiptap);if(saved.version!==2)throw Error('Invalid previous document');return {version:1,value:fromTiptap(saved.doc),bibliographyLibraries:[]};}
+    const legacy=draftStorage().getItem('math-text-flow-state');if(legacy)return {version:1,value:fromTiptap(migrateLegacy(legacy)),bibliographyLibraries:[]};
   }catch(error){
     for(const key of [documentStorageKey,'math-tiptap-document-v1','math-text-flow-state']){const value=draftStorage().getItem(key);if(value)draftStorage().setItem(key+'-recovery',value);}
     console.warn('The original draft has been preserved for recovery.',error);
   }
-  return [{type:'p',children:[{text:'在这里输入正文。已知 '},formulaNode(initial),{text:'，可以继续输入文字，也可以在光标处插入新的公式。'}]}];
+  return {version:1,value:[{type:'p',children:[{text:'在这里输入正文。已知 '},formulaNode(initial),{text:'，可以继续输入文字，也可以在光标处插入新的公式。'}]}],bibliographyLibraries:[]};
 }
+export function restoreDocument(initial:EditorModel):Value {return restoreDocumentEnvelope(initial).value;}
 export function validate(nodes:unknown[]):void {
   for(const raw of nodes){
     if(!raw||typeof raw!=='object')throw Error('Invalid document node');
@@ -90,7 +104,7 @@ export function validate(nodes:unknown[]):void {
     if(n.texLabel!==undefined&&!validReferenceKey(n.texLabel))throw Error('Invalid label');
     if(n.type==='tex_label'&&!validReferenceKey(n.texLabel))throw Error('Invalid label');
     if(n.type==='tex_reference')referenceTex(n as ReferenceNode);
-    if(n.type==='bibliography_entry'&&!validReferenceKey(n.citeKey))throw Error('Invalid citation key');
+    if(n.type==='bibliography_entry'&&!validCitationKey(n.citeKey))throw Error('Invalid citation key');
     if(isFormula(n)&&n.snapshot)new EditorModel().restore(n.snapshot);
     validate(n.children);
   }

@@ -4,12 +4,14 @@ import {LabelMarker} from '@/components/ui/label-marker';
 import {createPlatePlugin,PlateElement,useEditorSelector,useSelected,useFocused,type PlateElementProps} from 'platejs/react';
 import {referenceTargets,resolveReference,type ReferenceNode} from '@/references';
 import {t} from '@/i18n';
+import {useBibliographyLibraries} from '@/use-bibliography';
 
 function ReferenceElement(props:PlateElementProps){
   const node=props.element as ReferenceNode;
+  const libraries=useBibliographyLibraries();
   const selected=useSelected(),focused=useFocused();
-  const result=useEditorSelector(editor=>resolveReference(editor.children,node),[node]);
-  const jump=()=>{const target=result.targets[0];if(target)props.editor.api.toDOMNode(target.node)?.scrollIntoView({block:'center',behavior:'smooth'});};
+  const result=useEditorSelector(editor=>resolveReference(editor.children,node,libraries),[node,libraries]);
+  const jump=()=>{const target=result.targets[0];if(target)(target.libraryId?document.getElementById('bibtex-'+encodeURIComponent(target.key)):props.editor.api.toDOMNode(target.node))?.scrollIntoView({block:'center',behavior:'smooth'});};
   return <PlateElement {...props} as="span" className="tex-reference" attributes={{...props.attributes,'data-reference-selected':selected&&focused?'true':'false'}}>
     <span contentEditable={false} role="link"
       className={'tex-reference-content '+(result.invalid?'text-red-600 underline decoration-wavy':'text-blue-700')}

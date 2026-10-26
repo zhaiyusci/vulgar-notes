@@ -1,0 +1,210 @@
+import {parse, parseVerbatim, type Creator, type Entry, type VerbatimEntry, type VerbatimLibrary} from '@retorquere/bibtex-parser';
+
+/** The original BibTeX is the document data; parsed fields are only a view. */
+export interface BibLibrary {id:string;name:string;source:string}
+export interface BibEntry {
+  key:string;
+  type:string;
+  title:string;
+  author:string;
+  year:string;
+  description:string;
+  libraryId:string;
+  libraryName:string;
+  doi?:string;
+  url?:string;
+}
+
+const citationKeyPattern=/^[\p{L}\p{N}][\p{L}\p{N}\p{M}:._/+\-]*$/u;
+export const validCitationKey=(key:unknown):key is string=>typeof key==='string'&&citationKeyPattern.test(key);
+
+type CachedLibrary=BibLibrary&{entries:BibEntry[];verbatim?:VerbatimLibrary};
+// Keep source variants: validating a cited-only snapshot must not evict the
+// attached full library and force a reparse on the next document edit.
+const cache:CachedLibrary[]=[];
+const libraryListCache=new WeakMap<readonly BibLibrary[],{snapshot:BibLibrary[];entries:BibEntry[]}>();
+const librarySetCache:{snapshot:BibLibrary[];entries:BibEntry[]}[]=[];
+const extractionCache:{snapshot:BibLibrary[];keySignature:string;result:BibLibrary[]}[]=[];
+
+function sameLibraries(a:readonly BibLibrary[],b:readonly BibLibrary[]):boolean {
+  return a.length===b.length&&a.every((old,index)=>{
+    const current=b[index];
+    return current&&old.id===current.id&&old.name===current.name&&old.source===current.source;
+  });
+}
+
+function cachedLibrary(library:BibLibrary):CachedLibrary|undefined {
+  return cache.find(item=>item.id===library.id&&item.name===library.name&&item.source===library.source);
+}
+
+function libraryShape(value:unknown):BibLibrary {
+  if(!value||typeof value!=='object'||Array.isArray(value))throw Error('Invalid BibTeX library');
+  const library=value as Partial<BibLibrary>;
+  if(typeof library.id!=='string'||!library.id.trim()||typeof library.name!=='string'||!library.name.trim()||typeof library.source!=='string')throw Error('Invalid BibTeX library');
+  return {id:library.id,name:library.name,source:library.source};
+}
+
+/** Strip markup produced by the parser. Consumers must still render as text. */
+function plain(value:unknown):string {
+  if(typeof value!=='string')return '';
+  return value
+    .replace(/<\/?(?:p|br|div|li|h[1-6]|blockquote|ul|ol)\b[^<>]*>/gi,' ')
+    .replace(/<\/?(?:a|b|i|em|strong|u|s|sup|sub|span|code|tt|sc)\b[^<>]*>/gi,'')
+    .replace(/\s+/gu,' ').trim().normalize('NFC');
+}
+
+function creators(value:unknown):string {
+  if(!Array.isArray(value))return plain(value);
+  return (value as Creator[]).map(creator=>creator.name?plain(creator.name):[
+    creator.firstName,creator.prefix,creator.lastName,creator.suffix,
+  ].map(plain).filter(Boolean).join(' ')).filter(Boolean).join('; ');
+}
+
+function displayEntry(entry:Entry,library:BibLibrary):BibEntry {
+  const fields=entry.fields;
+  const title=plain(fields.title)||plain(fields.booktitle)||entry.key;
+  const author=creators(fields.author)||creators(fields.editor);
+  const year=plain(fields.year)||plain(fields.date).match(/^-?\d{4}/)?.[0]||'';
+  const publication=plain(fields.journal)||plain(fields.journaltitle)||plain(fields.booktitle)
+    ||(Array.isArray(fields.publisher)?fields.publisher.map(plain).join('; '):plain(fields.publisher));
+  return {
+    key:entry.key,type:entry.type,title,author,year,
+    description:[author,title,publication,year].filter(Boolean).join('. '),
+    libraryId:library.id,libraryName:library.name,
+    ...(fields.doi?{doi:plain(fields.doi)}:{}),
+    ...(fields.url?{url:plain(fields.url)}:{}),
+  };
+}
+
+function normalizeEntries(source:string,name:string):Entry[] {
+  const parsed=parse(source,{english:false,caseProtection:false,applyCrossRef:true});
+  const diagnostic=parsed.errors.find(error=>!error.error.startsWith('unhandled '));
+  if(diagnostic)throw Error(`Invalid BibTeX in ${JSON.stringify(name)}: ${diagnostic.error}`);
+  return parsed.entries;
+}
+
+export function parseBibLibrary(value:BibLibrary):BibEntry[] {
+  const library=libraryShape(value),cached=cachedLibrary(library);
+  if(cached)return cached.entries;
+
+  // Use the Better BibTeX parser for the grammar, strings, names and inheritance.
+  // Unknown LaTeX commands remain visible as literal text, rather than dropping
+  // an otherwise valid entry. Structural/parser errors reject the whole import.
+  const normalized=normalizeEntries(library.source,library.name);
+  const keys=new Set<string>();
+  const entries=normalized.map(entry=>{
+    if(!validCitationKey(entry.key))throw Error(`Invalid citation key ${JSON.stringify(entry.key)} in ${JSON.stringify(library.name)}`);
+    if(keys.has(entry.key))throw Error(`Duplicate citation key ${JSON.stringify(entry.key)} in ${JSON.stringify(library.name)}`);
+    keys.add(entry.key);
+    return displayEntry(entry,library);
+  });
+  // Keep a bounded cache of parsed libraries, without retaining every edit to a
+  // raw source. Unchanged libraries are reused across document render passes.
+  cache.push({...library,entries});
+  if(cache.length>32)cache.shift();
+  return entries;
+}
+
+export function parseBibLibraries(libraries:readonly BibLibrary[]):BibEntry[] {
+  if(!Array.isArray(libraries))throw Error('Invalid BibTeX libraries');
+  const cached=libraryListCache.get(libraries);
+  if(cached&&sameLibraries(cached.snapshot,libraries))return cached.entries;
+  const equivalent=librarySetCache.find(item=>sameLibraries(item.snapshot,libraries));
+  if(equivalent){libraryListCache.set(libraries,equivalent);return equivalent.entries;}
+  const ids=new Set<string>(),keys=new Map<string,string>(),snapshot:BibLibrary[]=[],entries:BibEntry[]=[];
+  for(const value of libraries){
+    const library=libraryShape(value);
+    if(ids.has(library.id))throw Error(`Duplicate BibTeX library id ${JSON.stringify(library.id)}`);
+    ids.add(library.id);snapshot.push(library);
+    for(const entry of parseBibLibrary(library)){
+      const previous=keys.get(entry.key);
+      if(previous!==undefined)throw Error(`Duplicate citation key ${JSON.stringify(entry.key)} in ${JSON.stringify(previous)} and ${JSON.stringify(library.name)}`);
+      keys.set(entry.key,library.name);entries.push(entry);
+    }
+  }
+  // A crossref parent may be attached in a different .bib file. Parse their
+  // common context once so the upstream inheritance rules also see that parent.
+  if(libraries.length>1){
+    const byId=new Map(libraries.map(library=>[library.id,library]));
+    const owners=new Map(entries.map(entry=>[entry.key,byId.get(entry.libraryId)!]));
+    const combined=normalizeEntries(libraries.map(library=>library.source).join('\n\n'),libraries.map(library=>library.name).join(', '));
+    entries.splice(0,entries.length,...combined.map(entry=>displayEntry(entry,owners.get(entry.key)!)));
+  }
+  const result={snapshot,entries};
+  libraryListCache.set(libraries,result);librarySetCache.push(result);
+  if(librarySetCache.length>16)librarySetCache.shift();
+  return entries;
+}
+
+/** Validate persisted data before changing the open document. */
+export function validateBibLibraries(value:unknown):BibLibrary[] {
+  if(value===undefined)return [];
+  if(!Array.isArray(value))throw Error('Invalid BibTeX libraries');
+  const libraries=value.map(libraryShape);
+  parseBibLibraries(libraries);
+  return libraries;
+}
+
+function rawLibrary(library:BibLibrary):VerbatimLibrary {
+  parseBibLibrary(library);
+  const cached=cachedLibrary(library)!;
+  return cached.verbatim??=(parseVerbatim(library.source));
+}
+
+/**
+ * Runtime libraries retain the full attached sources for the citation picker.
+ * Native document snapshots contain only cited raw records, their crossref/
+ * xdata parents, and the declarations needed to interpret those records.
+ * Missing citation keys stay unresolved without copying unrelated records.
+ */
+export function citedBibLibraries(libraries:readonly BibLibrary[],keys:readonly string[]):BibLibrary[] {
+  const keySignature=JSON.stringify([...new Set(keys.filter(validCitationKey))].sort());
+  const cached=extractionCache.find(item=>item.keySignature===keySignature&&sameLibraries(item.snapshot,libraries));
+  if(cached)return cached.result;
+  parseBibLibraries(libraries);
+
+  type RawRecord={entry:VerbatimEntry;library:BibLibrary;raw:VerbatimLibrary};
+  const records=new Map<string,RawRecord>(),selected=new Set<string>();
+  const perLibrary=new Map<string,{library:BibLibrary;raw:VerbatimLibrary;entries:VerbatimEntry[]}>();
+  for(const library of libraries){
+    const raw=rawLibrary(library);
+    perLibrary.set(library.id,{library,raw,entries:[]});
+    for(const entry of raw.entries)records.set(entry.key,{entry,library,raw});
+  }
+  const include=(key:string)=>{
+    if(selected.has(key))return;
+    const record=records.get(key);
+    if(!record)return;
+    selected.add(key);
+    for(const dependency of [record.entry.fields.crossref,record.entry.fields.xdata]){
+      if(typeof dependency==='string')for(const parent of dependency.split(',').map(value=>value.trim()).filter(Boolean))include(parent);
+    }
+  };
+  keys.forEach(include);
+  // Preserve source order, independently of the order in which citations occur.
+  for(const [key,{entry,library}] of records)if(selected.has(key))perLibrary.get(library.id)!.entries.push(entry);
+
+  const result:BibLibrary[]=[];
+  for(const {library,raw,entries} of perLibrary.values()){
+    if(!entries.length)continue;
+    const names=Object.keys(raw.strings),sentinels:Record<string,string>={};
+    const marker='VN_BIB_STRING_'+names.length+'_';
+    names.forEach((name,index)=>{sentinels[name]=`${marker}${index}_END`;});
+    const used=new Set<string>();
+    const expressions=[...entries.map(entry=>entry.input),...raw.preambles.map(preamble=>`@misc{VN_PREAMBLE_PROBE,value=${preamble}}`)];
+    for(const expression of expressions){
+      // Let the established scanner resolve bare string tokens. Braced/quoted
+      // mentions of the same word must not be mistaken for macro references.
+      const probe=parseVerbatim(expression,{strings:sentinels});
+      for(const value of Object.values(probe.entries[0]?.fields||{})){
+        names.forEach((name,index)=>{if(value.includes(`${marker}${index}_END`))used.add(name);});
+      }
+    }
+    const declarations=names.filter(name=>used.has(name)).map(name=>`@string{${name}={${raw.strings[name]}}}`);
+    const preambles=raw.preambles.map(preamble=>`@preamble{${preamble}}`);
+    result.push({id:library.id,name:library.name,source:[...declarations,...preambles,...entries.map(entry=>entry.input)].join('\n\n')+'\n'});
+  }
+  extractionCache.push({snapshot:libraries.map(library=>({...library})),keySignature,result});
+  if(extractionCache.length>16)extractionCache.shift();
+  return result;
+}

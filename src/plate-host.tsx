@@ -11,13 +11,15 @@ import {MarkdownPlugin} from '@platejs/markdown';
 import {Range,Path} from 'slate';
 import {EditorKit} from './components/editor/editor-kit';
 import {Editor,EditorContainer} from './components/ui/editor';
+import {BibtexBibliography} from './components/ui/bibtex-bibliography';
 import {TooltipProvider} from './components/ui/tooltip';
 import {Toaster} from 'sonner';
 import {EditorModel} from './editor-model';
 import type {DocumentHost,MathHostHooks,FormulaEntry} from './document-host';
-import {documentStorageKey,formulaNode,isFormula,newId,plateLatex,restoreDocument,parseDocumentFile,documentContentKey,type FormulaNode} from './plate-document';
+import {documentStorageKey,formulaNode,isFormula,newId,plateLatex,restoreDocumentEnvelope,parseDocumentEnvelope,validateDocumentLibraries,documentContentKey,type FormulaNode} from './plate-document';
 import {importMath} from './tex-import';
-import {validReferenceKey} from './references';
+import {citedReferenceKeys,referenceTargets,validReferenceKey} from './references';
+import {citedBibLibraries,validateBibLibraries,validCitationKey,type BibLibrary} from './bibtex';
 
 export class PlateMathHost implements DocumentHost {
   readonly editor:PlateEditor;
@@ -30,10 +32,28 @@ export class PlateMathHost implements DocumentHost {
   private savedDocument='';
   private activeFormula:HTMLElement|undefined;
   private pendingActivation=new Set<string>();
+  private bibliographyLibraries:readonly BibLibrary[]=Object.freeze([]);
+  private bibliographyListeners=new Set<()=>void>();
+  getBibliographyLibraries=():readonly BibLibrary[]=>this.bibliographyLibraries;
+  subscribeBibliography=(listener:()=>void)=>{this.bibliographyListeners.add(listener);return ()=>{this.bibliographyListeners.delete(listener);};};
+  private replaceBibliography(libraries:readonly BibLibrary[]){
+    this.bibliographyLibraries=Object.freeze(libraries.map(library=>Object.freeze({...library})));
+    for(const listener of this.bibliographyListeners)listener();
+  }
+  /** Attached sources remain a session view; only cited entries belong to the document. */
+  setBibliographyLibraries(libraries:readonly BibLibrary[]):void {
+    const next=validateBibLibraries(libraries);validateDocumentLibraries(this.editor.children,next);
+    if(JSON.stringify(next)===JSON.stringify(this.bibliographyLibraries))return;
+    this.replaceBibliography(next);this.save();this.scheduleChange();
+  }
+  private envelope(){
+    const bibliographyLibraries=citedBibLibraries(this.bibliographyLibraries,citedReferenceKeys(this.editor.children));
+    return {version:1,value:this.editor.children,...(bibliographyLibraries.length?{bibliographyLibraries}:{})};
+  }
   get readOnly(){return this.mount.querySelector('[data-slate-editor]')?.getAttribute('contenteditable')==='false';}
   constructor(readonly mount:HTMLElement,initial:EditorModel,private hooks:MathHostHooks){
-    const value=restoreDocument(initial);
-    this.editor=createPlateEditor({plugins:EditorKit,value});
+    const restored=restoreDocumentEnvelope(initial);this.replaceBibliography(restored.bibliographyLibraries);
+    this.editor=createPlateEditor({plugins:EditorKit,value:restored.value});
     this.ensureFormulas();
     const originalNormalize=this.editor.tf.normalizeNode.bind(this.editor);
     this.editor.tf.normalizeNode=entry=>{
@@ -45,14 +65,14 @@ export class PlateMathHost implements DocumentHost {
       }
       originalNormalize(entry);
     };
-    this.savedDocument=JSON.stringify({version:1,value:this.editor.children},null,2);
+    this.savedDocument=JSON.stringify(this.envelope(),null,2);
     mount.removeAttribute('contenteditable');mount.removeAttribute('role');mount.removeAttribute('aria-label');mount.id='plateMount';
     this.root=createRoot(mount);
     flushSync(()=>this.root.render(<HostContext.Provider value={this}><TooltipProvider><Plate editor={this.editor} onChange={()=>this.changed()}>
       <EditorContainer><Editor renderText={props=><DisplayBoundaryText {...props} />} id="textFlow" aria-label={t("Body")} placeholder={t("Type here…")}
         onPointerDown={e=>{if(!(e.target as Element).closest('.inline-formula')){this.activeFormula=undefined;this.hooks.leave();}}}
         onFocus={()=>{this.activeFormula=undefined;this.hooks.leave();}}
-        onKeyDownCapture={e=>this.handleObjectDelete(e)} onKeyDown={e=>this.keyDown(e)} /></EditorContainer>
+        onKeyDownCapture={e=>this.handleObjectDelete(e)} onKeyDown={e=>this.keyDown(e)} /><BibtexBibliography /></EditorContainer>
     </Plate><Toaster /></TooltipProvider></HostContext.Provider>));
     this.initialized=true;this.persist();
   }
@@ -105,7 +125,7 @@ export class PlateMathHost implements DocumentHost {
     const model=this.models.get(element.dataset.mathId!);return model?[{element,model}]:[];
   });}
   private locate(element:HTMLElement){return [...NodeApi.nodes(this.editor)].find(([n])=>'type' in n&&isFormula(n)&&n.id===element.dataset.mathId) as [FormulaNode,number[]]|undefined;}
-  private save(){try{draftStorage().setItem(documentStorageKey,JSON.stringify({version:1,value:this.editor.children}));}catch{document.getElementById('error')!.textContent='文档较大，浏览器草稿空间不足。请导出文档保存。';}}
+  private save(){try{draftStorage().setItem(documentStorageKey,JSON.stringify(this.envelope()));}catch{document.getElementById('error')!.textContent='文档较大，浏览器草稿空间不足。请导出文档保存。';}}
   persist(){
     if(this.syncing||!this.initialized)return;this.syncing=true;
     try{
@@ -121,15 +141,15 @@ export class PlateMathHost implements DocumentHost {
     }finally{this.syncing=false;}
   }
   exportLatex(){return plateLatex(this.editor.children as Value);}
-  serializeDocument(){this.persist();return JSON.stringify({version:1,value:this.editor.children},null,2);}
+  serializeDocument(){this.persist();return JSON.stringify(this.envelope(),null,2);}
   hasUnsavedChanges(){return documentContentKey(this.serializeDocument())!==documentContentKey(this.savedDocument);}
   markDocumentSaved(source:string){this.savedDocument=source;}
   openDocument(source:string){
-    const value=parseDocumentFile(source);
+    const opened=parseDocumentEnvelope(source);
     this.persist();
     draftStorage().setItem(documentStorageKey+'-before-open',this.serializeDocument());
     this.hooks.leave();this.activeFormula=undefined;this.pendingActivation.clear();this.models.clear();
-    flushSync(()=>this.editor.tf.setValue(value));
+    flushSync(()=>{this.replaceBibliography(opened.bibliographyLibraries);this.editor.tf.setValue(opened.value);});
     for(const [raw] of NodeApi.nodes(this.editor)){
       if(!isFormula(raw))continue;
       const node=raw as FormulaNode;
@@ -138,7 +158,11 @@ export class PlateMathHost implements DocumentHost {
     this.editor.history={undos:[],redos:[]};
     this.persist();this.savedDocument=this.serializeDocument();this.scheduleChange();
   }
-  exportMarkdown(){return this.editor.getApi(MarkdownPlugin).markdown.serialize();}
+  exportMarkdown(){
+    const body=this.editor.getApi(MarkdownPlugin).markdown.serialize();
+    const entries=referenceTargets(this.editor.children,this.bibliographyLibraries).filter(target=>target.libraryId&&target.number).sort((a,b)=>Number(a.number)-Number(b.number));
+    return body+(entries.length?'\n\n## Bibliography\n\n'+entries.map(entry=>'\\bibitem{'+entry.key+'} '+entry.description).join('\n\n'):'');
+  }
   get activeFormulaId(){return this.activeFormula?.dataset.mathId;}
   prepareTextInsertion(){
     if(this.activeFormula?.isConnected)this.exit(this.activeFormula,1,false);
@@ -254,7 +278,7 @@ export class PlateMathHost implements DocumentHost {
       const code=this.editor.api.above({match:n=>n.type==='code_block'});
       if(match&&!code){
         const keys=match[2].split(',').map(key=>key.trim());
-        if(keys.every(validReferenceKey)&&(match[1]==='cite'||keys.length===1)){
+        if(keys.every(match[1]==='cite'?validCitationKey:validReferenceKey)&&(match[1]==='cite'||keys.length===1)){
           event.preventDefault();this.editor.tf.withNewBatch(()=>{
             this.editor.tf.select({anchor:{...point,offset:point.offset-match[0].length},focus:point});
             this.editor.tf.insertNodes(match[1]==='label'?{type:'tex_label',id:newId(),texLabel:keys[0],children:[{text:''}]}:{type:'tex_reference',id:newId(),command:match[1],keys,children:[{text:''}]},{select:true});

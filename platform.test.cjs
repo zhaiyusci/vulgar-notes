@@ -39,12 +39,15 @@ async function harness(t,desktop=true){
  return {window,state,api:window.platform};
 }
 
-async function browserSelection(h,file,{cancel=false}={}){
- const pending=h.api.openDocumentFile();
+async function browserSelection(h,file,{cancel=false,bibtex=false}={}){
+ const pending=bibtex?h.api.openBibtexFile():h.api.openDocumentFile();
  const input=h.window.document.querySelector('input[type="file"]');
  assert.ok(input,'opening a browser document must create a file picker');
- assert.match(input.accept,/(?:^|,)\s*\.vulgar(?:,|$)/i);
- assert.match(input.accept,/(?:^|,)\s*\.json(?:,|$)/i);
+ if(bibtex)assert.match(input.accept,/(?:^|,)\s*\.bib(?:,|$)/i);
+ else{
+  assert.match(input.accept,/(?:^|,)\s*\.vulgar(?:,|$)/i);
+  assert.match(input.accept,/(?:^|,)\s*\.json(?:,|$)/i);
+ }
  if(cancel)input.dispatchEvent(new h.window.Event('cancel'));
  else{
   Object.defineProperty(input,'files',{value:file?[file]:[]});
@@ -133,4 +136,24 @@ test('browser saves download native files containing the unchanged JSON data',as
   assert.match(h.state.downloadBlob.type,/^application\/json/);
   assert.equal(h.window.document.querySelector('a'),null,'temporary download links must be removed');
  }
+});
+
+test('desktop bibliography picker is separate from native document opening and preserves BibTeX source',async t=>{
+ const h=await harness(t),source='@article{paper, title={中文 and {LaTeX}}, year={2026}}';
+ h.state.openPath='C:\\notes\\library.BIB';h.state.files[h.state.openPath]=source;
+ const opened=await h.api.openBibtexFile();
+ assert.equal(opened.name,'library.BIB');assert.equal(opened.text,source);
+ assert.deepEqual(Array.from(h.state.opens[0].filters[0].extensions),['bib']);
+ await assert.rejects(h.api.openDocumentFile());
+ h.state.openPath='C:\\notes\\document.vulgar';await assert.rejects(h.api.openBibtexFile());
+ assert.equal(h.state.reads.length,1);
+ h.state.openPath=null;assert.equal(await h.api.openBibtexFile(),null);
+});
+
+test('browser bibliography picker accepts .bib only and cleans up after selection or cancellation',async t=>{
+ const h=await harness(t,false),source='@book{2026/key, title={A book}}';
+ const opened=await browserSelection(h,new h.window.File([source],'source.BIB'),{bibtex:true});
+ assert.equal(opened.name,'source.BIB');assert.equal(opened.text,source);
+ await assert.rejects(browserSelection(h,new h.window.File(['{}'],'document.json'),{bibtex:true}));
+ assert.equal(await browserSelection(h,null,{bibtex:true,cancel:true}),null);
 });
