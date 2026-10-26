@@ -8,7 +8,7 @@ test('Plate document / independent MathJax mount integration',async t=>{
  window.document.write('<!doctype html><html><body></body></html>');
  for(const key of ['innerWidth','innerHeight','window','document','navigator','sessionStorage','Node','Element','HTMLElement','HTMLInputElement','HTMLTextAreaElement','Document','DocumentFragment','MutationObserver','ResizeObserver','DOMParser','Range','Event','CustomEvent','KeyboardEvent','ClipboardEvent','DOMRect','HTMLDivElement','HTMLSpanElement','NodeFilter','ShadowRoot'])Object.defineProperty(globalThis,key,{value:key==='window'?window:window[key],configurable:true});
  globalThis.getComputedStyle=window.getComputedStyle.bind(window);globalThis.requestAnimationFrame=window.requestAnimationFrame.bind(window);globalThis.cancelAnimationFrame=window.cancelAnimationFrame.bind(window);
- await build({entryPoints:['src/plate-host.tsx'],bundle:true,platform:'node',format:'cjs',outfile:'.plate-test.cjs',loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'test-kit',setup(b){b.onLoad({filter:/components[\\/]editor[\\/]editor-kit\.tsx$/},()=>({contents:`import {ParagraphPlugin} from 'platejs/react';import {MathKit} from './plugins/math-kit';import {MarkdownKit} from './plugins/markdown-kit';import {ReferenceKit} from './plugins/reference-kit';export const EditorKit=[ParagraphPlugin,...MathKit,...ReferenceKit,...MarkdownKit];`,loader:'tsx',resolveDir:require('node:path').resolve('src/components/editor')}))}}]});
+ await build({entryPoints:['src/plate-host.tsx'],bundle:true,platform:'node',format:'cjs',outfile:'.plate-test.cjs',loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'test-kit',setup(b){b.onLoad({filter:/components[\\/]editor[\\/]editor-kit\.tsx$/},()=>({contents:`import {ParagraphPlugin} from 'platejs/react';import {TrailingBlockPlugin} from 'platejs';import {MathKit} from './plugins/math-kit';import {MarkdownKit} from './plugins/markdown-kit';import {ReferenceKit} from './plugins/reference-kit';import {FootnoteKit} from './plugins/footnote-kit';export const EditorKit=[ParagraphPlugin,...MathKit,...ReferenceKit,TrailingBlockPlugin,...MarkdownKit,...FootnoteKit];`,loader:'tsx',resolveDir:require('node:path').resolve('src/components/editor')}))}}]});
  const {PlateMathHost}=require('./.plate-test.cjs');fs.unlinkSync('.plate-test.cjs');
  const tick=()=>new Promise(resolve=>setTimeout(resolve,10));
  function setup(){sessionStorage.clear();const mount=document.createElement('div');document.body.append(mount);const activations=[];const flow=new PlateMathHost(mount,new EditorModel(),{activate:(...args)=>activations.push(args),leave(){},change(){}});return {flow,editor:flow.editor,activations};}
@@ -197,6 +197,103 @@ test('Plate document / independent MathJax mount integration',async t=>{
   assert.throws(()=>flow.setBibliographyLibraries([{id:'conflict',name:'Conflict.bib',source:'@book{manual,title={Duplicate}}'}]));
   assert.equal(flow.getBibliographyLibraries(),attached);flow.destroy();
  });
+ await t.test('manual and library references share one contiguous bibliography with rich editing and citation jumps',async()=>{
+  const {flow,editor}=setup();
+  const cite=key=>({type:'tex_reference',command:'cite',keys:[key],children:[{text:''}]});
+  const manual=(key,text)=>({type:'bibliography_entry',id:key,citeKey:key,children:[{text,bold:true},{text:' details'}]});
+  const body=[{type:'p',id:'body-a',children:[{text:'Before '},cite('m1'),{text:' and '},cite('g2'),{text:' '},cite('g1'),{text:''}]},manual('m1','First manual'),{type:'p',id:'body-b',children:[{text:'Between the original manual entries'}]},manual('m2','Second manual'),{type:'p',id:'body-c',children:[{text:'After the original entries'}]},{type:'p',children:[{text:''}]}];
+  flow.openDocument(JSON.stringify({version:1,value:body}));
+  assert.equal(flow.hasUnsavedChanges(),false,'normalizing an opened legacy layout establishes its saved baseline');
+  flow.setBibliographyLibraries([{id:'lib',name:'Papers.bib',source:'@book{g1,title={First library}}\n@book{g2,title={Second library}}'}]);await tick();
+  assert.deepEqual(editor.children.filter(node=>node.type==='p'&&node.id?.startsWith('body-')).map(node=>node.id),['body-a','body-b','body-c']);
+  assert.deepEqual(editor.children.filter(node=>node.type==='bibliography_entry').map(node=>node.citeKey),['m1','m2']);
+  const first=editor.children.findIndex(node=>node.citeKey==='m1');
+  assert.equal(editor.children[first+1].citeKey,'m2');assert.equal(editor.children[first+2].type,'p');assert.equal(editor.children[first+2].children[0].text,'');
+  assert.equal(flow.mount.querySelectorAll('[data-bibliography-heading]').length,1);
+  assert.deepEqual([...flow.mount.querySelectorAll('[data-bibliography-key]')].map(node=>node.dataset.bibliographyKey),['m1','g2','g1','m2']);
+  const generated=flow.mount.querySelector('li[data-bibliography-key]').closest('.bibtex-bibliography');assert.equal(editor.api.toDOMNode(editor.children[first+1]).contains(generated),true);assert.equal(generated.tagName,'DIV');assert.equal(generated.getAttribute('contenteditable'),'false');
+  assert.equal(generated.querySelector('h2,section'),null);
+  assert.deepEqual([...flow.mount.querySelectorAll('[role="link"]')].map(link=>link.textContent),['[1]','[2]','[3]']);
+  const firstNode=editor.children[first],manualElement=editor.api.toDOMNode(firstNode),libraryElement=flow.mount.querySelector('[id="bibtex-g2"]');
+  let manualJump=false,libraryJump=false;manualElement.scrollIntoView=()=>{manualJump=true;};libraryElement.scrollIntoView=()=>{libraryJump=true;};
+  const links=flow.mount.querySelectorAll('[role="link"]');links[0].dispatchEvent(new window.MouseEvent('click',{bubbles:true,button:0,ctrlKey:true}));links[1].dispatchEvent(new window.MouseEvent('click',{bubbles:true,button:0,ctrlKey:true}));
+  assert.equal(manualJump,true);assert.equal(libraryJump,true);
+  editor.tf.select({path:[first,0],offset:12});editor.tf.withNewBatch(()=>editor.tf.insertText(' edited'));await tick();
+  assert.equal(editor.children[first].children[0].bold,true);assert.match(editor.children[first].children[0].text,/edited/);
+  editor.tf.undo();await tick();assert.equal(editor.children[first].children[0].text,'First manual');assert.equal(editor.children[first].children[0].bold,true);
+  assert.equal(flow.mount.querySelectorAll('[data-bibliography-heading]').length,1);
+  const md=flow.exportMarkdown();assert.equal((md.match(/^## Notes and references$/gm)||[]).length,1);assert.match(md,/\*\*First manual\*\*/);flow.destroy();
+ });
+ await t.test('adding or deleting the last manual reference moves generated rows between one group and its footer',async()=>{
+  const {flow,editor}=setup();
+  editor.tf.setValue([{type:'p',children:[{text:''},{type:'tex_reference',command:'cite',keys:['g'],children:[{text:''}]},{text:''}]}]);
+  flow.setBibliographyLibraries([{id:'lib',name:'Papers.bib',source:'@book{g,title={Library entry}}'}]);await tick();
+  assert.equal(flow.mount.querySelectorAll('[data-bibliography-heading]').length,1);assert.equal(flow.mount.querySelector('.bibtex-bibliography').tagName,'SECTION');
+  editor.tf.withNewBatch(()=>editor.tf.insertNodes({type:'bibliography_entry',citeKey:'manual',children:[{text:'Editable manual'}]},{at:[editor.children.length]}));await tick();
+  assert.equal(flow.mount.querySelectorAll('[data-bibliography-heading]').length,1);assert.equal(flow.mount.querySelector('.bibtex-bibliography').tagName,'DIV');
+  const index=editor.children.findIndex(node=>node.type==='bibliography_entry');editor.tf.withNewBatch(()=>editor.tf.removeNodes({at:[index]}));await tick();
+  assert.equal(flow.mount.querySelectorAll('[data-bibliography-heading]').length,1);assert.equal(flow.mount.querySelector('.bibtex-bibliography').tagName,'SECTION');
+  editor.tf.undo();await tick();assert.equal(flow.mount.querySelectorAll('[data-bibliography-heading]').length,1);assert.equal(flow.mount.querySelector('.bibtex-bibliography').tagName,'DIV');flow.destroy();
+ });
+ await t.test('pasted and dragged manual rows stay together without changing prose or manual order',async()=>{
+  const {flow,editor}=setup();
+  const p=text=>({type:'p',children:[{text}]}),bib=(key,text)=>({type:'bibliography_entry',id:key,citeKey:key,children:[{text,italic:true}]});
+  flow.openDocument(JSON.stringify({version:1,value:[p('A'),bib('a','Manual A'),p('B'),bib('b','Manual B'),p('C')]}));await tick();
+  assert.deepEqual(editor.children.filter(node=>node.type==='p').map(node=>node.children[0].text),['A','B','C','']);
+  assert.deepEqual(editor.children.filter(node=>node.type==='bibliography_entry').map(node=>node.id),['a','b']);
+  editor.tf.withNewBatch(()=>editor.tf.insertNodes([bib('c','Manual C'),p('Pasted body')],{at:[1]}));await tick();
+  assert.deepEqual(editor.children.filter(node=>node.type==='p').map(node=>node.children[0].text),['A','Pasted body','B','C','']);
+  assert.deepEqual(editor.children.filter(node=>node.type==='bibliography_entry').map(node=>node.id),['c','a','b']);
+  editor.tf.undo();await tick();assert.equal(editor.children.some(node=>node.id==='c'),false);assert.equal(editor.children.some(node=>node.children?.[0]?.text==='Pasted body'),false);
+  const index=editor.children.findIndex(node=>node.id==='b');editor.tf.select({path:[index,0],offset:3});editor.tf.withNewBatch(()=>editor.tf.moveNodes({at:[index],to:[0]}));await tick();
+  assert.deepEqual(editor.children.filter(node=>node.type==='p').map(node=>node.children[0].text),['A','B','C','']);assert.deepEqual(editor.children.filter(node=>node.type==='bibliography_entry').map(node=>node.id),['b','a']);
+  assert.equal(editor.children[editor.selection.anchor.path[0]].id,'b');assert.equal(editor.selection.anchor.offset,3);
+  editor.tf.undo();await tick();assert.deepEqual(editor.children.filter(node=>node.type==='bibliography_entry').map(node=>node.id),['a','b']);
+  assert.equal(flow.mount.querySelectorAll('[data-bibliography-heading]').length,1);flow.destroy();
+ });
+ await t.test('legacy nested manual entries keep their rich content when collected, and Enter exits before the list',async()=>{
+  const {flow,editor}=setup();
+  flow.openDocument(JSON.stringify({version:1,value:[{type:'blockquote',children:[{type:'p',children:[{text:'Quoted body'}]},{type:'bibliography_entry',id:'nested-bib',citeKey:'nested',children:[{text:'Nested entry',italic:true}]}]},{type:'p',children:[{text:'Following body'}]}]}));await tick();
+  assert.equal(editor.children[0].children[0].children[0].text,'Quoted body');assert.equal(editor.children[1].children[0].text,'Following body');
+  const index=editor.children.findIndex(node=>node.id==='nested-bib');assert.ok(index>1);assert.equal(editor.children[index].children[0].italic,true);
+  editor.tf.select({path:[index,0],offset:6});let prevented=false;flow.keyDown({key:'Enter',shiftKey:false,nativeEvent:{isComposing:false},preventDefault(){prevented=true;}});await tick();
+  assert.equal(prevented,true);assert.equal(editor.children[editor.selection.anchor.path[0]].type,'p');assert.equal(editor.children[editor.selection.anchor.path[0]+1].id,'nested-bib');
+  assert.equal(flow.mount.querySelectorAll('[data-bibliography-heading]').length,1);flow.destroy();
+ });
+ await t.test('endnotes, legacy manual entries and library references share physical and numeric first-reference order',async()=>{
+  const {flow,editor}=setup();
+  const cite=key=>({type:'tex_reference',command:'cite',keys:[key],children:[{text:''}]}),note=id=>({type:'footnoteReference',identifier:id,children:[{text:''}]});
+  const definition=(id,text)=>({type:'footnoteDefinition',id:'note-'+id,identifier:id,children:[{type:'p',children:[{text,bold:true}]}]});
+  const value=[{type:'p',children:[{text:'Cite '},cite('g1'),{text:' note '},note('second'),{text:' cite '},cite('g2'),{text:' note '},note('first'),{text:' legacy '},cite('manual'),{text:''}]},definition('first','First note'),{type:'p',children:[{text:'Body after notes'}]},definition('second','Second note'),{type:'bibliography_entry',id:'manual',citeKey:'manual',children:[{text:'Legacy entry',italic:true}]}];
+  flow.openDocument(JSON.stringify({version:1,value}));flow.setBibliographyLibraries([{id:'lib',name:'Papers.bib',source:'@book{g1,title={Library one}}\n@book{g2,title={Library two}}'}]);await tick();
+  assert.equal(flow.mount.querySelectorAll('[data-bibliography-heading]').length,1);
+  assert.deepEqual([...flow.mount.querySelectorAll('[data-bibliography-key]')].map(node=>node.dataset.bibliographyKey),['g1','endnote:second','g2','endnote:first','manual']);
+  assert.deepEqual([...flow.mount.querySelectorAll('.tex-reference-content,.endnote-reference>button,.endnote-reference button')].map(node=>node.textContent),['[1]','[2]','[3]','[4]','[5]']);
+  assert.match(flow.mount.querySelector('[data-bibliography-key="endnote:second"] button[aria-label]').getAttribute('aria-label'),/ 2$/);
+  assert.deepEqual(editor.children.filter(node=>node.type==='footnoteDefinition'||node.type==='bibliography_entry').map(node=>node.id),['note-second','note-first','manual']);
+  const noteIndex=editor.children.findIndex(node=>node.id==='note-second');
+  editor.tf.select({path:[noteIndex,0,0],offset:11});editor.tf.withNewBatch(()=>editor.tf.insertText(' edited'));await tick();assert.match(editor.children[noteIndex].children[0].children[0].text,/edited/);assert.equal(editor.children[noteIndex].children[0].children[0].bold,true);
+  editor.tf.undo();await tick();assert.equal(editor.children[noteIndex].children[0].children[0].text,'Second note');
+  const noteButton=flow.mount.querySelector('.endnote-reference button');noteButton.dispatchEvent(new window.MouseEvent('click',{bubbles:true,button:0,ctrlKey:true}));await tick();assert.equal(editor.children[editor.selection.anchor.path[0]].identifier,'second');
+  const snapshot=flow.serializeDocument();flow.openDocument(snapshot);await tick();assert.equal(flow.mount.querySelectorAll('[data-bibliography-heading]').length,1);assert.deepEqual([...flow.mount.querySelectorAll('[data-bibliography-key]')].map(node=>node.dataset.bibliographyKey),['g1','endnote:second','g2','endnote:first','manual']);
+  assert.equal(editor.children.find(node=>node.id==='note-second').children[0].children[0].bold,true);
+  flow.destroy();
+ });
+ await t.test('endnote edges place a prose caret, click selects, and ordinary deletion still previews the object first',async()=>{
+  const {flow,editor}=setup();editor.tf.setValue([{type:'p',children:[{text:'Before '},{type:'footnoteReference',identifier:'1',children:[{text:''}]},{text:''}]}]);await tick();
+  editor.tf.focus({at:editor.api.end([])});await tick();const button=flow.mount.querySelector('.endnote-reference button');button.getBoundingClientRect=()=>({left:10,right:50,top:0,bottom:20,width:40,height:20});
+  button.dispatchEvent(new window.MouseEvent('click',{bubbles:true,clientX:30,button:0}));await tick();assert.deepEqual(editor.selection.anchor.path,[0,1,0]);assert.equal(button.closest('.endnote-reference').dataset.endnoteSelected,'true');
+  button.dispatchEvent(new window.MouseEvent('click',{bubbles:true,clientX:49,button:0}));await tick();assert.deepEqual(editor.selection.anchor.path,[0,2]);assert.equal(button.closest('.endnote-reference').dataset.endnoteSelected,'false');
+  const event={key:'Backspace',repeat:false,nativeEvent:{isComposing:false},preventDefault(){}};
+  flow.keyDown(event);await tick();assert.equal(editor.children[0].children.some(node=>node.type==='footnoteReference'),true);assert.deepEqual(editor.selection,{anchor:{path:[0,0],offset:7},focus:{path:[0,2],offset:0}});
+  flow.keyDown(event);await tick();assert.equal(editor.children[0].children.some(node=>node.type==='footnoteReference'),false);editor.tf.undo();await tick();assert.equal(editor.children[0].children.some(node=>node.type==='footnoteReference'),true);flow.destroy();
+ });
+ await t.test('notes alone create one final section and Markdown-style note triggers remain literal',async()=>{
+  const {flow,editor}=setup();assert.equal(flow.mount.querySelectorAll('[data-bibliography-heading]').length,0);
+  flow.openDocument(JSON.stringify({version:1,value:[{type:'p',children:[{text:''},{type:'footnoteReference',identifier:'one',children:[{text:''}]},{text:''}]},{type:'footnoteDefinition',identifier:'one',children:[{type:'p',children:[{text:'Editable note'}]}]}]}));await tick();
+  assert.equal(flow.mount.querySelectorAll('[data-bibliography-heading]').length,1);assert.equal(flow.mount.querySelector('.endnote-reference button').textContent,'[1]');
+  editor.tf.select({path:[0,2],offset:0});editor.tf.insertText('[');editor.tf.insertText('^');await tick();assert.equal(editor.children[0].children[2].text,'[^');assert.equal(editor.children[0].children.some(node=>node.type==='footnoteInput'),false);flow.destroy();
+ });
  await t.test('citation undo and redo update embedded snapshots while retaining attached source choices',async()=>{
   const {flow,editor}=setup();flow.setBibliographyLibraries([{id:'papers',name:'Papers.bib',source:'@book{a,title={Title A}}\n@book{b,title={Title B}}'}]);
   editor.tf.select(editor.api.end([]));editor.tf.withNewBatch(()=>editor.tf.insertNodes({type:'tex_reference',command:'cite',keys:['a'],children:[{text:''}]}));await tick();
@@ -268,7 +365,8 @@ test('Plate document / independent MathJax mount integration',async t=>{
   const objects=[
    {type:'inline_equation',texExpression:'x',numbered:true,children:[{text:''}]},
    {type:'inline_equation',display:true,texExpression:'x',numbered:true,children:[{text:''}]},
-   ...['eqref','ref','cite'].map(command=>({type:'tex_reference',command,keys:['target'],children:[{text:''}]}))
+   ...['eqref','ref','cite'].map(command=>({type:'tex_reference',command,keys:['target'],children:[{text:''}]})),
+   {type:'footnoteReference',identifier:'1',children:[{text:''}]}
   ];
   for(const object of objects)for(const key of ['Backspace','Delete']){
    const {flow,editor}=setup();editor.tf.setValue([{type:'p',children:[{text:'A'},object,{text:'B'}]}]);await tick();

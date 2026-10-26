@@ -10,6 +10,8 @@ const library=(id,source,name=id+'.bib')=>({id,name,source});
 const cite=(...keys)=>({type:'tex_reference',command:'cite',keys,children:[{text:''}]});
 const paragraph=(...children)=>({type:'p',children});
 const manual=(key,children)=>({type:'bibliography_entry',citeKey:key,children});
+const noteRef=identifier=>({type:'footnoteReference',identifier,children:[{text:''}]});
+const note=(identifier,...children)=>({type:'footnoteDefinition',identifier,children});
 
 test('without imported libraries, manual bibliography keeps the legacy LaTeX path',()=>{
   const tex=latexDocument([paragraph(cite('manual')),manual('manual',[{text:'Author & Title.'}])]);
@@ -57,16 +59,17 @@ test('Unicode apostrophes in citation keys and September abbreviations survive s
   assert.equal(JSON.stringify({value,libraries}),before);
 });
 
-test('manual bibliography coexists with libraries as rich TeX notes, ordered before cited library entries',()=>{
+test('manual bibliography coexists with libraries in first-reference order, with uncited manual entries retained',()=>{
   const value=[paragraph(cite('imported')),
     manual('manualA',[{text:'Author & 50% '},{text:'bold',bold:true},{type:'inline_equation',texExpression:'x^2',children:[{text:''}]}]),
     manual('manualB',[{text:'Uncited manual entry'}])];
   const tex=latexDocument(value,[library('one','@book{imported,title={Imported}}\n@book{unused,title={Unused}}')]);
   assert.match(tex,/@misc\{manualA,[\s\S]*note = \{Author \\& 50\\% \\textbf\{bold\}\\\(x\^2\\\)\}/);
   assert.match(tex,/@misc\{manualB,[\s\S]*Uncited manual entry/);
-  assert.ok(tex.indexOf('\\nocite{manualA,manualB}')>tex.indexOf('\\begin{document}'));
-  assert.ok(tex.indexOf('\\nocite{manualA,manualB}')<tex.indexOf('\\cite{imported}'));
+  assert.ok(tex.indexOf('\\nocite{imported,manualA,manualB}')>tex.indexOf('\\begin{document}'));
+  assert.ok(tex.indexOf('\\nocite{imported,manualA,manualB}')<tex.indexOf('\\cite{imported}'));
   assert.doesNotMatch(tex,/thebibliography|\\nocite\{\*\}|\\nocite\{unused\}/);
+  assert.equal((tex.match(/\\printbibliography\b/g)||[]).length,1,'manual and imported entries share one TeX bibliography');
   assert.match(tex,/vulgar-bibliography-2\.bib/);
 });
 
@@ -85,7 +88,7 @@ test('uncited dependencies supply data without entering the printed bibliography
   for(const raw of [parent,childA,childB])assert.ok(tex.includes(raw));
   assert.match(tex,/defernumbers=true/);
   assert.match(tex,/\\addtocategory\{vulgarCited\}\{childB,childA\}/);
-  assert.match(tex,/\\printbibliography\[category=vulgarCited\]/);
+  assert.match(tex,/\\printbibliography\[category=vulgarCited,title=\{Notes and references\}\]/);
   assert.doesNotMatch(tex,/UNUSED-LIBRARY-MARKER|\\nocite\{parent\}/);
 });
 
@@ -107,4 +110,40 @@ test('filecontents terminators inside imported sources fail clearly rather than 
     const source='@article{paper,title={Example},note={'+command+'}}\n';
     assert.throws(()=>latexDocument([paragraph(cite('paper'))],[library('one',source)]),/filecontents terminator/);
   }
+});
+
+test('endnotes and manual references become one native bibliography without BibTeX',()=>{
+  const value=[paragraph({text:'A note '},noteRef('n1'),{text:' and source '},cite('manual'),{text:' then repeat '},noteRef('n1')),
+    note('n1',paragraph({text:'Rich note ',bold:true},{type:'inline_equation',texExpression:'x^2',children:[{text:''}]})),
+    manual('manual',[{text:'Manual source.'}]),note('orphan',paragraph({text:'Retained orphan note.'}))];
+  const before=JSON.stringify(value),tex=latexDocument(value),keys=[...tex.matchAll(/\\bibitem\{([^}]+)\}/g)].map(match=>match[1]);
+  assert.equal(keys.length,3);assert.ok(keys[0].startsWith('vulgar-note-'));assert.equal(keys[1],'manual');
+  assert.equal((tex.match(new RegExp('\\\\cite\\{'+keys[0]+'\\}','g'))||[]).length,2);
+  assert.match(tex,/\\textbf\{Rich note \}\\\(x\^2\\\)/);
+  assert.match(tex,/\\renewcommand\{\\refname\}\{Notes and references\}/);
+  assert.equal((tex.match(/\\begin\{thebibliography\}/g)||[]).length,1);
+  assert.doesNotMatch(tex,/biblatex|\\footnote|\\printendnotes/);
+  assert.equal(JSON.stringify(value),before);
+});
+
+test('interleaved endnotes, nested citations and library references use one shared BibLaTeX sequence',()=>{
+  const value=[paragraph(noteRef('n1'),{text:' then '},cite('second'),{text:' and repeat '},noteRef('n1')),
+    note('n1',paragraph({text:'A note with ',bold:true},{type:'inline_equation',texExpression:'E=mc^2',children:[{text:''}]},{text:' and '},cite('first'))),
+    manual('manual',[{text:'Uncited source.'}])];
+  const libraries=[library('refs','@book{first,title={First}}\n@book{second,title={Second}}\n@book{unused,title={UNUSED_ENTRY_MARKER}}')];
+  const tex=latexDocument(value,libraries),key=tex.match(/@misc\{(vulgar-note-[^,]+),/)[1];
+  assert.ok(tex.includes('\\nocite{'+key+',first,second,manual}'));
+  assert.equal((tex.match(/\\printbibliography\b/g)||[]).length,1);
+  assert.match(tex,/\\textbf\{A note with \}\\\(E=mc\^2\\\)/);
+  assert.doesNotMatch(tex,/\\begin\{thebibliography\}|\\footnote|\\printendnotes|UNUSED_ENTRY_MARKER/);
+});
+
+test('generated endnote keys are stable and avoid actual bibliography key collisions',()=>{
+  const colliding='vulgar-note-6e-31',libraries=[library('refs','@book{'+colliding+',title={Existing library key}}')];
+  const definition=note('n1',paragraph({text:'Note content.'}));
+  const first=latexDocument([paragraph(cite(colliding),noteRef('n1')),definition],libraries);
+  const reordered=latexDocument([paragraph(noteRef('n1'),cite(colliding)),definition],libraries);
+  const key=first.match(/@misc\{(vulgar-note-[^,]+),/)[1];
+  assert.equal(key,colliding+'-1');assert.ok(reordered.includes('@misc{'+key+','));
+  assert.ok(first.includes('@book{'+colliding+','));assert.ok(first.includes('\\cite{'+colliding+'}'));
 });

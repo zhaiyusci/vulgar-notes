@@ -14,6 +14,6 @@ import {
 
 export const FootnoteKit = [
   FootnoteInputPlugin.withComponent(FootnoteInputElement),
-  FootnoteReferencePlugin.withComponent(FootnoteReferenceElement),
+  FootnoteReferencePlugin.configure({options:{triggerQuery:()=>false}}).withComponent(FootnoteReferenceElement),
   FootnoteDefinitionPlugin.withComponent(FootnoteDefinitionElement),
 ];

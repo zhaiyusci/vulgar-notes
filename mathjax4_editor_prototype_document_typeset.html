@@ -124,6 +124,7 @@ body>h2,body>details{display:none}
 #documentTools [role=toolbar]>div{flex-wrap:wrap;gap:2px 0}
 #mathPanel{height:auto;overflow:visible;border:0;z-index:auto}
 #plateMount [data-slate-editor]{min-height:100dvh}
+#plateMount [data-slate-editor]:has(+ .bibtex-bibliography){min-height:0;height:auto}
 .sidebar-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}#documentToolsSection .sidebar-heading h3{margin:0}
 /* Include the visible gutter and the space before the first paragraph in drop targets. */
 #textFlow .slate-blockWrapper{margin-left:-24px;padding-left:24px}

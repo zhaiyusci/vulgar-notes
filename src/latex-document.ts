@@ -3,6 +3,7 @@ import {plateLatex} from './plate-document';
 import {unicodeMathPreamble,blackboardPreamble} from './letter-preamble';
 import {mhchemParser} from 'mhchemparser';
 import {citedBibLibraries,parseBibLibraries,validateBibLibraries,validCitationKey,type BibLibrary} from './bibtex';
+import {bibliographyItems} from './references';
 
 /** MathJax's physical-unit shorthand is not a LaTeX mhchem command. */
 export function portableMath(source:string):string {
@@ -41,60 +42,76 @@ function embeddedBibliography(filename:string,source:string):string {
     (/[\r\n]$/.test(source)?'':'\n')+'\\end{filecontents*}\n';
 }
 
-function biblatexDocument(value:Value,libraries:readonly BibLibrary[]):{resources:string;setup:string;body:string}|undefined {
+function referenceDocument(value:Value,libraries:readonly BibLibrary[]):{resources:string;setup:string;body:string;biblatex:boolean} {
   const checked=validateBibLibraries(libraries),keys=new Set(parseBibLibraries(checked).map(entry=>entry.key));
-  const citations=new Set<string>();
-  const collectCitations=(nodes:any[])=>nodes.forEach(node=>{
-    if(node.type==='tex_reference'&&node.command==='cite'&&Array.isArray(node.keys)){
-      for(const key of node.keys){
-        if(!validCitationKey(key))throw Error('Invalid citation key');
-        citations.add(key);
-      }
-    }
-    if(Array.isArray(node.children))collectCitations(node.children);
-  });
-  collectCitations(value);
-  const manual:{key:string;note:string}[]=[];
-  const withoutManual=(nodes:any[]):any[]=>nodes.flatMap(node=>{
+  const identifiers=new Set<string>();
+  const validate=(nodes:any[])=>nodes.forEach(node=>{
     if(node.type==='bibliography_entry'){
       if(!validCitationKey(node.citeKey))throw Error('Invalid citation key');
       if(keys.has(node.citeKey))throw Error('Duplicate citation key: '+node.citeKey);
       keys.add(node.citeKey);
-      manual.push({key:node.citeKey,note:plateLatex([{type:'p',children:node.children}],portableMath)});
-      return [];
     }
-    return [Array.isArray(node.children)?{...node,children:withoutManual(node.children)}:node];
+    if(node.type==='footnoteDefinition'){
+      if(typeof node.identifier!=='string'||!node.identifier)throw Error('Invalid endnote identifier');
+      if(identifiers.has(node.identifier))throw Error('Duplicate endnote identifier: '+node.identifier);
+      identifiers.add(node.identifier);
+    }
+    if(Array.isArray(node.children))validate(node.children);
   });
-  const filtered=withoutManual(value),retained=citedBibLibraries(checked,[...citations]);
-  // Attaching a library alone must not change the standalone TeX toolchain.
-  if(!retained.length)return undefined;
-  const body=plateLatex(filtered,portableMath),sources=retained.map(library=>library.source);
-  // Preserve manually entered bibliography entries and their document order.
-  // They are uncited in the legacy exporter too; nocite keeps that behavior.
-  if(manual.length)sources.push(manual.map(entry=>'@misc{'+entry.key+',\n  note = {'+entry.note+'}\n}').join('\n\n'));
+  validate(value);
+  const noteKeys=new Map<string,string>();
+  const noteKey=(identifier:string):string=>{
+    const existing=noteKeys.get(identifier);if(existing)return existing;
+    // Encode the identifier rather than its current number: reordering notes
+    // does not rename their anchors. Reserve against every bibliography key.
+    const base='vulgar-note-'+([...identifier].map(char=>char.codePointAt(0)!.toString(16)).join('-')||'empty');
+    let key=base,suffix=1;while(keys.has(key))key=base+'-'+suffix++;
+    keys.add(key);noteKeys.set(identifier,key);return key;
+  };
+  const transform=(nodes:any[]):any[]=>nodes.flatMap(node=>{
+    if(node.type==='bibliography_entry'||node.type==='footnoteDefinition')return [];
+    if(node.type==='footnoteReference')return [{type:'tex_reference',command:'cite',keys:[noteKey(String(node.identifier??''))],children:[{text:''}]}];
+    return [Array.isArray(node.children)?{...node,children:transform(node.children)}:node];
+  });
+  const rows=bibliographyItems(value,checked).map(item=>({
+    ...item,key:item.kind==='endnote'?noteKey(item.identifier!):item.key,
+  }));
+  const bodyNodes=transform(value),retained=citedBibLibraries(checked,rows.filter(row=>row.libraryId).map(row=>row.key));
+  if(!retained.length){
+    const definitions=rows.map(row=>({type:'bibliography_entry',citeKey:row.key,children:transform(row.node.children)}));
+    return {resources:'',setup:rows.length?'\\renewcommand{\\refname}{Notes and references}\n':'',
+      body:plateLatex([...bodyNodes,...definitions],portableMath),biblatex:false};
+  }
+  const sources=retained.map(library=>library.source);
+  const custom=rows.filter(row=>!row.libraryId).map(row=>{
+    const note=plateLatex(transform(row.node.children) as Value,portableMath).replace(/\n{2,}/g,'\\par\n');
+    return '@misc{'+row.key+',\n  note = {'+note+'}\n}';
+  });
+  if(custom.length)sources.push(custom.join('\n\n'));
   const names=sources.map((_,index)=>'\\jobname-vulgar-bibliography-'+(index+1)+'.bib');
-  const printedKeys=[...new Set([...manual.map(entry=>entry.key),...citations])];
+  const printedKeys=rows.map(row=>row.key);
   return {
     resources:sources.map((source,index)=>embeddedBibliography(names[index],source)).join('\n'),
-    // Crossref/xdata parents can supply fields without being cited themselves.
-    // Explicit filtering and deferred numbers keep those dependencies out of
-    // the bibliography and prevent them from consuming a citation number.
+    // Dependency records can supply fields without becoming numbered entries.
     setup:'\\usepackage[backend=biber,style=numeric,sorting=none,defernumbers=true]{biblatex}\n'+
       names.map(name=>'\\addbibresource{'+name+'}').join('\n')+'\n'+
       '\\DeclareBibliographyCategory{vulgarCited}\n'+
-      (printedKeys.length?'\\addtocategory{vulgarCited}{'+printedKeys.join(',')+'}\n':''),
-    body:(manual.length?'\\nocite{'+manual.map(entry=>entry.key).join(',')+'}\n':'')+body+'\n\n\\printbibliography[category=vulgarCited]',
+      '\\addtocategory{vulgarCited}{'+printedKeys.join(',')+'}\n',
+    // Seed the shared body-reference order before notes' internal references
+    // are expanded by biblatex while printing their content.
+    body:'\\nocite{'+printedKeys.join(',')+'}\n'+plateLatex(bodyNodes,portableMath)+
+      '\n\n\\printbibliography[category=vulgarCited,title={Notes and references}]',
+    biblatex:true,
   };
 }
 
 export function latexDocument(value:Value,libraries:readonly BibLibrary[]=[]):string {
-  const bibliography=libraries.length?biblatexDocument(value,libraries):undefined;
-  const body=bibliography?.body??plateLatex(value,portableMath);
-  const instructions=bibliography?
+  const bibliography=referenceDocument(value,libraries),body=bibliography.body;
+  const instructions=bibliography.biblatex?
     '% Compile: LuaLaTeX, Biber, LuaLaTeX, LuaLaTeX (TeX Live).\n% Run Biber on the document basename, without the .tex extension.\n':
     '% Compile with LuaLaTeX or XeLaTeX (TeX Live).\n% Run twice to resolve cross-references and citations.\n';
   return String.raw`% !TeX program = lualatex
-${instructions}${bibliography?.resources??''}\documentclass[UTF8,fontset=fandol,scheme=plain]{ctexart}
+${instructions}${bibliography.resources}\documentclass[UTF8,fontset=fandol,scheme=plain]{ctexart}
 \usepackage{mathtools}
 \usepackage{amssymb}
 \usepackage{extarrows}
@@ -104,7 +121,7 @@ ${unicodeMathPreamble}\setmathfont{NewCMMath-Regular.otf}
 \usepackage{physics}
 \usepackage[version=4]{mhchem}
 ${blackboardPreamble}
-${bibliography?.setup??''}\usepackage[hidelinks]{hyperref}
+${bibliography.setup}\usepackage[hidelinks]{hyperref}
 
 \begin{document}
 ${body}

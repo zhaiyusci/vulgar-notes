@@ -2,9 +2,10 @@ import {flushSync} from 'react-dom';
 import {NodeApi} from 'platejs';
 import {LabelMarker} from '@/components/ui/label-marker';
 import {createPlatePlugin,PlateElement,useEditorSelector,useSelected,useFocused,type PlateElementProps} from 'platejs/react';
-import {referenceTargets,resolveReference,type ReferenceNode} from '@/references';
+import {bibliographyItems,resolveReference,type ReferenceNode} from '@/references';
 import {t} from '@/i18n';
 import {useBibliographyLibraries} from '@/use-bibliography';
+import {BibtexBibliography} from '@/components/ui/bibtex-bibliography';
 
 function ReferenceElement(props:PlateElementProps){
   const node=props.element as ReferenceNode;
@@ -37,10 +38,12 @@ function ReferenceElement(props:PlateElementProps){
   </PlateElement>;
 }
 function BibliographyElement(props:PlateElementProps){
-  const index=useEditorSelector(editor=>referenceTargets(editor.children).find(target=>target.node===props.element)?.number,[props.element]);
-  return <PlateElement {...props} as="div" className="my-3" attributes={{...props.attributes,title:'\\bibitem{'+props.element.citeKey+'}'}}>
-    {index==='1'&&<div contentEditable={false} className="mb-3 font-semibold">{t('Bibliography')}</div>}
-    <span contentEditable={false} className="mr-2 text-muted-foreground">[{index}]</span>{props.children}
+  const libraries=useBibliographyLibraries();
+  const index=useEditorSelector(editor=>bibliographyItems(editor.children,libraries).find(target=>target.node===props.element)?.number,[props.element,libraries]);
+  return <PlateElement {...props} as="div" className="mb-3" attributes={{...props.attributes,title:'\\bibitem{'+props.element.citeKey+'}'}}>
+    <BibtexBibliography beforeNode={props.element} />
+    <div data-bibliography-key={props.element.citeKey}><span contentEditable={false} className="mr-2 text-muted-foreground">[{index||'??'}]</span>{props.children}</div>
+    <BibtexBibliography afterNode={props.element} />
   </PlateElement>;
 }
 function LabelElement(props:PlateElementProps){

@@ -214,7 +214,7 @@ const groups: Group[] = [
       {
         focusEditor: true,
         icon: <SuperscriptIcon />,
-        label: 'Footnote',
+        label: 'Endnote',
         value: 'action_footnote',
       },
       {

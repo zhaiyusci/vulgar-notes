@@ -1,9 +1,10 @@
 'use client';
 
 import * as React from 'react';
+import {flushSync} from 'react-dom';
 
 import type { TFootnoteElement } from '@platejs/footnote';
-import { PathApi, type Path } from 'platejs';
+import { NodeApi, PathApi, type Path } from 'platejs';
 import { FootnoteReferencePlugin } from '@platejs/footnote/react';
 import type { PlateEditor, PlateElementProps } from 'platejs/react';
 
@@ -42,6 +43,10 @@ import {
   InlineComboboxInput,
   InlineComboboxItem,
 } from '@/components/ui/inline-combobox';
+import {bibliographyItems} from '@/references';
+import {useBibliographyLibraries} from '@/use-bibliography';
+import {BibtexBibliography} from '@/components/ui/bibtex-bibliography';
+import {t} from '@/i18n';
 
 const NUMERIC_FOOTNOTE_QUERY = /^\d+$/;
 
@@ -101,6 +106,8 @@ export function FootnoteReferenceElement(
 ) {
   const { editor, element } = props;
   const identifier = element.identifier ?? '';
+  const libraries=useBibliographyLibraries();
+  const number=useEditorSelector(current=>bibliographyItems(current.children,libraries).find(item=>item.kind==='endnote'&&item.identifier===identifier)?.number,[identifier,libraries]);
   const footnoteApi = editor.getApi(FootnoteReferencePlugin).footnote;
   const footnoteTransforms = editor.getTransforms(
     FootnoteReferencePlugin
@@ -145,11 +152,12 @@ export function FootnoteReferenceElement(
     <PlateElement
       {...props}
       as="sup"
-      className="group/footnote-ref mx-0.5 align-super"
+      className="endnote-reference group/footnote-ref mx-0.5 align-super"
       attributes={{
         ...getNavigationAttributes(props.attributes, navigationHighlight),
         contentEditable: false,
         draggable: true,
+        'data-endnote-selected':(selected&&focused)||isSelectionInsideAtom?'true':'false',
       }}
     >
       {props.children}
@@ -159,29 +167,32 @@ export function FootnoteReferenceElement(
             type="button"
             className={cn(
               'cursor-pointer rounded-xs font-medium text-primary text-xs focus:ring-2 focus:ring-ring focus:ring-offset-1 group-data-[nav-target=true]/footnote-ref:bg-(--color-highlight)',
+              !number&&'text-red-600 underline decoration-wavy',
               (selected && focused) || isSelectionInsideAtom
                 ? 'ring-2 ring-ring ring-offset-1'
                 : null
             )}
+            title={number?t('Endnote'):t('Unresolved or duplicate endnote')}
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
+              if(event.metaKey||event.ctrlKey){
+                if(isResolved)footnoteTransforms.focusDefinition({identifier});else footnoteTransforms.createDefinition({identifier});
+                return;
+              }
+              if(!path)return;
+              const rect=event.currentTarget.getBoundingClientRect();
+              const side=event.clientX<rect.left+3?'before':event.clientX>rect.right-3?'after':null;
+              const sibling=side?[...path.slice(0,-1),path[path.length-1]+(side==='after'?1:-1)]:undefined;
+              const adjacent=sibling?NodeApi.get(editor,sibling):undefined;
+              const point=adjacent&&typeof adjacent.text==='string'?{path:sibling!,offset:side==='after'?0:adjacent.text.length}:undefined;
+              flushSync(()=>editor.tf.select(point||editor.api.range(path)!));editor.tf.focus();
             }}
             onMouseDown={(event) => {
-              if (event.metaKey || event.ctrlKey) {
-                event.preventDefault();
-                event.stopPropagation();
-                if (isResolved) {
-                  footnoteTransforms.focusDefinition({ identifier });
-
-                  return;
-                }
-
-                footnoteTransforms.createDefinition({ identifier });
-              }
+              event.preventDefault();event.stopPropagation();
             }}
           >
-            [{identifier}]
+            [{number||'??'}]
           </button>
         </HoverCardTrigger>
         {previewText ? (
@@ -212,7 +223,7 @@ export function FootnoteReferenceElement(
                     setHoverOpen(false);
                   }}
                 >
-                  Create definition for [^{identifier}]
+                  {t('Create endnote')}
                 </Button>
               )}
             </div>
@@ -228,6 +239,8 @@ export function FootnoteDefinitionElement(
 ) {
   const { editor, element } = props;
   const identifier = element.identifier ?? '';
+  const libraries=useBibliographyLibraries();
+  const number=useEditorSelector(current=>bibliographyItems(current.children,libraries).find(item=>item.node===element)?.number,[element,libraries]);
   const footnoteApi = editor.getApi(FootnoteReferencePlugin).footnote;
   const footnoteTransforms = editor.getTransforms(
     FootnoteReferencePlugin
@@ -267,7 +280,7 @@ export function FootnoteDefinitionElement(
     <PlateElement
       {...props}
       className={cn(
-        'mt-1.5 flex items-start gap-1.5 data-[nav-target=true]:rounded-md data-[nav-target=true]:bg-(--color-highlight)',
+        'mb-3 data-[nav-target=true]:rounded-md data-[nav-target=true]:bg-(--color-highlight)',
         isDuplicateDefinition &&
           'rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-2'
       )}
@@ -276,10 +289,12 @@ export function FootnoteDefinitionElement(
         navigationHighlight
       )}
     >
+      <BibtexBibliography beforeNode={element} />
+      <div className="flex items-start gap-2" data-bibliography-key={'endnote:'+identifier}>
       <div contentEditable={false}>
         {isDuplicateDefinition ? (
           <div className="min-w-3 text-amber-700 text-xs tabular-nums">
-            {identifier}
+            [{number||'??'}]
           </div>
         ) : (
           <Popover
@@ -293,8 +308,8 @@ export function FootnoteDefinitionElement(
                   hasMultipleReferences ? referencePickerOpen : undefined
                 }
                 aria-haspopup={hasMultipleReferences ? 'dialog' : undefined}
-                aria-label={`Back to reference ${identifier}`}
-                className="min-w-3 cursor-pointer rounded-xs text-muted-foreground text-xs tabular-nums underline-offset-2 hover:text-foreground focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                aria-label={t('Back to reference')+' '+(number||'??')}
+                className="min-w-3 cursor-pointer rounded-xs text-muted-foreground tabular-nums underline-offset-2 hover:text-foreground focus:ring-2 focus:ring-ring focus:ring-offset-1"
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
@@ -312,7 +327,7 @@ export function FootnoteDefinitionElement(
                   footnoteTransforms.focusReference({ identifier });
                 }}
               >
-                {identifier}
+                [{number||'??'}]
               </button>
             </PopoverAnchor>
 
@@ -356,7 +371,7 @@ export function FootnoteDefinitionElement(
           </Popover>
         )}
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="endnote-content min-w-0 flex-1 [&>.slate-p:first-child]:mt-0 [&>.slate-p:first-child]:pt-0 [&>.slate-p:last-child]:mb-0 [&>.slate-p:last-child]:pb-0">
         {isDuplicateDefinition ? (
           <div
             contentEditable={false}
@@ -381,13 +396,15 @@ export function FootnoteDefinitionElement(
                   });
                 }}
               >
-                Renumber to [^{duplicateReplacementIdentifier}]
+                {t('Resolve duplicate endnote')}
               </Button>
             ) : null}
           </div>
         ) : null}
         {props.children}
       </div>
+      </div>
+      <BibtexBibliography afterNode={element} />
     </PlateElement>
   );
 }

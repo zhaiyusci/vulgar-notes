@@ -32,24 +32,24 @@ test('bibliography numbers, multiple citations and missing keys resolve independ
  assert.throws(()=>api.referenceTex({command:'cite',keys:['a}\\input{x}']}));
 });
 
-test('BibTeX citations follow first appearance after manual references and expose uncited picker entries',()=>{
+test('BibTeX citations follow body appearance before unreferenced legacy rows and expose uncited picker entries',()=>{
  const api=load('references',storage());
  const libraries=[{id:'lib',name:'Papers.bib',source:'@article{earlier,title={Earlier}}\n@book{2026:最后,title={Last}}\n@book{unused,title={Uncited}}'}];
  const cite=keys=>({type:'tex_reference',command:'cite',keys,children:[{text:''}]});
  const value=[{type:'p',children:[cite(['2026:最后','earlier']),cite(['2026:最后','missing'])]},{type:'bibliography_entry',citeKey:'manual',children:[{text:'Manual entry'}]}];
  const targets=api.referenceTargets(value,libraries);
- assert.equal(targets.find(target=>target.key==='manual').number,'1');
- assert.equal(targets.find(target=>target.key==='2026:最后').number,'2');
- assert.equal(targets.find(target=>target.key==='earlier').number,'3');
+ assert.equal(targets.find(target=>target.key==='manual').number,'3');
+ assert.equal(targets.find(target=>target.key==='2026:最后').number,'1');
+ assert.equal(targets.find(target=>target.key==='earlier').number,'2');
  assert.equal(targets.find(target=>target.key==='unused').number,'');
  assert.equal(targets.find(target=>target.key==='2026:最后').libraryId,'lib');
- assert.equal(api.resolveReference(value,cite(['2026:最后','earlier']),libraries).text,'[2, 3]');
- assert.equal(api.resolveReference(value,cite(['2026:最后','missing']),libraries).text,'[2, ??]');
+ assert.equal(api.resolveReference(value,cite(['2026:最后','earlier']),libraries).text,'[1, 2]');
+ assert.equal(api.resolveReference(value,cite(['2026:最后','missing']),libraries).text,'[1, ??]');
  assert.equal(api.resolveReference(value,cite(['2026:最后','missing']),libraries).invalid,true);
  assert.equal(api.referenceTex(cite(['2026:最后'])),'\\cite{2026:最后}');
  assert.throws(()=>api.referenceTex({command:'ref',keys:['2026:最后']}),'broader citation keys must not broaden TeX labels');
  value[0].children=[cite(['earlier','2026:最后'])];
- assert.equal(api.resolveReference(value,cite(['2026:最后']),libraries).text,'[3]');
+ assert.equal(api.resolveReference(value,cite(['2026:最后']),libraries).text,'[2]');
 });
 
 test('native documents validate attached BibTeX before accepting text and preserve corrupt drafts',()=>{

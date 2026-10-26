@@ -6,7 +6,7 @@ import {HostContext} from './plate-math-element';
 import {createRoot,type Root} from 'react-dom/client';
 import {flushSync} from 'react-dom';
 import {createPlateEditor,Plate,type PlateEditor} from 'platejs/react';
-import {type TElement,type Value,NodeApi} from 'platejs';
+import {type TElement,type Value,NodeApi,assignLegacyTransforms,KEYS} from 'platejs';
 import {MarkdownPlugin} from '@platejs/markdown';
 import {Range,Path} from 'slate';
 import {EditorKit} from './components/editor/editor-kit';
@@ -18,8 +18,9 @@ import {EditorModel} from './editor-model';
 import type {DocumentHost,MathHostHooks,FormulaEntry} from './document-host';
 import {documentStorageKey,formulaNode,isFormula,newId,plateLatex,restoreDocumentEnvelope,parseDocumentEnvelope,validateDocumentLibraries,documentContentKey,type FormulaNode} from './plate-document';
 import {importMath} from './tex-import';
-import {citedReferenceKeys,referenceTargets,validReferenceKey} from './references';
+import {bibliographyItems,citedReferenceKeys,validReferenceKey} from './references';
 import {citedBibLibraries,validateBibLibraries,validCitationKey,type BibLibrary} from './bibtex';
+import {bibliographyMarkdown} from './bibliography-markdown';
 
 export class PlateMathHost implements DocumentHost {
   readonly editor:PlateEditor;
@@ -58,6 +59,7 @@ export class PlateMathHost implements DocumentHost {
     const originalNormalize=this.editor.tf.normalizeNode.bind(this.editor);
     this.editor.tf.normalizeNode=entry=>{
       const [node,path]=entry;
+      if(path.length===0&&this.groupBibliography())return;
       if('type' in node&&isFormula(node)){
         const n=node as FormulaNode;
         const duplicate=[...NodeApi.nodes(this.editor)].some(([other,p])=>other!==node&&'type' in other&&isFormula(other)&&other.id===n.id&&Path.compare(p,path)<0);
@@ -65,6 +67,9 @@ export class PlateMathHost implements DocumentHost {
       }
       originalNormalize(entry);
     };
+    // Slate's normalization loop also calls its legacy entry point.
+    assignLegacyTransforms(this.editor,{normalizeNode:this.editor.tf.normalizeNode});
+    this.editor.tf.withoutSaving(()=>this.editor.tf.normalize({force:true}));
     this.savedDocument=JSON.stringify(this.envelope(),null,2);
     mount.removeAttribute('contenteditable');mount.removeAttribute('role');mount.removeAttribute('aria-label');mount.id='plateMount';
     this.root=createRoot(mount);
@@ -75,6 +80,29 @@ export class PlateMathHost implements DocumentHost {
         onKeyDownCapture={e=>this.handleObjectDelete(e)} onKeyDown={e=>this.keyDown(e)} /><BibtexBibliography /></EditorContainer>
     </Plate><Toaster /></TooltipProvider></HostContext.Provider>));
     this.initialized=true;this.persist();
+  }
+  /** Editable references and endnotes form one tail in their shared number order. */
+  private groupBibliography():boolean {
+    const entries=bibliographyItems(this.editor.children,this.bibliographyLibraries).filter(item=>!item.libraryId);
+    if(!entries.length)return false;
+    const trailing=()=>{
+      const last=this.editor.children.at(-1);
+      return last?.type==='p'&&last.children.length===1&&last.children[0].text==='';
+    };
+    const start=this.editor.children.length-(trailing()?1:0)-entries.length;
+    if(entries.every(({path},index)=>path.length===1&&path[0]===start+index))return false;
+    const refs=entries.map(({path})=>this.editor.api.pathRef(path));
+    try{
+      this.editor.tf.withoutNormalizing(()=>{
+        for(const ref of refs){
+          if(!ref.current)continue;
+          // move_node's destination is measured after removing its source.
+          const destination=this.editor.children.length-(trailing()?1:0)-(ref.current.length===1?1:0);
+          if(!Path.equals(ref.current,[destination]))this.editor.tf.moveNodes({at:ref.current,to:[destination]});
+        }
+      });
+    }finally{refs.forEach(ref=>ref.unref());}
+    return true;
   }
   private ensureFormulas(){
     for(const [raw,path] of NodeApi.nodes(this.editor)){
@@ -149,7 +177,10 @@ export class PlateMathHost implements DocumentHost {
     this.persist();
     draftStorage().setItem(documentStorageKey+'-before-open',this.serializeDocument());
     this.hooks.leave();this.activeFormula=undefined;this.pendingActivation.clear();this.models.clear();
-    flushSync(()=>{this.replaceBibliography(opened.bibliographyLibraries);this.editor.tf.setValue(opened.value);});
+    flushSync(()=>{
+      this.replaceBibliography(opened.bibliographyLibraries);this.editor.tf.setValue(opened.value);
+      this.editor.tf.withoutSaving(()=>this.editor.tf.normalize({force:true}));
+    });
     for(const [raw] of NodeApi.nodes(this.editor)){
       if(!isFormula(raw))continue;
       const node=raw as FormulaNode;
@@ -159,9 +190,7 @@ export class PlateMathHost implements DocumentHost {
     this.persist();this.savedDocument=this.serializeDocument();this.scheduleChange();
   }
   exportMarkdown(){
-    const body=this.editor.getApi(MarkdownPlugin).markdown.serialize();
-    const entries=referenceTargets(this.editor.children,this.bibliographyLibraries).filter(target=>target.libraryId&&target.number).sort((a,b)=>Number(a.number)-Number(b.number));
-    return body+(entries.length?'\n\n## Bibliography\n\n'+entries.map(entry=>'\\bibitem{'+entry.key+'} '+entry.description).join('\n\n'):'');
+    return bibliographyMarkdown(this.editor.children,this.bibliographyLibraries,value=>this.editor.getApi(MarkdownPlugin).markdown.serialize({value}));
   }
   get activeFormulaId(){return this.activeFormula?.dataset.mathId;}
   prepareTextInsertion(){
@@ -243,11 +272,11 @@ export class PlateMathHost implements DocumentHost {
     if((event.key==='Backspace'||event.key==='Delete')&&!event.nativeEvent.isComposing){
       const selection=this.editor.selection;
       if(selection&&!Range.isCollapsed(selection)){
-        const selected=[...NodeApi.nodes(this.editor)].find(([n,path])=>(isFormula(n)||n.type==='tex_reference')&&Range.equals(Range.isBackward(selection)?{anchor:selection.focus,focus:selection.anchor}:selection,this.objectRange(path)));
+        const selected=[...NodeApi.nodes(this.editor)].find(([n,path])=>(isFormula(n)||n.type==='tex_reference'||n.type===KEYS.footnoteReference)&&Range.equals(Range.isBackward(selection)?{anchor:selection.focus,focus:selection.anchor}:selection,this.objectRange(path)));
         if(selected){event.preventDefault();event.stopPropagation?.();if(!event.repeat)this.editor.tf.withNewBatch(()=>this.editor.tf.removeNodes({at:selected[1]}));return true;}
       }
       if(selection&&Range.isCollapsed(selection)){
-        const match=(n:TElement)=>isFormula(n)||n.type==='tex_reference';
+        const match=(n:TElement)=>isFormula(n)||n.type==='tex_reference'||n.type===KEYS.footnoteReference;
         const selected=this.editor.api.above({at:selection.anchor,match,voids:true});
         if(selected){
           event.preventDefault();event.stopPropagation?.();
@@ -269,8 +298,12 @@ export class PlateMathHost implements DocumentHost {
   private keyDown(event:React.KeyboardEvent){
     if(this.handleObjectDelete(event))return;
     if(event.key==='Enter'&&!event.shiftKey&&!event.nativeEvent.isComposing){
-      const bibliography=this.editor.api.above({match:n=>n.type==='bibliography_entry'});
-      if(bibliography){event.preventDefault();this.editor.tf.insertNodes({type:'p',children:[{text:''}]},{at:Path.next(bibliography[1]),select:true});return;}
+      const bibliography=this.editor.api.above({match:n=>n.type==='bibliography_entry'||n.type===KEYS.footnoteDefinition});
+      if(bibliography){
+        event.preventDefault();
+        const first=this.editor.children.findIndex(node=>node.type==='bibliography_entry'||node.type===KEYS.footnoteDefinition);
+        this.editor.tf.insertNodes({type:'p',children:[{text:''}]},{at:[first<0?bibliography[1][0]:first],select:true});return;
+      }
     }
     if(event.key==='}'&&!event.nativeEvent.isComposing&&this.editor.selection&&Range.isCollapsed(this.editor.selection)){
       const point=this.editor.selection.anchor,leaf=NodeApi.get(this.editor,point.path);

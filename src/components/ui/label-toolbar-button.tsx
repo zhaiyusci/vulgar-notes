@@ -15,7 +15,8 @@ export function LabelToolbarButton(){
   const [open,setOpen]=useState(false),[key,setKey]=useState(''),[error,setError]=useState('');
   const selection=useRef<Range|null>(null),targetId=useRef<string|undefined>(undefined);
   const start=(id?:string)=>{
-    const chosen=referenceTargets(editor.children).find(x=>x.node.id===(id||host?.activeFormulaId));
+    const chosenId=id||host?.activeFormulaId;
+    const chosen=chosenId?referenceTargets(editor.children).find(x=>x.node.id===chosenId&&x.kind!=='bibliography'&&x.kind!=='endnote'):undefined;
     host?.prepareTextInsertion();
     selection.current=editor.selection?structuredClone(editor.selection):null;
     targetId.current=chosen?.node.id as string|undefined;
@@ -30,7 +31,7 @@ export function LabelToolbarButton(){
     const value=key.trim(),targets=referenceTargets(editor.children);
     const chosen=targets.find(x=>targetId.current&&x.node.id===targetId.current);
     if(value&&!validReferenceKey(value)){setError(t('Use a letter followed by letters, digits, colon, dot, underscore or hyphen.'));return;}
-    if(value&&targets.some(x=>x.kind!=='bibliography'&&x.key===value&&x.node!==chosen?.node)){setError(t('This label already exists.'));return;}
+    if(value&&targets.some(x=>x.kind!=='bibliography'&&x.kind!=='endnote'&&x.key===value&&x.node!==chosen?.node)){setError(t('This label already exists.'));return;}
     if(!chosen&&!selection.current){setError(t('Place the cursor in the document first.'));return;}
     editor.tf.withNewBatch(()=>{
       if(chosen){

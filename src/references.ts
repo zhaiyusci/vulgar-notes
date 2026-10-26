@@ -1,12 +1,18 @@
-import type {TElement,Value} from 'platejs';
+import type {KEYS,TElement,Value} from 'platejs';
 import {parseBibLibraries,validCitationKey,type BibLibrary} from './bibtex';
 
 export const referenceKeyPattern=/^[A-Za-z][A-Za-z0-9:._-]*$/;
 export const validReferenceKey=(key:unknown):key is string=>typeof key==='string'&&referenceKeyPattern.test(key);
 export type ReferenceCommand='ref'|'eqref'|'cite';
 export type ReferenceNode=TElement & {command:ReferenceCommand;keys:string[]};
-export interface ReferenceTarget {node:TElement;path:number[];kind:'equation'|'heading'|'bibliography'|'anchor';key:string;number:string;description:string;libraryId?:string}
+export interface ReferenceTarget {node:TElement;path:number[];kind:'equation'|'heading'|'bibliography'|'anchor'|'endnote';key:string;number:string;description:string;libraryId?:string;identifier?:string}
+export type BibliographyItem=ReferenceTarget&{kind:'bibliography'|'endnote'};
 const textOf=(node:any):string=>typeof node.text==='string'?node.text:(node.children||[]).map(textOf).join('');
+// Keep this pure document query free of Plate runtime/browser side effects,
+// while type-checking the persisted node types against the installed package.
+const footnoteTypes={reference:'footnoteReference',definition:'footnoteDefinition'} satisfies {
+  reference:typeof KEYS.footnoteReference;definition:typeof KEYS.footnoteDefinition;
+};
 
 export function citedReferenceKeys(value:Value):string[]{
   const keys=new Set<string>();
@@ -16,14 +22,21 @@ export function citedReferenceKeys(value:Value):string[]{
   }};walk(value);return [...keys];
 }
 
-/** Recompute from document order; numbers are presentation, keys are identity. */
-export function referenceTargets(value:Value,libraries:readonly BibLibrary[]=[]):ReferenceTarget[]{
-  let equations=0,bibliography=0,currentHeading='';
-  const headings=[0,0,0,0,0,0],result:ReferenceTarget[]=[],cited=citedReferenceKeys(value);
+function referenceIndex(value:Value,libraries:readonly BibLibrary[]){
+  let equations=0,currentHeading='';
+  const headings=[0,0,0,0,0,0],result:ReferenceTarget[]=[],editable:BibliographyItem[]=[];
+  const citations=new Map<string,BibliographyItem[]>(),notes=new Map<string,BibliographyItem[]>();
+  const add=(map:Map<string,BibliographyItem[]>,key:string,target:BibliographyItem)=>map.set(key,[...(map.get(key)||[]),target]);
   const walk=(nodes:any[],parent:number[])=>nodes.forEach((node,index)=>{
     const path=[...parent,index];
     if(node.type==='bibliography_entry'){
-      result.push({node,path,kind:'bibliography',key:node.citeKey||'',number:String(++bibliography),description:textOf(node)});return;
+      const target:BibliographyItem={node,path,kind:'bibliography',key:node.citeKey||'',number:'',description:textOf(node)};
+      result.push(target);editable.push(target);add(citations,target.key,target);return;
+    }
+    if(node.type===footnoteTypes.definition){
+      const identifier=typeof node.identifier==='string'?node.identifier:'';
+      const target:BibliographyItem={node,path,kind:'endnote',key:'endnote:'+identifier,identifier,number:'',description:textOf(node)};
+      result.push(target);editable.push(target);add(notes,identifier,target);
     }
     if(/^h[1-3]$/.test(node.type)){
       const level=Number(node.type[1]);headings[level-1]++;headings.fill(0,level);
@@ -39,18 +52,59 @@ export function referenceTargets(value:Value,libraries:readonly BibLibrary[]=[])
     if(Array.isArray(node.children))walk(node.children,path);
   });
   walk(value,[]);
-  const entries=parseBibLibraries(libraries);
-  const libraryKeys=new Set(entries.map(entry=>entry.key));
-  const counts=new Map<string,number>();
-  for(const key of [...result.filter(item=>item.kind==='bibliography').map(item=>item.key),...entries.map(entry=>entry.key)])counts.set(key,(counts.get(key)||0)+1);
-  const numbers=new Map<string,string>();
-  for(const key of cited)if(counts.get(key)===1&&libraryKeys.has(key))numbers.set(key,String(++bibliography));
-  for(const entry of entries)result.push({node:{type:'bibliography_entry',citeKey:entry.key,children:[{text:entry.description}]},path:[],kind:'bibliography',key:entry.key,number:numbers.get(entry.key)||'',description:entry.description,libraryId:entry.libraryId});
-  return result;
+  for(const entry of parseBibLibraries(libraries)){
+    const target:BibliographyItem={node:{type:'bibliography_entry',citeKey:entry.key,children:[{text:entry.description}]},path:[],kind:'bibliography',key:entry.key,number:'',description:entry.description,libraryId:entry.libraryId};
+    result.push(target);add(citations,entry.key,target);
+  }
+
+  const ordered:BibliographyItem[]=[],seen=new Set<BibliographyItem>(),expanded=new Set<BibliographyItem>();
+  let number=0;
+  const append=(target:BibliographyItem)=>{
+    if(seen.has(target))return;
+    seen.add(target);ordered.push(target);
+    const matches=target.kind==='endnote'?notes.get(target.identifier||''):citations.get(target.key);
+    const valid=target.kind==='endnote'?!!target.identifier:validCitationKey(target.key);
+    if(valid&&matches?.length===1)target.number=String(++number);
+  };
+  const visit=(nodes:any[])=>{
+    for(const node of nodes){
+      // Stored definitions do not become body references merely because they
+      // occur earlier in the Slate tree. A note's contents are expanded when
+      // its reference is first reached, with cycles stopped by row identity.
+      if(node.type==='bibliography_entry'||node.type===footnoteTypes.definition)continue;
+      if(node.type==='tex_reference'&&node.command==='cite'){
+        for(const key of node.keys||[])for(const target of citations.get(key)||[])append(target);
+      }else if(node.type===footnoteTypes.reference){
+        const matches=notes.get(node.identifier)||[];
+        for(const target of matches)append(target);
+        if(matches.length===1)expand(matches[0]);
+      }
+      if(Array.isArray(node.children))visit(node.children);
+    }
+  };
+  const expand=(target:BibliographyItem)=>{
+    if(target.kind!=='endnote'||expanded.has(target))return;
+    expanded.add(target);visit(target.node.children);
+  };
+  visit(value);
+  // Older documents may have editable rows with no remaining reference.
+  // Retain every row (including duplicates), preserving their relative order.
+  for(const target of editable){append(target);expand(target);}
+  return {targets:result,items:ordered};
+}
+
+/** Shared endnote/citation numbering follows first occurrence in body prose. */
+export function bibliographyItems(value:Value,libraries:readonly BibLibrary[]=[]):BibliographyItem[]{
+  return referenceIndex(value,libraries).items;
+}
+
+/** Recompute from document order; numbers are presentation, keys are identity. */
+export function referenceTargets(value:Value,libraries:readonly BibLibrary[]=[]):ReferenceTarget[]{
+  return referenceIndex(value,libraries).targets;
 }
 export function resolveReference(value:Value,reference:ReferenceNode,libraries:readonly BibLibrary[]=[]){
   const targets=referenceTargets(value,libraries),citation=reference.command==='cite';
-  const matches=reference.keys.map(key=>targets.filter(target=>target.key===key&&(citation?target.kind==='bibliography':reference.command==='eqref'?target.kind==='equation':target.kind!=='bibliography')));
+  const matches=reference.keys.map(key=>targets.filter(target=>target.key===key&&(citation?target.kind==='bibliography':reference.command==='eqref'?target.kind==='equation':target.kind!=='bibliography'&&target.kind!=='endnote')));
   const invalid=matches.some(items=>items.length!==1||!items[0].number)||!matches.length;
   const numbers=matches.map(items=>items.length===1&&items[0].number?items[0].number:'??');
   const text=citation?'['+numbers.join(', ')+']':reference.command==='eqref'?'('+numbers.join(', ')+')':numbers.join(', ');
