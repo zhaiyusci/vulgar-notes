@@ -9,7 +9,6 @@ import { LinkFloatingToolbar } from '@/components/ui/link-toolbar';
 export const LinkKit = [
   LinkPlugin.configure({
     inputRules: [
-      LinkRules.markdown(),
       LinkRules.autolink({ variant: 'paste' }),
       LinkRules.autolink({ variant: 'space' }),
       LinkRules.autolink({ variant: 'break' }),

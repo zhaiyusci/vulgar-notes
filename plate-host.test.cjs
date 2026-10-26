@@ -150,5 +150,47 @@ test('Plate document / independent MathJax mount integration',async t=>{
   editor.tf.undo();await tick();assert.equal(editor.children[0].children[0].text,'See \\cite{paper');
   flow.destroy();
  });
+ await t.test('reference and citation clicks distinguish the selected node from its empty trailing text',async()=>{
+  for(const command of ['eqref','ref','cite']){
+   const {flow,editor}=setup();
+   editor.tf.setValue([{type:'p',children:[{text:'See '},{type:'tex_reference',command,keys:['target'],children:[{text:''}]},{text:''}]}]);await tick();
+   editor.tf.focus({at:editor.api.end([])});await tick();
+   const link=document.querySelector('.tex-reference-content');
+   link.getBoundingClientRect=()=>({left:10,right:50,top:0,bottom:20,width:40,height:20});
+   link.dispatchEvent(new window.MouseEvent('click',{bubbles:true,clientX:30,button:0}));await tick();
+   assert.deepEqual(editor.selection.anchor.path,[0,1,0]);
+   assert.equal(link.closest('.tex-reference').dataset.referenceSelected,'true');
+   link.dispatchEvent(new window.MouseEvent('click',{bubbles:true,clientX:49,button:0}));await tick();
+   assert.deepEqual(editor.selection.anchor.path,[0,2]);assert.equal(editor.selection.anchor.offset,0);
+   assert.equal(link.closest('.tex-reference').dataset.referenceSelected,'false');
+   editor.tf.insertText('after');assert.equal(editor.children[0].children[2].text,'after');
+   flow.destroy();
+  }
+ });
+ await t.test('formula and reference deletion selects first, ignores repeats, then deletes with undo',async()=>{
+  const objects=[
+   {type:'inline_equation',texExpression:'x',numbered:true,children:[{text:''}]},
+   {type:'inline_equation',display:true,texExpression:'x',numbered:true,children:[{text:''}]},
+   ...['eqref','ref','cite'].map(command=>({type:'tex_reference',command,keys:['target'],children:[{text:''}]}))
+  ];
+  for(const object of objects)for(const key of ['Backspace','Delete']){
+   const {flow,editor}=setup();editor.tf.setValue([{type:'p',children:[{text:'A'},object,{text:'B'}]}]);await tick();
+   editor.tf.focus({at:{path:[0,key==='Backspace'?2:0],offset:key==='Backspace'?0:1}});await tick();
+   const before=JSON.stringify(editor.children);let prevented=false;
+   const event={key,repeat:false,nativeEvent:{isComposing:false},preventDefault(){prevented=true;}};
+   flow.keyDown(event);await tick();assert.equal(prevented,true);assert.equal(JSON.stringify(editor.children),before);
+   assert.deepEqual(editor.selection,{anchor:{path:[0,0],offset:1},focus:{path:[0,2],offset:0}});
+   flow.keyDown({...event,repeat:true});assert.equal(JSON.stringify(editor.children),before);
+   flow.keyDown(event);await tick();assert.equal(editor.children[0].children.length,1);assert.equal(editor.children[0].children[0].text,'AB');
+   editor.tf.undo();await tick();assert.equal(JSON.stringify(editor.children),before);flow.destroy();
+  }
+ });
+ await t.test('Backspace in an empty formula selects the document object before removing it',async()=>{
+  const {flow,editor}=setup();const entry=flow.insertFormula();await tick();
+  const before=flow.entries().length;flow.removeEmpty(entry.element);await tick();assert.equal(flow.entries().length,before);
+  assert.equal(entry.element.closest('[data-formula-selected]').dataset.formulaSelected,'true');
+  flow.keyDown({key:'Backspace',repeat:false,nativeEvent:{isComposing:false},preventDefault(){}});await tick();
+  assert.equal(flow.entries().length,before-1);flow.destroy();
+ });
  await window.happyDOM.abort();
 });

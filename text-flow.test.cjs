@@ -111,3 +111,16 @@ test('unsupported or malformed TeX never becomes a silently altered editable tre
  const {importMath}=load('tex-import');for(const tex of ['\\unknown{x}','\\frac{x}','x^{','\\begin{matrix}a&b\\end{matrix}'])assert.equal(importMath(tex),null);
  assert.equal(importMath('').exportLatex(),'');
 });
+
+test('inline labels preserve position and follow TeX section counters without numbering paragraphs',()=>{
+ const refs=load('references',storage()),doc=load('plate-document',storage());
+ const label={type:'tex_label',id:'anchor',texLabel:'loc:proof',children:[{text:''}]};
+ const value=[{type:'h1',children:[{text:'Intro'}]},{type:'p',children:[{text:'Before '},label,{text:' after'}]}];
+ assert.equal(refs.resolveReference(value,{command:'ref',keys:['loc:proof']}).text,'1');
+ assert.equal(refs.resolveReference(value,{command:'eqref',keys:['loc:proof']}).invalid,true);
+ assert.match(doc.plateLatex(value),/Before \\label\{loc:proof\} after/);
+ assert.equal(JSON.stringify(doc.parseDocumentFile(JSON.stringify({version:1,value}))),JSON.stringify(value));
+ assert.equal(refs.resolveReference([value[1]],{command:'ref',keys:['loc:proof']}).invalid,true);
+ value.unshift({type:'h1',children:[{text:'Earlier'}]});
+ assert.equal(refs.resolveReference(value,{command:'ref',keys:['loc:proof']}).text,'2');
+});

@@ -2,10 +2,24 @@
 
 编辑器使用 TypeScript（`strict: true`）、Plate / React 和 MathJax 4。桌面版使用 Tauri 2，公式编辑模块与正文引擎保持独立。
 
+## 交互原则：不要做 Markdown mania
+
+这是一个以鼠标直接操作为主的富文本数学编辑器。添加一个快捷语法本身不是产品收益；低频功能不应通过拦截常规输入，让每次写作都承担误触、记忆和纠错的成本。工具栏、右键菜单和直接点击往往更容易发现，也更少干扰正文。
+
+- **正文输入保持可预测。** 不提供正文的 `/` 命令菜单，不把 `# `、`- `、`1. `、`> `、`**文字**`、反引号或美元定界符自动转换为文档结构或格式。
+- **不擅自替换用户输入的符号。** 关闭箭头、分数、比较符号、智能引号等自动字符替换；例如 `->` 和 `1/2` 保留原样。
+- **功能通过明确的操作调用。** 标题、列表、文本格式、公式等通过工具栏插入或设置；结构变体和行列操作通过右键菜单提供。优先做好点击目标、选中反馈、光标和撤销，而不是堆积隐式触发器。
+- **快捷键是辅助，不是必修课。** 保留保存、撤销、复制粘贴等常规快捷键以及已有的显式格式操作。新增快捷方式需要有明确用途，且不能让普通文字意外变成命令。
+- **数学区域有自己的输入语义。** 进入公式后，LaTeX 命令候选、上下标输入和结构编辑仍然可用。正文的 TeX 标签、交叉引用和文献引用入口也保留；这不意味着把正文变成 Markdown 源码编辑器。
+- **交换格式与编辑交互分开。** Markdown 是导出格式，不是必须模仿的交互模型。原生 JSON 保存完整的可编辑结构，LaTeX 用于排版导出。
+
+选择 Plate 的开源 Editor Kit 是为了复用成熟的富文本基础设施，不是为了开启它提供的每一项功能。后续引入或更新插件时，应检查是否重新带入了斜杠菜单、Markdown 输入规则或自动字符替换。
+
 ## Tauri 桌面应用
 
 - `npm run desktop:dev`：构建本地资源并启动桌面开发窗口；不占用网页预览的 8767 端口。
 - `npm run desktop:build`：生成 Windows 程序和 NSIS 安装包。
+- `npm run desktop:portable`：生成 `portable/Math Document Editor-<version>.exe`，无需安装，直接运行；测试优先使用此版本。
 - 程序：`src-tauri/target/release/math-document-editor.exe`。
 - 安装包：`src-tauri/target/release/bundle/nsis/`。
 
@@ -53,14 +67,15 @@ MathJax 和编辑器会动态创建样式，因此 `dangerousDisableAssetCspModi
 
 ## 正文、行内与行间公式
 
-正文采用 **Plate 53 / React 19**，直接使用官方开源 Editor Kit 的插件和配套界面：固定与浮动工具栏、六级标题、文本格式、列表、链接、表格、拖拽、斜杠菜单、引用、代码、媒体、分栏、折叠、目录、脚注、批注和建议模式等。Excalidraw 使用官方组件。依赖版本由 package-lock.json 固定。没有使用付费 Pro 模板。
+正文采用 **Plate 53 / React 19**，直接使用官方开源 Editor Kit 的插件和配套界面：固定与浮动工具栏、六级标题、文本格式、列表、链接、表格、拖拽、引用、代码、媒体、分栏、折叠、目录、脚注和批注等；建议模式入口已隐藏，正文不区分编辑与阅读模式。Excalidraw 使用官方组件。依赖版本由 package-lock.json 固定。没有使用付费 Pro 模板。
 
-公式模块继续使用原有 EditorModel 和 MathJax，不依赖 React、Slate 或 Plate。document-host.ts 定义进入/退出公式、快照同步、文档导出等边界；plate-host.tsx 是唯一负责正文引擎适配的模块。React 管公式外层 void 节点及 Slate 的空文本子节点，MathJax 只更新其中独立的 DOM 容器。官方 Equation / InlineEquation 节点的渲染被我们的原位编辑器接管，工具栏与斜杠菜单插入的公式同样走此适配层。
+公式模块继续使用原有 EditorModel 和 MathJax，不依赖 React、Slate 或 Plate。document-host.ts 定义进入/退出公式、快照同步、文档导出等边界；plate-host.tsx 是唯一负责正文引擎适配的模块。React 管公式外层 void 节点及 Slate 的空文本子节点，MathJax 只更新其中独立的 DOM 容器。官方 Equation / InlineEquation 节点的渲染被我们的原位编辑器接管，工具栏插入的公式走此适配层。
 
 - Ctrl/⌘+Enter 插入行内公式；Ctrl/⌘+Shift+Enter 插入行间公式。
 - 正文换行、列表、选区和历史使用 Plate；公式内继续保留自己的序列、区域和撤销历史。
 - 公式快照与 LaTeX 同步到文档节点，文档撤销同步恢复数学模型。光标移动不创建内容历史。
-- 复制公式保留结构树，并生成独立 ID。阅读模式不允许改动公式。
+- 复制公式保留结构树，并生成独立 ID。
+- 公式、交叉引用和文献引用采用两步删除：先选中并高亮，再按删除键删除；长按不会跳过选中步骤。
 - 行内/行间切换保留公式和周围正文；行间公式右键切换编号，未编号公式不占计数。MathJax 根据文档顺序重新编号。
 
 草稿保存在 sessionStorage 的 math-plate-document-v1。首次打开迁移 math-tiptap-document-v1 或更早的 math-text-flow-state，旧键保持不变；损坏数据另存 recovery 键。公式 snapshot 格式不变。浏览器草稿不是永久存储，工具栏的打开/保存保留完整可编辑文档和公式快照。
@@ -114,8 +129,8 @@ physics 与 mhchem 显式加载。物理输入板提供导数、偏导数、泛�
 
 ## Cross-references and bibliography
 
-The References button beside formula insertion provides `\label`, `\ref`, `\eqref`, `\cite`, and `\bibitem`. Assign labels to numbered display equations or headings 1–3; these headings use section numbering. Inline and unnumbered equations are not reference targets. Clear a label to remove it. References follow document order, and missing or duplicate targets display `??` with a red underline. Click a resolved reference to jump to its target; double-click to edit its key.
+Labels and references have separate dialogs. The label toolbar button and an existing label marker open the same label editor. Labels may be attached to numbered display equations, numbered headings, or an inline anchor in prose; an inline anchor follows the current section counter rather than numbering the paragraph. Label markers float beside their targets without taking up text space and are hidden when printing. Clear a label to remove it. Missing, duplicate, or unnumbered targets display `??` with a red underline. Click a reference to select and highlight it, click its edge to place the caret beside it, Ctrl/Command-click to jump to its target, or double-click to edit its key.
 
-In prose, typing the closing brace of `\ref{key}`, `\eqref{key}`, or `\cite{key1,key2}` creates a reference node. Use the toolbar to add bibliography entries with stable citation keys; their prose remains editable in the document. Numbering follows bibliography entry order. This first implementation uses LaTeX's `thebibliography` / `\bibitem`, not BibTeX or an external bibliography database.
+In prose, `\label{key}` inserts a label anchor; typing the closing brace of `\ref{key}`, `\eqref{key}`, or `\cite{key1,key2}` creates a reference node. Use the toolbar to add bibliography entries with stable citation keys; their prose remains editable in the document. Numbering follows bibliography entry order. This first implementation uses LaTeX's `thebibliography` / `\bibitem`, not BibTeX or an external bibliography database.
 
 JSON preserves labels, reference nodes and bibliography entries. TeX exports native commands, includes `hyperref`, and collects bibliography entries at the end. Run LuaLaTeX or XeLaTeX twice to resolve references. Markdown preserves reference commands as literal text, bibliography keys as `\bibitem` text, equation labels in math fences and heading labels as `{#key}`; Markdown renderers do not universally resolve these references.

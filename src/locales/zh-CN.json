@@ -7,7 +7,7 @@
   "Insert inline equation": "插入行内公式",
   "Insert display equation": "插入行间公式",
   "Body": "正文",
-  "Type here, or type / to insert…": "输入正文，或输入 / 打开插入菜单…",
+  "Type here…": "输入正文…",
   "Editable inline equation": "可编辑行内公式",
   "Editable display equation": "可编辑行间公式",
   "Letters and numbers": "字母与数字",
@@ -155,5 +155,11 @@
   "Enter the bibliography entry.": "请输入文献信息。",
   "Separate multiple citation keys with commas.": "引用多篇文献时，用逗号分隔文献键。",
   "Use a letter followed by letters, digits, colon, dot, underscore or hyphen.": "键须以英文字母开头，后接字母、数字、冒号、点、下划线或连字符。",
-  "Leave the label empty to remove it. Headings 1–3 and numbered display equations can be referenced.": "清空标签即可移除。支持引用一至三级标题及已编号的行间公式。"
+  "Leave the label empty to remove it. Headings 1–3 and numbered display equations can be referenced.": "清空标签即可移除。支持引用一至三级标题及已编号的行间公式。",
+  "At the current cursor position": "在当前光标位置",
+  "Place the cursor in the document first.": "请先将光标放在正文中。",
+  "Insert a label at the cursor or label an existing target. Leave an existing label empty to remove it. Text labels refer to the current section number, as in TeX.": "在光标处插入标签，或为现有目标设置标签。清空现有标签可将其移除。正文标签按 TeX 规则引用当前章节编号。",
+  "Unresolved, unnumbered or duplicate reference": "引用未解析、目标没有编号或标签重复",
+  "Label this location. Clear the name to remove an existing label.": "为当前位置设置标签。清空名称可移除现有标签。",
+  "Click to select; Ctrl/Cmd-click to follow; double-click to edit.": "单击选中；Ctrl/Cmd + 单击跳转；双击编辑。"
 }

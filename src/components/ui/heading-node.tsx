@@ -1,3 +1,4 @@
+import {LabelMarker} from './label-marker';
 'use client';
 
 import * as React from 'react';
@@ -35,7 +36,7 @@ export function HeadingElement({
       className={headingVariants({ variant })}
       {...props}
     >
-      {number&&<span contentEditable={false} className="mr-2">{number}</span>}{props.children}
+      {props.element.texLabel&&<span className="tex-label-anchor"><LabelMarker id={String(props.element.id)} label={String(props.element.texLabel)} /></span>}{number&&<span contentEditable={false} className="mr-2">{number}</span>}{props.children}
     </PlateElement>
   );
 }

@@ -413,9 +413,10 @@ async function render() {
         const display=flow?.isDisplay(entry.element);
         const numbered=display&&flow?.isNumbered(entry.element),environment=numbered?'equation':'equation*';
         if(numbered)equationNumber++;
+        const label=entry.element.dataset.texLabel;
         const source=(display?`\\begin{${environment}}`:'\\(')+edge('start')+regionTex(entry.model.root,entry.model,editing&&entry.model===model)+edge('end')+(display?`\\end{${environment}}`:'\\)');
         const width=elementById('textFlow',HTMLElement).clientWidth;
-        const cacheKey=(display?`${equationNumber}:${width}:`:'')+source;
+        const cacheKey=(label||'')+(display?`${equationNumber}:${width}:`:'')+source;
         if(renderedSources.get(entry.element)===cacheKey)continue;
         MathJax.typesetClear([stage]);stage.style.width=display?width+'px':'auto';stage.textContent=source;
         // Let MathJax generate the tag, seeded by this equation's document order.
@@ -470,6 +471,7 @@ let drag:{id:string;anchor:number;x:number;y:number}|null = null;
 preview.addEventListener('pointerdown', event => {
   if(flow?.readOnly)return;
   const target=eventElement(event).closest<HTMLElement>('.inline-formula');if(!target)return;
+  if(eventElement(event).closest('mjx-labels')){event.preventDefault();event.stopPropagation();document.dispatchEvent(new CustomEvent('edit-tex-label',{detail:target.dataset.mathId}));return;}
   if(event.button!==0){event.preventDefault();return;}
   if(target!==formula||!editing)flow?.enter(target,'end');
   const point = hit(eventElement(event), event.clientX) || {id:model.root.id,offset:model.root.items.length};

@@ -17,6 +17,7 @@ export const MarkdownKit = [
   MarkdownPlugin.configure({
     options: {
       rules: {
+        tex_label:{serialize:node=>({type:'text',value:'\\label{'+node.texLabel+'}'})},
         tex_reference:{serialize:node=>({type:'text',value:referenceTex(node as ReferenceNode)})},
         bibliography_entry:{serialize:node=>({type:'paragraph',children:[{type:'text',value:'\\bibitem{'+node.citeKey+'} '+NodeApi.string(node)}]})},
         equation: {

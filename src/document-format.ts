@@ -61,6 +61,7 @@ export function documentLatex(node:JSONContent,formatMath:(source:string)=>strin
   const label=node.attrs?.texLabel;
   if(label!==undefined&&!validReferenceKey(label))throw Error('Invalid label');
   const labelTex=label?'\\label{'+label+'}':'';
+  if(node.type==='texLabel')return labelTex;
   if(node.type==='doc'){
     const entries:JSONContent[]=[];
     const collect=(n:JSONContent)=>{if(n.type==='bibliographyEntry')entries.push(n);else n.content?.forEach(collect);};collect(node);

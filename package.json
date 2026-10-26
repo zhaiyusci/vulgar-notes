@@ -57,7 +57,6 @@
     "@platejs/mention": "^53.0.0",
     "@platejs/resizable": "^53.0.0",
     "@platejs/selection": "^53.1.6",
-    "@platejs/slash-command": "^53.0.0",
     "@platejs/suggestion": "^53.2.3",
     "@platejs/table": "^53.0.9",
     "@platejs/toc": "^53.0.0",

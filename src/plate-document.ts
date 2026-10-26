@@ -88,6 +88,7 @@ export function validate(nodes:unknown[]):void {
     if(typeof n.text==='string')continue;
     if(typeof n.type!=='string'||!Array.isArray(n.children))throw Error('Invalid document element');
     if(n.texLabel!==undefined&&!validReferenceKey(n.texLabel))throw Error('Invalid label');
+    if(n.type==='tex_label'&&!validReferenceKey(n.texLabel))throw Error('Invalid label');
     if(n.type==='tex_reference')referenceTex(n as ReferenceNode);
     if(n.type==='bibliography_entry'&&!validReferenceKey(n.citeKey))throw Error('Invalid citation key');
     if(isFormula(n)&&n.snapshot)new EditorModel().restore(n.snapshot);
@@ -97,6 +98,7 @@ export function validate(nodes:unknown[]):void {
 /** Keep the established LaTeX prose exporter independent of the document engine. */
 export function plateLatex(value:Value,formatMath?:(source:string)=>string):string {
   const read=(n:any):JSONContent=>{
+    if(n.type==='tex_label')return {type:'texLabel',attrs:{texLabel:n.texLabel}};
     if(n.type==='tex_reference')return {type:'texReference',attrs:{command:n.command,keys:n.keys}};
     if(n.type==='bibliography_entry')return {type:'bibliographyEntry',attrs:{citeKey:n.citeKey},content:n.children?.map(read)};
     if(typeof n.text==='string')return {type:'text',text:n.text,marks:Object.keys(n).filter(k=>k!=='text'&&n[k]===true).map(type=>({type:type==='strikethrough'?'strike':type}))};

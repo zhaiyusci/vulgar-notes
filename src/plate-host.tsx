@@ -48,10 +48,10 @@ export class PlateMathHost implements DocumentHost {
     mount.removeAttribute('contenteditable');mount.removeAttribute('role');mount.removeAttribute('aria-label');mount.id='plateMount';
     this.root=createRoot(mount);
     flushSync(()=>this.root.render(<HostContext.Provider value={this}><TooltipProvider><Plate editor={this.editor} onChange={()=>this.changed()}>
-      <EditorContainer><Editor id="textFlow" aria-label={t("Body")} placeholder={t("Type here, or type / to insert…")}
+      <EditorContainer><Editor id="textFlow" aria-label={t("Body")} placeholder={t("Type here…")}
         onPointerDown={e=>{if(!(e.target as Element).closest('.inline-formula')){this.activeFormula=undefined;this.hooks.leave();}}}
         onFocus={()=>{this.activeFormula=undefined;this.hooks.leave();}}
-        onKeyDown={e=>this.keyDown(e)} /></EditorContainer>
+        onKeyDownCapture={e=>this.handleObjectDelete(e)} onKeyDown={e=>this.keyDown(e)} /></EditorContainer>
     </Plate><Toaster /></TooltipProvider></HostContext.Provider>));
     this.initialized=true;this.persist();
   }
@@ -201,25 +201,62 @@ export class PlateMathHost implements DocumentHost {
     });
     if(focus)this.editor.tf.focus();
   }
+  private objectRange(path:number[]):Range{
+    const previous=[...path.slice(0,-1),path[path.length-1]-1],next=Path.next(path);
+    const a=NodeApi.get(this.editor,previous),b=NodeApi.get(this.editor,next);
+    if(typeof a?.text==='string'&&typeof b?.text==='string')return {anchor:{path:previous,offset:a.text.length},focus:{path:next,offset:0}};
+    const anchor=this.editor.api.before(path,{voids:true}),focus=this.editor.api.after(path,{voids:true});
+    return anchor&&focus?{anchor,focus}:this.editor.api.range(path)!;
+  }
   removeEmpty(element:HTMLElement){
     this.hooks.leave();const entry=this.locate(element);if(!entry)return;
-    flushSync(()=>this.editor.tf.removeNodes({at:entry[1]}));this.editor.tf.focus();
+    this.activeFormula=undefined;
+    this.editor.tf.focus();
+    flushSync(()=>{this.editor.tf.select(this.objectRange(entry[1]));this.editor.api.onChange();});
+  }
+  private handleObjectDelete(event:React.KeyboardEvent):boolean{
+    if((event.key==='Backspace'||event.key==='Delete')&&!event.nativeEvent.isComposing){
+      const selection=this.editor.selection;
+      if(selection&&!Range.isCollapsed(selection)){
+        const selected=[...NodeApi.nodes(this.editor)].find(([n,path])=>(isFormula(n)||n.type==='tex_reference')&&Range.equals(Range.isBackward(selection)?{anchor:selection.focus,focus:selection.anchor}:selection,this.objectRange(path)));
+        if(selected){event.preventDefault();event.stopPropagation?.();if(!event.repeat)this.editor.tf.withNewBatch(()=>this.editor.tf.removeNodes({at:selected[1]}));return true;}
+      }
+      if(selection&&Range.isCollapsed(selection)){
+        const match=(n:TElement)=>isFormula(n)||n.type==='tex_reference';
+        const selected=this.editor.api.above({at:selection.anchor,match,voids:true});
+        if(selected){
+          event.preventDefault();event.stopPropagation?.();
+          // Holding a key must not turn the selection preview into deletion.
+          if(!event.repeat)this.editor.tf.withNewBatch(()=>this.editor.tf.removeNodes({at:selected[1]}));
+          return true;
+        }
+        const point=event.key==='Backspace'?this.editor.api.before(selection.anchor,{voids:true}):this.editor.api.after(selection.anchor,{voids:true});
+        const adjacent=point&&this.editor.api.above({at:point,match,voids:true});
+        if(adjacent){
+          event.preventDefault();event.stopPropagation?.();
+          flushSync(()=>this.editor.tf.select(this.objectRange(adjacent[1])));
+          this.editor.tf.focus();return true;
+        }
+      }
+    }
+    return false;
   }
   private keyDown(event:React.KeyboardEvent){
+    if(this.handleObjectDelete(event))return;
     if(event.key==='Enter'&&!event.shiftKey&&!event.nativeEvent.isComposing){
       const bibliography=this.editor.api.above({match:n=>n.type==='bibliography_entry'});
       if(bibliography){event.preventDefault();this.editor.tf.insertNodes({type:'p',children:[{text:''}]},{at:Path.next(bibliography[1]),select:true});return;}
     }
     if(event.key==='}'&&!event.nativeEvent.isComposing&&this.editor.selection&&Range.isCollapsed(this.editor.selection)){
       const point=this.editor.selection.anchor,leaf=NodeApi.get(this.editor,point.path);
-      const match=typeof leaf?.text==='string'?leaf.text.slice(0,point.offset).match(/\\(ref|eqref|cite)\{([^{}]+)$/):null;
+      const match=typeof leaf?.text==='string'?leaf.text.slice(0,point.offset).match(/\\(ref|eqref|cite|label)\{([^{}]+)$/):null;
       const code=this.editor.api.above({match:n=>n.type==='code_block'});
       if(match&&!code){
         const keys=match[2].split(',').map(key=>key.trim());
         if(keys.every(validReferenceKey)&&(match[1]==='cite'||keys.length===1)){
           event.preventDefault();this.editor.tf.withNewBatch(()=>{
             this.editor.tf.select({anchor:{...point,offset:point.offset-match[0].length},focus:point});
-            this.editor.tf.insertNodes({type:'tex_reference',id:newId(),command:match[1],keys,children:[{text:''}]},{select:true});
+            this.editor.tf.insertNodes(match[1]==='label'?{type:'tex_label',id:newId(),texLabel:keys[0],children:[{text:''}]}:{type:'tex_reference',id:newId(),command:match[1],keys,children:[{text:''}]},{select:true});
             this.editor.tf.move({distance:1,unit:'offset'});
           });return;
         }

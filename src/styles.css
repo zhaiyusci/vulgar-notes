@@ -15,3 +15,15 @@
 .math-inline-node { display:inline; }
 .math-block-node { display:block; }
 .math-mount-wrapper { user-select:none; }
+/* Labels are annotations: they never add width or height to document layout. */
+.tex-label-anchor { display:inline-block; position:relative; width:0; height:0; vertical-align:baseline; overflow:visible; }
+.tex-label-marker { position:absolute; left:0; bottom:calc(100% + 1em); z-index:5; white-space:nowrap; border:1px solid #d8dde5; border-radius:3px; padding:1px 4px; background:#f5f7fa; color:#64748b; font:11px/1.35 system-ui,sans-serif; cursor:pointer; letter-spacing:normal; }
+.tex-label-marker:hover,.tex-label-marker:focus-visible { background:#e7edf7; color:#334155; }
+.equation-label-marker { left:auto; right:0; bottom:calc(100% + 3px); }
+@media print { .tex-label-marker { display:none; } }
+.display-mount-wrapper { display:block; position:relative; }
+.display-mount-wrapper > .tex-label-marker { left:auto; right:0; bottom:calc(50% + 1em); }
+.tex-reference { display:inline-block; vertical-align:baseline; }
+.tex-reference-content { padding:0 3px; border-radius:3px; cursor:text; }
+.tex-reference[data-reference-selected="true"] .tex-reference-content { background:#dbeafe; outline:1px solid #60a5fa; }
+[data-formula-selected="true"] > .math-mount-wrapper > .inline-formula { background:#dbeafe; outline:1px solid #60a5fa; border-radius:3px; }

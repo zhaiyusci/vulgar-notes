@@ -39,7 +39,7 @@ import {
 } from './list-toolbar-button';
 import { MarkToolbarButton } from './mark-toolbar-button';
 import { MediaToolbarButton } from './media-toolbar-button';
-import { ModeToolbarButton } from './mode-toolbar-button';
+import { LabelToolbarButton } from './label-toolbar-button';
 import { MoreToolbarButton } from './more-toolbar-button';
 import { TableToolbarButton } from './table-toolbar-button';
 import { ToggleToolbarButton } from './toggle-toolbar-button';
@@ -71,7 +71,7 @@ export function FixedToolbarButtons() {
 
           <ToolbarGroup>
             <InsertMathToolbarButtons />
-            <ReferenceToolbarButton />
+            <LabelToolbarButton /><ReferenceToolbarButton />
           </ToolbarGroup>
 
           <ToolbarGroup>
@@ -156,9 +156,7 @@ export function FixedToolbarButtons() {
         <CommentToolbarButton />
       </ToolbarGroup>
 
-      <ToolbarGroup>
-        <ModeToolbarButton />
-      </ToolbarGroup>
+
     </div>
   );
 }

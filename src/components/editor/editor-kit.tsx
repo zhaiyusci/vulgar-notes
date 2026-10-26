@@ -5,7 +5,6 @@ import { type TPlateEditor, useEditorRef } from 'platejs/react';
 
 
 import { AlignKit } from './plugins/align-kit';
-import { AutoformatKit } from './plugins/autoformat-kit';
 import { BasicBlocksKit } from './plugins/basic-blocks-kit';
 import { BasicMarksKit } from './plugins/basic-marks-kit';
 import { BlockMenuKit } from './plugins/block-menu-kit';
@@ -35,7 +34,6 @@ import { MathKit } from './plugins/math-kit';
 import { ReferenceKit } from './plugins/reference-kit';
 import { MediaKit } from './plugins/media-kit';
 import { MentionKit } from './plugins/mention-kit';
-import { SlashKit } from './plugins/slash-kit';
 import { SuggestionKit } from './plugins/suggestion-kit';
 import { TableKit } from './plugins/table-kit';
 import { TocKit } from './plugins/toc-kit';
@@ -77,8 +75,6 @@ export const EditorKit = [
   ...SuggestionKit,
 
   // Editing
-  ...SlashKit,
-  ...AutoformatKit,
   ...CursorOverlayKit,
   ...DndKit,
   ...EmojiKit,
