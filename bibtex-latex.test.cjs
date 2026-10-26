@@ -44,6 +44,19 @@ test('BibTeX export retains cited raw entries and string macros with generated r
   assert.equal(JSON.stringify({value,libraries}),before);
 });
 
+test('Unicode apostrophes in citation keys and September abbreviations survive standalone TeX export',()=>{
+  const key='O’Example2025';
+  const raw='@article{'+key+',author={Example, Alex},title={Synthetic example},journal={Example Journal},year={2025},month=sept}';
+  const libraries=[library('unicode-key',raw)],value=[paragraph({text:'See '},cite(key))];
+  const before=JSON.stringify({value,libraries}),tex=latexDocument(value,libraries);
+  assert.ok(tex.includes(raw));
+  assert.ok(tex.includes('\\cite{'+key+'}'));
+  assert.ok(tex.includes('\\addtocategory{vulgarCited}{'+key+'}'));
+  assert.match(tex,/@string\s*\{SEPT=\{09\}\}/);
+  assert.doesNotMatch(tex,/@article\{O,/);
+  assert.equal(JSON.stringify({value,libraries}),before);
+});
+
 test('manual bibliography coexists with libraries as rich TeX notes, ordered before cited library entries',()=>{
   const value=[paragraph(cite('imported')),
     manual('manualA',[{text:'Author & 50% '},{text:'bold',bold:true},{type:'inline_equation',texExpression:'x^2',children:[{text:''}]}]),

@@ -161,7 +161,7 @@
   "BibTeX source": "BibTeX 源码",
   "Existing citations will be kept and marked unresolved. You can add the .bib file again to restore them.": "已有引用会保留，并标记为未解析。重新添加 .bib 文件后即可恢复。",
   "Close": "关闭",
-  "Use a citation key containing letters, digits, colon, dot, underscore, slash, plus or hyphen.": "引用键可包含字母、数字、冒号、点、下划线、斜杠、加号或连字符。",
+  "Use a citation key containing letters, digits, colon, dot, underscore, slash, plus, hyphen or apostrophe.": "引用键可包含字母、数字、冒号、点、下划线、斜杠、加号、连字符或撇号。",
   "Search references": "搜索引用目标",
   "Search labels": "搜索标签",
   "No matching references.": "没有匹配的引用目标。",
@@ -191,5 +191,8 @@
   "Label this location. Clear the name to remove an existing label.": "为当前位置设置标签。清空名称可移除现有标签。",
   "Click to select; Ctrl/Cmd-click to follow; double-click to edit.": "单击选中；Ctrl/Cmd + 单击跳转；双击编辑。",
   "Desktop app": "桌面应用",
-  "Download for Windows": "下载 Windows 版"
+  "Download for Windows": "下载 Windows 版",
+  "BibTeX warnings": "BibTeX 提示",
+  "Undefined BibTeX strings are shown by name.": "未定义的 BibTeX 字符串暂以字符串名显示。",
+  "Undefined BibTeX string:": "未定义的 BibTeX 字符串："
 }

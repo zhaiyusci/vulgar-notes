@@ -3,7 +3,7 @@ import {LibraryBigIcon,PlusIcon,RefreshCwIcon,Trash2Icon} from 'lucide-react';
 import {useEditorRef} from 'platejs/react';
 import type {Range} from 'slate';
 import {HostContext} from '@/plate-math-element';
-import {parseBibLibraries,type BibEntry,type BibLibrary} from '@/bibtex';
+import {bibLibraryWarnings,parseBibLibraries,type BibEntry,type BibLibrary} from '@/bibtex';
 import {useBibliographyLibraries} from '@/use-bibliography';
 import {openBibtexFile} from '@/platform';
 import {t} from '@/i18n';
@@ -14,6 +14,7 @@ import {Button} from './button';
 export function BibtexLibrariesButton({compact=false,onChooseKey}:{compact?:boolean;onChooseKey?:(key:string)=>void}){
   const editor=useEditorRef(),host=useContext(HostContext),libraries=useBibliographyLibraries();
   const entries=useMemo(()=>parseBibLibraries(libraries),[libraries]);
+  const warnings=useMemo(()=>libraries.flatMap(library=>bibLibraryWarnings(library).map(message=>({libraryId:library.id,libraryName:library.name,message}))),[libraries]);
   const [open,setOpen]=useState(false),[working,setWorking]=useState(false),[error,setError]=useState('');
   const [selectedId,setSelectedId]=useState(''),[query,setQuery]=useState(''),[removeId,setRemoveId]=useState('');
   const selection=useRef<Range|null>(null),busy=useRef(false);
@@ -58,6 +59,7 @@ export function BibtexLibrariesButton({compact=false,onChooseKey}:{compact?:bool
   const search=query.trim().toLocaleLowerCase();
   const filtered=entries.filter(entry=>(!selectedId||entry.libraryId===selectedId)&&(!search||[entry.key,entry.title,entry.author,entry.year].join(' ').toLocaleLowerCase().includes(search)));
   const selected=libraries.find(library=>library.id===selectedId);
+  const notices=warnings.filter(warning=>!selectedId||warning.libraryId===selectedId);
   return <>
     {compact?<Button type="button" variant="outline" size="sm" onClick={start}><LibraryBigIcon className="mr-1 size-4" />{t('BibTeX libraries')}</Button>
       :<ToolbarButton tooltip={t('BibTeX libraries')} aria-label={t('BibTeX libraries')} onPointerDown={event=>event.preventDefault()} onClick={start}><LibraryBigIcon /></ToolbarButton>}
@@ -98,6 +100,14 @@ export function BibtexLibrariesButton({compact=false,onChooseKey}:{compact?:bool
             {filtered.length>100&&<p className="mt-1 text-xs text-muted-foreground">{t('Showing the first 100 matches. Refine your search to find an entry.')}</p>}
           </div>
         </div>
+        {!!notices.length&&<details className="rounded border border-amber-200 bg-amber-50 p-3 text-sm">
+          <summary className="cursor-pointer">{t('BibTeX warnings')} ({notices.length})</summary>
+          <p className="mt-2">{t('Undefined BibTeX strings are shown by name.')}</p>
+          <ul className="mt-2 max-h-32 list-inside list-disc overflow-auto break-words text-xs">{notices.map((notice,index)=>{
+            const missing=notice.message.match(/^unresolved @string reference (.*)$/);
+            return <li key={notice.libraryId+':'+index}>{!selectedId&&notice.libraryName+': '}{missing?t('Undefined BibTeX string:')+' '+missing[1]:notice.message}</li>;
+          })}</ul>
+        </details>}
         {selected&&<details><summary className="cursor-pointer text-sm">{t('View BibTeX source')}</summary><textarea className="mt-2 max-h-40 w-full rounded border p-2 font-mono text-xs" rows={5} readOnly value={selected.source} aria-label={t('BibTeX source')} /></details>}
         {removeId&&<div className="rounded border p-3 text-sm">
           <p>{t('Remove library')}: <strong>{libraries.find(library=>library.id===removeId)?.name}</strong>?</p>

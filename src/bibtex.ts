@@ -15,10 +15,10 @@ export interface BibEntry {
   url?:string;
 }
 
-const citationKeyPattern=/^[\p{L}\p{N}][\p{L}\p{N}\p{M}:._/+\-]*$/u;
+const citationKeyPattern=/^[\p{L}\p{N}][\p{L}\p{N}\p{M}:._/+\-'‘’]*$/u;
 export const validCitationKey=(key:unknown):key is string=>typeof key==='string'&&citationKeyPattern.test(key);
 
-type CachedLibrary=BibLibrary&{entries:BibEntry[];verbatim?:VerbatimLibrary};
+type CachedLibrary=BibLibrary&{entries:BibEntry[];verbatim?:VerbatimLibrary;warnings:readonly string[]};
 // Keep source variants: validating a cited-only snapshot must not evict the
 // attached full library and force a reparse on the next document edit.
 const cache:CachedLibrary[]=[];
@@ -76,11 +76,60 @@ function displayEntry(entry:Entry,library:BibLibrary):BibEntry {
   };
 }
 
-function normalizeEntries(source:string,name:string):Entry[] {
-  const parsed=parse(source,{english:false,caseProtection:false,applyCrossRef:true});
-  const diagnostic=parsed.errors.find(error=>!error.error.startsWith('unhandled '));
+// Common .bib exporters spell September "sept", while the upstream scanner
+// knows only "sep". Explicit @string declarations still take precedence.
+const defaultStrings={SEPT:'09'};
+
+function scannerInput(source:string):{source:string;restore:(value:string)=>string} {
+  // Upstream accepts Unicode letters in keys but rejects typographic
+  // apostrophes that Biber accepts. Transport them through unused letter
+  // sentinels; restore every parsed value/input before exposing any data.
+  // This does not rewrite the library or reinterpret its grammar.
+  const substitutions:[string,string][]=[];
+  let input=source,next=0x3400;
+  for(const [original,preferred] of [['‘','ʻ'],['’','ʼ']]){
+    if(!source.includes(original))continue;
+    let sentinel=preferred;
+    while(source.includes(sentinel)||substitutions.some(([,used])=>used===sentinel))sentinel=String.fromCharCode(next++);
+    substitutions.push([original,sentinel]);input=input.replaceAll(original,sentinel);
+  }
+  return {source:input,restore:value=>{
+    for(const [original,sentinel] of substitutions)value=value.replaceAll(sentinel,original);
+    return value;
+  }};
+}
+
+function restoreFields<T>(value:T,restore:(value:string)=>string):T {
+  if(typeof value==='string')return restore(value) as T;
+  if(Array.isArray(value))return value.map(item=>restoreFields(item,restore)) as T;
+  if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).map(([key,item])=>[restore(key),restoreFields(item,restore)])) as T;
+  return value;
+}
+
+function verbatimSource(source:string,name:string):VerbatimLibrary {
+  const scanner=scannerInput(source),raw=parseVerbatim(scanner.source,{strings:defaultStrings});
+  raw.entries=restoreFields(raw.entries,scanner.restore);
+  raw.strings={...defaultStrings,...restoreFields(raw.strings,scanner.restore)};
+  raw.preambles=restoreFields(raw.preambles,scanner.restore);
+  raw.errors=restoreFields(raw.errors,scanner.restore);
+  // Like BibTeX/Biber, an unresolved abbreviation is a recoverable warning;
+  // the scanner retains its literal value. Malformed grammar is still fatal.
+  const diagnostic=raw.errors.find(error=>!error.error.startsWith('unresolved @string reference '));
   if(diagnostic)throw Error(`Invalid BibTeX in ${JSON.stringify(name)}: ${diagnostic.error}`);
-  return parsed.entries;
+  return raw;
+}
+
+function normalizeEntries(source:string,name:string,raw=verbatimSource(source,name)):Entry[] {
+  const scanner=scannerInput(source);
+  let normalized:Entry[]=[];
+  try{
+    normalized=restoreFields(parse(scanner.source,{english:false,caseProtection:false,applyCrossRef:true,strings:defaultStrings}).entries,scanner.restore);
+  }catch{
+    // Bibliographic fields remain usable even when optional LaTeX-to-text
+    // normalization cannot interpret a publisher's custom formatting.
+  }
+  const byKey=new Map(normalized.map(entry=>[entry.key,entry]));
+  return raw.entries.map(entry=>byKey.get(entry.key)||{...entry,fields:entry.fields as Entry['fields'],mode:{}});
 }
 
 export function parseBibLibrary(value:BibLibrary):BibEntry[] {
@@ -88,9 +137,10 @@ export function parseBibLibrary(value:BibLibrary):BibEntry[] {
   if(cached)return cached.entries;
 
   // Use the Better BibTeX parser for the grammar, strings, names and inheritance.
-  // Unknown LaTeX commands remain visible as literal text, rather than dropping
-  // an otherwise valid entry. Structural/parser errors reject the whole import.
-  const normalized=normalizeEntries(library.source,library.name);
+  // Raw grammar validates the import; normalized fields are display metadata.
+  // Unsupported formatting cannot drop an otherwise valid bibliography entry.
+  const verbatim=verbatimSource(library.source,library.name);
+  const normalized=normalizeEntries(library.source,library.name,verbatim);
   const keys=new Set<string>();
   const entries=normalized.map(entry=>{
     if(!validCitationKey(entry.key))throw Error(`Invalid citation key ${JSON.stringify(entry.key)} in ${JSON.stringify(library.name)}`);
@@ -100,9 +150,15 @@ export function parseBibLibrary(value:BibLibrary):BibEntry[] {
   });
   // Keep a bounded cache of parsed libraries, without retaining every edit to a
   // raw source. Unchanged libraries are reused across document render passes.
-  cache.push({...library,entries});
+  cache.push({...library,entries,verbatim,warnings:verbatim.errors.map(error=>error.error)});
   if(cache.length>32)cache.shift();
   return entries;
+}
+
+/** Recoverable source diagnostics, separate from optional display formatting. */
+export function bibLibraryWarnings(value:BibLibrary):readonly string[] {
+  parseBibLibrary(value);
+  return cachedLibrary(value)!.warnings;
 }
 
 export function parseBibLibraries(libraries:readonly BibLibrary[]):BibEntry[] {
@@ -148,7 +204,7 @@ export function validateBibLibraries(value:unknown):BibLibrary[] {
 function rawLibrary(library:BibLibrary):VerbatimLibrary {
   parseBibLibrary(library);
   const cached=cachedLibrary(library)!;
-  return cached.verbatim??=(parseVerbatim(library.source));
+  return cached.verbatim??=(verbatimSource(library.source,library.name));
 }
 
 /**
@@ -195,7 +251,8 @@ export function citedBibLibraries(libraries:readonly BibLibrary[],keys:readonly 
     for(const expression of expressions){
       // Let the established scanner resolve bare string tokens. Braced/quoted
       // mentions of the same word must not be mistaken for macro references.
-      const probe=parseVerbatim(expression,{strings:sentinels});
+      const probeInput=scannerInput(expression);
+      const probe=parseVerbatim(probeInput.source,{strings:sentinels});
       for(const value of Object.values(probe.entries[0]?.fields||{})){
         names.forEach((name,index)=>{if(value.includes(`${marker}${index}_END`))used.add(name);});
       }

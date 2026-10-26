@@ -43,7 +43,7 @@ export function ReferenceToolbarButton(){
   const submit=()=>{
     const keys=key.split(',').map(k=>k.trim());
     const citation=action==='cite'||action==='bibitem';
-    if(!keys.every(citation?validCitationKey:validReferenceKey)||action!=='cite'&&keys.length!==1){setError(t(citation?'Use a citation key containing letters, digits, colon, dot, underscore, slash, plus or hyphen.':'Use a letter followed by letters, digits, colon, dot, underscore or hyphen.'));return;}
+    if(!keys.every(citation?validCitationKey:validReferenceKey)||action!=='cite'&&keys.length!==1){setError(t(citation?'Use a citation key containing letters, digits, colon, dot, underscore, slash, plus, hyphen or apostrophe.':'Use a letter followed by letters, digits, colon, dot, underscore or hyphen.'));return;}
     try{
       if(action==='bibitem'){
         if(!description.trim())throw Error(t('Enter the bibliography entry.'));

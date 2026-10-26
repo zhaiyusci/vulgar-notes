@@ -6,7 +6,7 @@ const {spawnSync}=require('node:child_process');
 const bundled=buildSync({entryPoints:['src/bibtex.ts'],bundle:true,write:false,platform:'browser',format:'cjs',target:'es2022'}).outputFiles[0].text;
 const compiled={exports:{}};
 new Function('module','exports',bundled)(compiled,compiled.exports);
-const {parseBibLibrary,parseBibLibraries,validateBibLibraries,validCitationKey,citedBibLibraries}=compiled.exports;
+const {parseBibLibrary,parseBibLibraries,validateBibLibraries,validCitationKey,citedBibLibraries,bibLibraryWarnings}=compiled.exports;
 const library=(source,id='main',name='references.bib')=>({id,name,source});
 
 test('BibTeX names, TeX accents, braced titles, strings and concatenation become plain searchable text',()=>{
@@ -38,7 +38,7 @@ test('crossref inheritance supplies parent year and book title while child conte
 });
 
 test('Unicode and conventional citation keys are accepted without accepting TeX syntax',()=>{
- for(const key of ['knuth1984','2024-α','张三:2025/a+b','Évariste.1','a_b','e\u0301tude'])assert.equal(validCitationKey(key),true,key);
+ for(const key of ['knuth1984','2024-α','张三:2025/a+b','Évariste.1','a_b','e\u0301tude',"D'Example2024",'D’Example2024'])assert.equal(validCitationKey(key),true,key);
  for(const key of ['',null,7,' key','bad,key','bad{key}','bad\\key','_bad','<script>'])assert.equal(validCitationKey(key),false,String(key));
  assert.equal(parseBibLibrary(library('@book{张三:2025,title={中文},year={2025}}'))[0].key,'张三:2025');
 });
@@ -47,9 +47,41 @@ test('invalid syntax is rejected atomically rather than silently dropping damage
  for(const source of [
   '@article{valid,title={Valid}}\n@article{broken,title={Unclosed}',
   '@article{broken,title="Unclosed}',
-  '@article{broken,title=unknownString}',
   '@article{bad\\key,title={No}}',
  ])assert.throws(()=>parseBibLibrary(library(source)),/BibTeX|citation key/i,source);
+});
+
+test('September exporter aliases and apostrophe keys preserve complete original entries and prose',()=>{
+ const input=library(String.raw`@proceedings{D’Example2024,
+ title={The author’s “complete” work},author={D’Example, Jane},year=2024,month=Sept
+}
+@inproceedings{O'Example2025,title={Another author’s work with ʼ and ʻ already present},crossref={D’Example2024},month=sept,customfield={Don’t rewrite me}}`,'apostrophes');
+ const original=input.source,entries=parseBibLibrary(input);
+ assert.deepEqual(entries.map(entry=>entry.key),['D’Example2024',"O'Example2025"]);
+ assert.equal(entries[0].title,'The author’s “complete” work');assert.equal(entries[0].author,'Jane D’Example');
+ assert.equal(entries[1].year,'2024');assert.match(entries[1].description,/The author’s “complete” work/);
+ assert.match(entries[1].title,/author’s work with ʼ and ʻ already present/);
+ assert.deepEqual(bibLibraryWarnings(input),[]);
+ const [snapshot]=citedBibLibraries([input],["O'Example2025"]);
+ assert.match(snapshot.source,/@string\{SEPT=\{09\}\}/);
+ assert.match(snapshot.source,/crossref=\{D’Example2024\}/);
+ assert.match(snapshot.source,/customfield=\{Don’t rewrite me\}/);
+ for(const rawEntry of original.split(/(?=^@)/m).filter(Boolean))assert.ok(snapshot.source.includes(rawEntry.trim()),'raw entry inputs and their punctuation must remain exact');
+ assert.deepEqual(parseBibLibrary(snapshot).map(entry=>entry.key),entries.map(entry=>entry.key));
+ assert.equal(input.source,original);
+});
+
+test('unresolved abbreviations are nonblocking cached warnings without invented definitions',()=>{
+ const input=library('@article{unresolved,title={Valid title},journal=customJournal,year=2024}','unresolved');
+ const [entry]=parseBibLibrary(input);
+ assert.equal(entry.key,'unresolved');assert.match(entry.description,/customJournal/);
+ const warnings=bibLibraryWarnings(input);
+ assert.match(warnings[0],/unresolved @string reference "customJournal"/);
+ assert.equal(bibLibraryWarnings({...input}),warnings);
+ const [snapshot]=citedBibLibraries([input],['unresolved']);
+ assert.match(snapshot.source,/journal=customJournal/);
+ assert.doesNotMatch(snapshot.source,/@string\{CUSTOMJOURNAL/i);
+ assert.equal(parseBibLibrary(snapshot)[0].key,'unresolved');
 });
 
 test('unterminated constructs return promptly in an isolated process',()=>{
