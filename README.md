@@ -67,7 +67,11 @@ Windows 构建需要 Rust stable MSVC、Visual Studio C++ 工具和 WebView2。�
 
 Tauri 配置关闭原生文件拖放拦截，让编辑器继续处理段落排序。`src/platform.ts` 集中管理桌面存储和文件导出差异，公式模型不依赖 Tauri。
 
-界面语言在右上角齿轮打开的“首选项”中设置。保存后重新加载并保留草稿；取消或 Esc 不应用修改。原生文档扩展名为 `.vulgar`，内部仍使用 JSON；导出菜单仅提供 Markdown 和 LaTeX。
+界面语言与配色方案在右上角齿轮打开的“首选项”中设置。内置浅色、纸张、青灰和深色四套配色，选择时即时预览，保存后在本设备保留；取消或 Esc 恢复原配色。配色同时应用于正文、公式和工具界面，不改变文档内容、数学字体或导出结果。只有切换语言需要重新加载，当前草稿会保留。原生文档扩展名为 `.vulgar`，内部仍使用 JSON；导出菜单仅提供 Markdown 和 LaTeX。
+
+### 外观待办
+
+- 用户自定义 CSS：计划在首选项中提供编辑、预览、启停和恢复默认入口。先明确正文样式与编辑器界面的作用范围，以及打印和导出时的处理方式；自定义样式不应改变公式数据或破坏原位编辑的定位。
 
 MathJax 和编辑器会动态创建样式，因此 `dangerousDisableAssetCspModification` 仅设为 `["style-src"]`，保留已配置的 `style-src 'self' 'unsafe-inline'`。如果 Tauri 再向该指令注入 nonce/hash，浏览器会忽略 `unsafe-inline`，导致动态公式样式和行内布局失效。脚本的 nonce/hash 注入和其他 CSP 限制仍然保留。验证桌面排版时应检查打包后的策略，而不能只测试未经过 Tauri 处理的静态页面。
 

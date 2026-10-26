@@ -1,0 +1,352 @@
+/* Application colors are preferences, never document formatting. MathJax
+   inherits the document ink; fonts and the geometry of formulas stay intact. */
+:root[data-color-scheme] {
+  color-scheme: light;
+  --app-canvas: #fff;
+  --app-ink: #202124;
+  --app-sidebar: #fafbfd;
+  --app-surface: #fff;
+  --app-soft: #f4f4f5;
+  --app-panel: #f8fafc;
+  --app-muted: #64748b;
+  --app-border: #d8dfe8;
+  --app-hover: #e8eff9;
+  --app-hover-border: #bed0e8;
+  --app-link: #246ec2;
+  --app-selection: #dbeafe;
+  --app-selection-ink: #174d92;
+  --app-selection-edge: #7eabe3;
+  --app-math-active: rgb(36 110 194 / 6.5%);
+  --app-math-edge: rgb(36 110 194 / 45%);
+  --app-placeholder: #8b9cb0;
+  --app-error: #b52c2c;
+  --app-warning: #8a5a10;
+  --app-warning-surface: #fffbeb;
+  --app-warning-border: #efd68b;
+  --app-action: #263b5b;
+  --app-action-ink: #fff;
+  --app-primary: #18181b;
+  --app-primary-ink: #fafafa;
+  --app-shadow: rgb(23 36 59 / 20%);
+  --app-backdrop: rgb(23 36 59 / 33%);
+  --background: var(--app-canvas);
+  --foreground: var(--app-ink);
+  --card: var(--app-surface);
+  --card-foreground: var(--app-ink);
+  --popover: var(--app-surface);
+  --popover-foreground: var(--app-ink);
+  --primary: var(--app-primary);
+  --primary-foreground: var(--app-primary-ink);
+  --secondary: var(--app-soft);
+  --secondary-foreground: var(--app-ink);
+  --muted: var(--app-soft);
+  --muted-foreground: var(--app-muted);
+  --accent: var(--app-hover);
+  --accent-foreground: var(--app-ink);
+  --destructive: var(--app-error);
+  --border: var(--app-border);
+  --input: var(--app-border);
+  --ring: var(--app-selection-edge);
+  --brand: var(--app-link);
+}
+
+/* Screen-only palettes also keep printed documents on white paper. */
+@media screen {
+  :root[data-color-scheme="paper"] {
+    --app-canvas: #fbf7ed;
+    --app-ink: #3c362d;
+    --app-sidebar: #f1eadf;
+    --app-surface: #fffcf5;
+    --app-soft: #f0e9dc;
+    --app-panel: #f6f0e4;
+    --app-muted: #706453;
+    --app-border: #d9cfbd;
+    --app-hover: #ece1ce;
+    --app-hover-border: #c5ad89;
+    --app-link: #89502a;
+    --app-selection: #ead7b8;
+    --app-selection-ink: #63401f;
+    --app-selection-edge: #b48a53;
+    --app-math-active: rgb(137 80 42 / 7%);
+    --app-math-edge: rgb(137 80 42 / 50%);
+    --app-placeholder: #a08d72;
+    --app-error: #ad3730;
+    --app-warning: #805017;
+    --app-warning-surface: #f7edcf;
+    --app-warning-border: #d8c28a;
+    --app-action: #705237;
+    --app-action-ink: #fffcf5;
+    --app-primary: #5b4937;
+    --app-primary-ink: #fffcf5;
+    --app-shadow: rgb(65 45 23 / 20%);
+    --app-backdrop: rgb(60 45 29 / 35%);
+  }
+  :root[data-color-scheme="slate"] {
+    --app-canvas: #edf2f6;
+    --app-ink: #243342;
+    --app-sidebar: #e1e9ef;
+    --app-surface: #f5f8fa;
+    --app-soft: #e3eaf0;
+    --app-panel: #e9eff4;
+    --app-muted: #586979;
+    --app-border: #c5d1dc;
+    --app-hover: #d5e2ec;
+    --app-hover-border: #9bb1c4;
+    --app-link: #365e80;
+    --app-selection: #cbddec;
+    --app-selection-ink: #294b68;
+    --app-selection-edge: #799bb7;
+    --app-math-active: rgb(54 94 128 / 8%);
+    --app-math-edge: rgb(54 94 128 / 50%);
+    --app-placeholder: #7c91a3;
+    --app-error: #ad343e;
+    --app-warning: #83571c;
+    --app-warning-surface: #f5efdc;
+    --app-warning-border: #d7c797;
+    --app-action: #3d5a72;
+    --app-action-ink: #f5f8fa;
+    --app-primary: #30485b;
+    --app-primary-ink: #f5f8fa;
+    --app-shadow: rgb(30 49 65 / 22%);
+    --app-backdrop: rgb(29 45 60 / 38%);
+  }
+  :root[data-color-scheme="dark"] {
+    color-scheme: dark;
+    --app-canvas: #20242b;
+    --app-ink: #e4e7ed;
+    --app-sidebar: #181c23;
+    --app-surface: #262c35;
+    --app-soft: #2c333e;
+    --app-panel: #1e232c;
+    --app-muted: #a4afbf;
+    --app-border: #414b5a;
+    --app-hover: #354359;
+    --app-hover-border: #627b9a;
+    --app-link: #9bc6ff;
+    --app-selection: #354e70;
+    --app-selection-ink: #e1edff;
+    --app-selection-edge: #7fa7d9;
+    --app-math-active: rgb(155 198 255 / 9%);
+    --app-math-edge: rgb(155 198 255 / 65%);
+    --app-placeholder: #95a5ba;
+    --app-error: #ff9c9c;
+    --app-warning: #f0ce87;
+    --app-warning-surface: #3b3322;
+    --app-warning-border: #76613c;
+    --app-action: #c5d8f2;
+    --app-action-ink: #19232f;
+    --app-primary: #c5d8f2;
+    --app-primary-ink: #19232f;
+    --app-shadow: rgb(0 0 0 / 45%);
+    --app-backdrop: rgb(0 0 0 / 58%);
+  }
+}
+
+/* Prefix the legacy editor selectors so these colors remain authoritative
+   even though its original stylesheet still follows the generated CSS. */
+:root[data-color-scheme] body {
+  background: var(--app-canvas);
+  color: var(--app-ink);
+}
+:root[data-color-scheme] ::selection {
+  background: var(--app-selection);
+  color: var(--app-selection-ink);
+}
+:root[data-color-scheme] a { color: var(--app-link); }
+:root[data-color-scheme] #preview { border-color: var(--app-border); }
+:root[data-color-scheme] #editorSidebar,
+:root[data-color-scheme] #mathPanel {
+  background: var(--app-sidebar);
+  border-color: var(--app-border);
+}
+:root[data-color-scheme] #documentToolsSection { border-color: var(--app-border); }
+:root[data-color-scheme] .document-actions label,
+:root[data-color-scheme] .board-heading span,
+:root[data-color-scheme] #pendingFontHint,
+:root[data-color-scheme] .note,
+:root[data-color-scheme] .alphabet-label,
+:root[data-color-scheme] .chemical-hint,
+:root[data-color-scheme] .chemical-card .structure-label,
+:root[data-color-scheme] .chemical-card code { color: var(--app-muted); }
+:root[data-color-scheme] .document-actions select,
+:root[data-color-scheme] .document-heading button {
+  background: var(--app-surface);
+  color: var(--app-ink);
+  border-color: var(--app-border);
+}
+:root[data-color-scheme] #mathPanel #insertToolbar {
+  background: var(--app-panel);
+  border-color: var(--app-border);
+}
+:root[data-color-scheme] .structure-categories { border-color: var(--app-border); }
+:root[data-color-scheme] .structure-categories button { color: var(--app-muted); }
+:root[data-color-scheme] .structure-categories button[aria-pressed="true"] {
+  background: var(--app-selection);
+  color: var(--app-selection-ink);
+}
+:root[data-color-scheme] .structure-categories .insert-text {
+  border-color: var(--app-border);
+  color: var(--app-ink);
+}
+:root[data-color-scheme] .structure-card { color: var(--app-ink); }
+:root[data-color-scheme] .structure-card:hover {
+  background: var(--app-hover);
+  border-color: var(--app-hover-border);
+}
+:root[data-color-scheme] .structure-card:focus-visible { outline-color: var(--app-link); }
+:root[data-color-scheme] .structure-card[aria-haspopup]::after { border-bottom-color: var(--app-muted); }
+:root[data-color-scheme] .structure-group .chemical-card {
+  background: var(--app-surface);
+  border-color: var(--app-border);
+}
+:root[data-color-scheme] .structure-group .chemical-card:hover {
+  background: var(--app-hover);
+  border-color: var(--app-hover-border);
+}
+:root[data-color-scheme] .command-menu,
+:root[data-color-scheme] .variant-menu {
+  background: var(--app-surface);
+  color: var(--app-ink);
+  border-color: var(--app-border);
+  box-shadow: 0 5px 20px var(--app-shadow);
+}
+:root[data-color-scheme] .variant-menu button { color: var(--app-ink); }
+:root[data-color-scheme] .command-menu [role="option"]:hover,
+:root[data-color-scheme] .variant-menu button:hover,
+:root[data-color-scheme] .variant-menu button:focus { background: var(--app-hover); }
+:root[data-color-scheme] .command-menu [aria-selected="true"] {
+  background: var(--app-selection);
+  color: var(--app-selection-ink);
+}
+:root[data-color-scheme] .command-menu span,
+:root[data-color-scheme] .command-empty,
+:root[data-color-scheme] .variant-menu .menu-heading { color: var(--app-muted); }
+:root[data-color-scheme] .command-menu [aria-selected="true"] span { color: inherit; }
+:root[data-color-scheme] .variant-menu button:disabled { color: var(--app-muted); opacity: .55; }
+:root[data-color-scheme] .variant-menu button[aria-checked="true"]::after { color: var(--app-link); }
+:root[data-color-scheme] .variant-menu [role="separator"] { border-color: var(--app-border); }
+:root[data-color-scheme] .math-caret::after { background: var(--app-link); }
+:root[data-color-scheme] .math-active-region {
+  background: var(--app-math-active);
+  box-shadow: 0 2px 0 var(--app-math-edge);
+}
+:root[data-color-scheme] .math-placeholder { outline-color: var(--app-placeholder); }
+:root[data-color-scheme] .math-active-region .math-placeholder { outline-color: var(--app-link); }
+:root[data-color-scheme] .math-selected,
+:root[data-color-scheme] .inline-formula.flow-selected,
+:root[data-color-scheme] [data-formula-selected="true"] > .math-mount-wrapper > .inline-formula,
+:root[data-color-scheme] .tex-reference[data-reference-selected="true"] .tex-reference-content {
+  background: var(--app-selection);
+  outline-color: var(--app-selection-edge);
+}
+:root[data-color-scheme] .tex-label-marker {
+  background: var(--app-panel);
+  color: var(--app-muted);
+  border-color: var(--app-border);
+}
+:root[data-color-scheme] .tex-label-marker:hover,
+:root[data-color-scheme] .tex-label-marker:focus-visible {
+  background: var(--app-hover);
+  color: var(--app-ink);
+}
+:root[data-color-scheme] .tex-reference-content.text-blue-700 { color: var(--app-link); }
+:root[data-color-scheme] .tex-reference-content.text-red-600 { color: var(--app-error); }
+:root[data-color-scheme] #error,
+:root[data-color-scheme] #fontHint {
+  background: var(--app-surface);
+  color: var(--app-error);
+}
+:root[data-color-scheme] .font-warning::after {
+  background-image: none;
+  background-color: var(--app-error);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='3'%3E%3Cpath d='M0 2Q1.5 0 3 2T6 2' fill='none' stroke='black' stroke-width='1'/%3E%3C/svg%3E") repeat-x left bottom / 6px 3px;
+}
+
+/* Preferences share the same surfaces as Plate's portalled dialogs. */
+:root[data-color-scheme] #openPreferences { color: var(--app-muted); }
+:root[data-color-scheme] #openPreferences:hover {
+  background: var(--app-hover);
+  color: var(--app-ink);
+}
+:root[data-color-scheme] #openPreferences:focus-visible,
+:root[data-color-scheme] .preference-downloads a:focus-visible { outline-color: var(--app-link); }
+:root[data-color-scheme] #preferencesDialog {
+  background: var(--app-surface);
+  color: var(--app-ink);
+  border-color: var(--app-border);
+  box-shadow: 0 16px 60px var(--app-shadow);
+}
+:root[data-color-scheme] #preferencesDialog::backdrop { background: var(--app-backdrop); }
+:root[data-color-scheme] #preferencesDialog :is(#uiLocale, #uiColorScheme) {
+  min-width: 140px;
+  max-width: 60%;
+  padding: 6px 10px;
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  background: var(--app-canvas);
+  color: var(--app-ink);
+  font: inherit;
+}
+:root[data-color-scheme] #preferencesDialog .preference-row + .preference-row { margin-top: 16px; }
+:root[data-color-scheme] .preference-hint { color: var(--app-muted); }
+:root[data-color-scheme] .preference-error {
+  margin: 12px 0;
+  color: var(--app-error);
+  font-size: 12px;
+}
+:root[data-color-scheme] .preference-downloads { border-color: var(--app-border); }
+:root[data-color-scheme] .preference-downloads a { color: var(--app-link); }
+:root[data-color-scheme] .preference-actions button {
+  border-color: var(--app-border);
+  background: var(--app-surface);
+  color: var(--app-ink);
+}
+:root[data-color-scheme] .preference-actions button:hover { background: var(--app-hover); }
+:root[data-color-scheme] .preference-actions .preference-save {
+  background: var(--app-action);
+  border-color: var(--app-action);
+  color: var(--app-action-ink);
+}
+:root[data-color-scheme] .preference-actions .preference-save:hover { filter: brightness(.94); }
+:root[data-color-scheme] #preferencesDialog :is(select, button):focus-visible {
+  outline: 2px solid var(--app-link);
+  outline-offset: 2px;
+}
+/* These classes are application status messages, not user-applied text marks. */
+:root[data-color-scheme] [data-slot="dialog-content"] .bg-amber-50 {
+  background: var(--app-warning-surface);
+  border-color: var(--app-warning-border);
+  color: var(--app-warning);
+}
+:root[data-color-scheme] [data-slot="dialog-content"] .text-blue-700 { color: var(--app-link); }
+:root[data-color-scheme] [data-slot="dialog-content"] .text-red-600 { color: var(--app-error); }
+:root[data-color-scheme] [data-bibliography-key^="endnote:"] :is(.text-amber-700, .hover\:text-amber-800:hover) { color: var(--app-warning); }
+:root[data-color-scheme] [data-sonner-toaster][data-sonner-theme] {
+  --normal-bg: var(--app-surface);
+  --normal-bg-hover: var(--app-hover);
+  --normal-text: var(--app-ink);
+  --normal-border: var(--app-border);
+  --normal-border-hover: var(--app-hover-border);
+}
+:root[data-color-scheme] [data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-description] { color: var(--app-muted); }
+
+@media screen {
+  :root[data-color-scheme="dark"] :is(.hljs-comment, .hljs-code, .hljs-formula) { color: #a4afbf; }
+  :root[data-color-scheme="dark"] .hljs-bullet { color: #e2c474; }
+}
+
+@media print {
+  /* The .dark class also enables Plate syntax utilities. Reset those colors
+     for printing, without touching inline colors saved in the document. */
+  :root[data-color-scheme] [class*="hljs-"] { color: inherit; background: transparent; }
+  :root[data-color-scheme] .math-active-region { background: transparent; box-shadow: none; }
+  :root[data-color-scheme] .math-caret,
+  :root[data-color-scheme] .math-placeholder,
+  :root[data-color-scheme] .font-warning::after { visibility: hidden; }
+  :root[data-color-scheme] .inline-formula.flow-selected,
+  :root[data-color-scheme] [data-formula-selected="true"] > .math-mount-wrapper > .inline-formula,
+  :root[data-color-scheme] .tex-reference[data-reference-selected="true"] .tex-reference-content {
+    background: transparent;
+    outline: none;
+  }
+}

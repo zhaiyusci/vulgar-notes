@@ -1,4 +1,7 @@
 import {installUnicodeFonts} from './mathjax-unicode-fonts';
+import {applyColorScheme, readColorScheme} from './color-scheme';
+// This existing blocking head script runs before the first body paint.
+applyColorScheme(readColorScheme());
 const enabledLetterFonts=['bboldx'];
 window.MathJax={
   output:{fontExtensions:enabledLetterFonts.map(name=>'https://cdn.jsdelivr.net/npm/@mathjax/mathjax-'+name+'-font-extension@4.1.3')},

@@ -212,5 +212,11 @@
   "Download for Windows": "下载 Windows 版",
   "BibTeX warnings": "BibTeX 提示",
   "Undefined BibTeX strings are shown by name.": "未定义的 BibTeX 字符串暂以字符串名显示。",
-  "Undefined BibTeX string:": "未定义的 BibTeX 字符串："
+  "Undefined BibTeX string:": "未定义的 BibTeX 字符串：",
+  "Color scheme": "配色方案",
+  "Light": "浅色",
+  "Paper": "纸张",
+  "Slate": "青灰",
+  "Dark": "深色",
+  "Preferences could not be saved on this device.": "无法在此设备上保存首选项。"
 }

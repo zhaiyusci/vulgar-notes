@@ -177,8 +177,10 @@ body>h2,body>details{display:none}
 <dialog id="preferencesDialog" aria-labelledby="preferencesTitle">
 <form id="preferencesForm" method="dialog">
 <h2 id="preferencesTitle" data-i18n="Preferences">首选项</h2>
+<div class="preference-row preference-colors"><label for="uiColorScheme" data-i18n="Color scheme">配色方案</label><select id="uiColorScheme"><option value="light" data-i18n="Light">浅色</option><option value="paper" data-i18n="Paper">纸张</option><option value="slate" data-i18n="Slate">青灰</option><option value="dark" data-i18n="Dark">深色</option></select></div>
 <div class="preference-row"><label for="uiLocale" data-i18n="Interface language">界面语言</label><select id="uiLocale"><option value="zh-CN">中文</option><option value="en">English</option></select></div>
 <p class="preference-hint" data-i18n="Changing the language reloads the editor. Your draft is kept.">切换语言会重新加载编辑器，当前草稿会保留。</p>
+<p id="preferencesError" class="preference-error" role="status" hidden></p>
 <section id="desktopDownloads" class="preference-downloads" hidden><div class="preference-row"><span data-i18n="Desktop app">桌面应用</span><a href="https://github.com/zhaiyusci/vulgar-notes/releases/latest" target="_blank" rel="noopener noreferrer"><span data-i18n="Download for Windows">下载 Windows 版</span> <span aria-hidden="true">↗</span></a></div></section>
 <div class="preference-actions"><button type="submit" value="cancel" data-i18n="Cancel">取消</button><button type="submit" value="save" class="preference-save" data-i18n="Save">保存</button></div>
 </form>
