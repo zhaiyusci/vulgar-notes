@@ -1,10 +1,13 @@
 import {locale, t} from './i18n';
+import {isTauri} from '@tauri-apps/api/core';
 
 export function initPreferences() {
   const trigger = document.getElementById('openPreferences') as HTMLButtonElement;
   const dialog = document.getElementById('preferencesDialog') as HTMLDialogElement;
   const form = document.getElementById('preferencesForm') as HTMLFormElement;
   const select = document.getElementById('uiLocale') as HTMLSelectElement;
+  const desktopDownloads = document.getElementById('desktopDownloads');
+  if (desktopDownloads) desktopDownloads.hidden = isTauri();
   trigger.title = t('Preferences');
   trigger.setAttribute('aria-label', t('Preferences'));
   trigger.addEventListener('click', () => {

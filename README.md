@@ -4,6 +4,8 @@
 
 [打开网页版](https://zhaiyusci.github.io/vulgar-notes/)
 
+[下载 Windows 桌面版](https://github.com/zhaiyusci/vulgar-notes/releases/latest)（免安装版 / 安装版）
+
 ## 关于名称的郑重声明
 
 本项目郑重声明：**Vulgar Notes** 中的 **vulgar**，明确取现代英语中“低俗、粗俗、不雅”的含义。这个名字是有意这样取的。
@@ -48,6 +50,8 @@ When we went looking for a decent name, a crowd of Markdown editors had already 
 发布目录中的脚本、样式、MathJax、New Computer Modern、BBoldX 和 mhchem 字体均使用相对路径，适用于 GitHub Pages 的仓库子目录。只发布生成的 `web-dist/`，不发布本地诊断文件、草稿或桌面构建产物。用户插入的网络媒体、PlantUML 图预览等功能仍会访问相应的第三方服务；静态托管不包含 AI 后端或多人协作服务。
 
 ## Tauri 桌面应用
+
+Windows x64 的公开版本发布在 [GitHub Releases](https://github.com/zhaiyusci/vulgar-notes/releases/latest)，同时提供免安装程序、NSIS 安装包和 SHA-256 校验文件。网页版也可从右上角齿轮打开“首选项”，选择“下载 Windows 版”。免安装版需要系统已有 WebView2；安装版会在缺少运行时时下载并安装它。当前程序尚未进行代码签名。
 
 - `npm run desktop:dev`：构建本地资源并启动桌面开发窗口；不占用网页预览的 8767 端口。
 - `npm run desktop:build`：生成 Windows 程序和 NSIS 安装包。

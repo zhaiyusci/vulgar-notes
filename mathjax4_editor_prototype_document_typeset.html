@@ -138,6 +138,10 @@ body>h2,body>details{display:none}
 .preference-row{display:flex;align-items:center;justify-content:space-between;gap:20px}
 #preferencesDialog #uiLocale{min-width:140px;padding:6px 10px;font-size:14px}
 .preference-hint{color:#64748b;font-size:12px;margin:12px 0 24px}
+.preference-downloads{border-top:1px solid #e2e8f0;padding-top:16px;margin-bottom:24px}
+.preference-downloads a{color:#2563eb;text-decoration:none}
+.preference-downloads a:hover{text-decoration:underline}
+.preference-downloads a:focus-visible{outline:2px solid #3b82f6;outline-offset:3px;border-radius:2px}
 .preference-actions{display:flex;justify-content:flex-end;gap:8px}
 .preference-actions button{padding:6px 16px;border:1px solid #d8dfe8;border-radius:6px;background:white;cursor:pointer}
 .preference-actions .preference-save{background:#263b5b;border-color:#263b5b;color:white}
@@ -174,6 +178,7 @@ body>h2,body>details{display:none}
 <h2 id="preferencesTitle" data-i18n="Preferences">首选项</h2>
 <div class="preference-row"><label for="uiLocale" data-i18n="Interface language">界面语言</label><select id="uiLocale"><option value="zh-CN">中文</option><option value="en">English</option></select></div>
 <p class="preference-hint" data-i18n="Changing the language reloads the editor. Your draft is kept.">切换语言会重新加载编辑器，当前草稿会保留。</p>
+<section id="desktopDownloads" class="preference-downloads" hidden><div class="preference-row"><span data-i18n="Desktop app">桌面应用</span><a href="https://github.com/zhaiyusci/vulgar-notes/releases/latest" target="_blank" rel="noopener noreferrer"><span data-i18n="Download for Windows">下载 Windows 版</span> <span aria-hidden="true">↗</span></a></div></section>
 <div class="preference-actions"><button type="submit" value="cancel" data-i18n="Cancel">取消</button><button type="submit" value="save" class="preference-save" data-i18n="Save">保存</button></div>
 </form>
 </dialog>

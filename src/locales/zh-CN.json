@@ -189,5 +189,7 @@
   "Insert a label at the cursor or label an existing target. Leave an existing label empty to remove it. Text labels refer to the current section number, as in TeX.": "在光标处插入标签，或为现有目标设置标签。清空现有标签可将其移除。正文标签按 TeX 规则引用当前章节编号。",
   "Unresolved, unnumbered or duplicate reference": "引用未解析、目标没有编号或标签重复",
   "Label this location. Clear the name to remove an existing label.": "为当前位置设置标签。清空名称可移除现有标签。",
-  "Click to select; Ctrl/Cmd-click to follow; double-click to edit.": "单击选中；Ctrl/Cmd + 单击跳转；双击编辑。"
+  "Click to select; Ctrl/Cmd-click to follow; double-click to edit.": "单击选中；Ctrl/Cmd + 单击跳转；双击编辑。",
+  "Desktop app": "桌面应用",
+  "Download for Windows": "下载 Windows 版"
 }
