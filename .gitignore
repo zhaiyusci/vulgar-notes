@@ -8,6 +8,7 @@ editor-ui.css.map
 .plate-test.cjs
 dist/
 desktop-dist/
+web-dist/
 portable/
 src-tauri/target/
 src-tauri/gen/

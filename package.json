@@ -4,8 +4,10 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && node build.cjs",
-    "test": "npm run build && node --test editor-model.test.cjs letter-variants.test.cjs text-flow.test.cjs plate-host.test.cjs paragraph-drag.test.cjs math-input.test.cjs platform.test.cjs bibtex.test.cjs bibtex-latex.test.cjs",
+    "test": "npm run build && node --test editor-model.test.cjs letter-variants.test.cjs text-flow.test.cjs plate-host.test.cjs paragraph-drag.test.cjs math-input.test.cjs platform.test.cjs bibtex.test.cjs bibtex-latex.test.cjs web-package.test.cjs",
     "dev": "npm run build && node serve.cjs",
+    "web:prepare": "node scripts/prepare-web.cjs",
+    "web:build": "npm run build && npm run web:prepare",
     "desktop:prepare": "npm run build && node scripts/prepare-desktop.cjs",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",

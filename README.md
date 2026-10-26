@@ -2,6 +2,8 @@
 
 编辑器使用 TypeScript（`strict: true`）、Plate / React 和 MathJax 4。桌面版使用 Tauri 2，公式编辑模块与正文引擎保持独立。
 
+[打开网页版](https://zhaiyusci.github.io/vulgar-notes/)
+
 ## 关于名称的郑重声明
 
 本项目郑重声明：**Vulgar Notes** 中的 **vulgar**，明确取现代英语中“低俗、粗俗、不雅”的含义。这个名字是有意这样取的。
@@ -34,6 +36,16 @@ When we went looking for a decent name, a crowd of Markdown editors had already 
 - **交换格式与编辑交互分开。** Markdown 是导出格式，不是必须模仿的交互模型。原生 `.vulgar` 文档以 JSON 保存完整的可编辑结构，LaTeX 用于排版导出。
 
 选择 Plate 的开源 Editor Kit 是为了复用成熟的富文本基础设施，不是为了开启它提供的每一项功能。后续引入或更新插件时，应检查是否重新带入了斜杠菜单、Markdown 输入规则或自动字符替换。
+
+## 网页版与 GitHub Pages
+
+网页版部署在 <https://zhaiyusci.github.io/vulgar-notes/>。它是静态网站，不需要运行 Node.js 服务，也没有文档上传或同步后端。浏览器通过文件选择打开 `.vulgar` 和 `.bib`，保存和导出以文件下载实现。各标签页的草稿使用独立的 sessionStorage；需要长期保留的内容请保存为 `.vulgar` 文件。
+
+- `npm run web:build`：检查类型、构建编辑器并生成可直接托管的 `web-dist/`。
+- `npm run web:prepare`：使用已构建的编辑器资源生成 `web-dist/`。
+- `.github/workflows/pages.yml`：推送到 `master` 后，安装依赖、构建并运行测试，再发布到 GitHub Pages；也可手动触发。
+
+发布目录中的脚本、样式、MathJax、New Computer Modern、BBoldX 和 mhchem 字体均使用相对路径，适用于 GitHub Pages 的仓库子目录。只发布生成的 `web-dist/`，不发布本地诊断文件、草稿或桌面构建产物。用户插入的网络媒体、PlantUML 图预览等功能仍会访问相应的第三方服务；静态托管不包含 AI 后端或多人协作服务。
 
 ## Tauri 桌面应用
 
