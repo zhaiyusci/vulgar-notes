@@ -7,7 +7,7 @@ import { insertCodeBlock, toggleCodeBlock } from '@platejs/code-block';
 import { insertCodeDrawing } from '@platejs/code-drawing';
 import { insertDate } from '@platejs/date';
 import { insertExcalidraw } from '@platejs/excalidraw';
-import { insertFootnote } from '@platejs/footnote';
+import { insertEndnote } from './insert-endnote';
 import { insertColumnGroup, toggleColumnGroup } from '@platejs/layout';
 import { triggerFloatingLink } from '@platejs/link/react';
 import { insertEquation, insertInlineEquation } from '@platejs/math';
@@ -92,7 +92,7 @@ const insertInlineMap: Record<
   (editor: PlateEditor, type: string) => void
 > = {
   [KEYS.date]: (editor) => insertDate(editor, { select: true }),
-  [ACTION_FOOTNOTE]: (editor) => insertFootnote(editor, { select: true }),
+  [ACTION_FOOTNOTE]: (editor) => insertEndnote(editor),
   [KEYS.inlineEquation]: (editor) =>
     insertInlineEquation(editor, '', { select: true }),
   [KEYS.link]: (editor) => triggerFloatingLink(editor, { focused: true }),

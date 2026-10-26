@@ -16,7 +16,8 @@ import { KEYS } from 'platejs';
 import { useEditorReadOnly } from 'platejs/react';
 
 import { InsertMathToolbarButtons } from './insert-math-toolbar-buttons';
-import { ReferenceToolbarButton } from './reference-toolbar-button';
+import { CrossReferenceToolbarButton,CitationToolbarButton } from './reference-toolbar-button';
+import { InsertEndnoteToolbarButton } from './insert-endnote-toolbar-button';
 import { BibtexLibrariesButton } from './bibtex-libraries-button';
 import { AlignToolbarButton } from './align-toolbar-button';
 import { CommentToolbarButton } from './comment-toolbar-button';
@@ -72,7 +73,14 @@ export function FixedToolbarButtons() {
 
           <ToolbarGroup>
             <InsertMathToolbarButtons />
-            <LabelToolbarButton /><ReferenceToolbarButton /><BibtexLibrariesButton />
+          </ToolbarGroup>
+
+          <ToolbarGroup>
+            <LabelToolbarButton /><CrossReferenceToolbarButton />
+          </ToolbarGroup>
+
+          <ToolbarGroup>
+            <InsertEndnoteToolbarButton /><CitationToolbarButton /><BibtexLibrariesButton />
           </ToolbarGroup>
 
           <ToolbarGroup>

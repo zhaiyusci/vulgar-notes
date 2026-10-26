@@ -44,6 +44,7 @@ import {
   insertBlock,
   insertInlineElement,
 } from '@/components/editor/transforms';
+import {insertEndnote} from '@/components/editor/insert-endnote';
 
 import { ToolbarButton, ToolbarMenuGroup } from './toolbar';
 
@@ -236,7 +237,7 @@ export function InsertToolbarButton(props: DropdownMenuProps) {
   const editor = useEditorRef();
   const host=useContext(HostContext);
   const [open, setOpen] = React.useState(false);
-  const insertedMath=React.useRef(false);
+  const keptInsertionFocus=React.useRef(false);
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
@@ -247,7 +248,7 @@ export function InsertToolbarButton(props: DropdownMenuProps) {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
-        onCloseAutoFocus={event=>{if(insertedMath.current){event.preventDefault();insertedMath.current=false;}}}
+        onCloseAutoFocus={event=>{if(keptInsertionFocus.current){event.preventDefault();keptInsertionFocus.current=false;}}}
         className="flex max-h-[500px] min-w-0 flex-col overflow-y-auto"
         align="start"
       >
@@ -259,8 +260,11 @@ export function InsertToolbarButton(props: DropdownMenuProps) {
                 className="min-w-[180px]"
                 onSelect={() => {
                   if((value===KEYS.equation||value===KEYS.inlineEquation)&&host){
-                    insertedMath.current=true;
+                    keptInsertionFocus.current=true;
                     host.insertFormula(value===KEYS.equation,value===KEYS.inlineEquation&&editor.selection?editor.api.string(editor.selection):undefined);return;
+                  }
+                  if(value==='action_footnote'){
+                    keptInsertionFocus.current=true;insertEndnote(editor,host??undefined);return;
                   }
                   onSelect(editor, value);
                   editor.tf.focus();
