@@ -53,10 +53,10 @@ const escapeText=(text:string)=>text.replace(/[\\{}$%#&_~^]/g,c=>({
 } as Record<string,string>)[c]??'\\'+c);
 
 /** LaTeX is an additional export; Markdown is serialized by Tiptap itself. */
-export function documentLatex(node:JSONContent):string {
-  const body=(node.content||[]).map(documentLatex).join('');
+export function documentLatex(node:JSONContent,formatMath:(source:string)=>string=source=>source):string {
+  const body=(node.content||[]).map(child=>documentLatex(child,formatMath)).join('');
   if(isMath(node.type)){
-    const source=mathSource(node.attrs!.snapshot),env=node.attrs!.numbered===false?'equation*':'equation';
+    const source=formatMath(mathSource(node.attrs!.snapshot)),env=node.attrs!.numbered===false?'equation*':'equation';
     return node.type==='displayMath'?`\n\\begin{${env}}\n${source}\n\\end{${env}}\n`:'\\('+source+'\\)';
   }
   if(node.type==='text')return (node.marks||[]).reduce((text,mark)=>{

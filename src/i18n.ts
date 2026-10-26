@@ -23,11 +23,4 @@ export function initLocale(){
   for(const [id,key] of [['mathPanel','Math input'],['formulaLayout','Current formula'],['insertToolbar','Insert'],['textFlow','Body']])document.getElementById(id)?.setAttribute('aria-label',t(key));
   document.title=locale==='en'?'Math document editor':'数学文档编辑器';
   document.querySelectorAll<HTMLElement>('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n!);});
-  const select=document.getElementById('uiLocale') as HTMLSelectElement;
-  select.value=locale;select.setAttribute('aria-label',t('Language'));
-  select.addEventListener('change',()=>{
-    localStorage.setItem('editor.locale',select.value);
-    // The editor saves synchronously; reload recreates both independent UI hosts.
-    window.location.reload();
-  });
 }

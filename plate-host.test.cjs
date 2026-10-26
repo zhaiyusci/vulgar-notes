@@ -72,5 +72,32 @@ test('Plate document / independent MathJax mount integration',async t=>{
   const saved=JSON.parse(sessionStorage.getItem('math-plate-document-v1'));
   assert.equal(saved.value[0].children.find(n=>n.id===first.element.dataset.mathId).display,true);
   flow.destroy();
+ });
+ await t.test('opening a JSON document replaces content, retains math and clears old undo history',async()=>{
+  const {flow,editor}=setup();
+  const old=flow.serializeDocument();
+  const formula=JSON.parse(JSON.stringify(editor.children[0].children.find(n=>n.type==='inline_equation')));
+  const model=new EditorModel();model.replaceInput(0,0,'z^2');formula.snapshot=model.snapshot();formula.texExpression=model.exportLatex();
+  flow.openDocument(JSON.stringify({version:1,value:[{type:'p',children:[{text:'Opened document '},formula,{text:''}]}]}));await tick();
+  assert.equal(editor.children.length,1);assert.match(flow.exportLatex(),/Opened document/);assert.doesNotMatch(flow.exportLatex(),/在这里/);
+  assert.equal(flow.entries()[0].model.exportLatex(),model.exportLatex());
+  assert.equal(editor.history.undos.length,0);assert.equal(flow.hasUnsavedChanges(),false);
+  assert.equal(sessionStorage.getItem('math-plate-document-v1-before-open'),old);
+  flow.destroy();
+ });
+ await t.test('invalid opened documents cannot replace existing prose or formulas',async()=>{
+  const {flow}=setup();const before=flow.serializeDocument();
+  for(const bad of ['bad',JSON.stringify({version:2,value:[]}),JSON.stringify({version:1,value:[{text:'invalid root'}]})]){
+    assert.throws(()=>flow.openDocument(bad));assert.equal(flow.serializeDocument(),before);
+  }
+  flow.destroy();
+ });
+ await t.test('saved state tracks edits but ignores math cursor movements',async()=>{
+  const {flow,editor}=setup();flow.markDocumentSaved(flow.serializeDocument());
+  const entry=flow.entries()[0];entry.model.setCursor(entry.model.root.id,0);flow.persist();assert.equal(flow.hasUnsavedChanges(),false);
+  editor.tf.select(editor.api.end([]));editor.tf.insertText('edited');await tick();assert.equal(flow.hasUnsavedChanges(),true);
+  const saved=flow.serializeDocument();flow.markDocumentSaved(saved);assert.equal(flow.hasUnsavedChanges(),false);
+  editor.tf.insertText('more');await tick();flow.markDocumentSaved(saved);assert.equal(flow.hasUnsavedChanges(),true);
+  flow.destroy();
  }); await window.happyDOM.abort();
 });

@@ -117,5 +117,21 @@
   "Inline Equation": "行内公式",
   "Document tools": "正文工具",
   "Drag paragraph": "拖动段落",
-  "Drag to move": "拖动以移动"
+  "Drag to move": "拖动以移动",
+  "Preferences": "首选项",
+  "Interface language": "界面语言",
+  "Changing the language reloads the editor. Your draft is kept.": "切换语言会重新加载编辑器，当前草稿会保留。",
+  "Cancel": "取消",
+  "Save": "保存",
+  "Export failed": "导出失败",
+  "Editable document": "可编辑文档",
+  "Open document": "打开文档",
+  "Save document": "保存文档",
+  "Save document as": "另存为",
+  "Document saved": "文档已保存",
+  "Unable to open document": "无法打开文档",
+  "Unable to save document": "无法保存文档",
+  "Please choose a JSON document.": "请选择 JSON 文档。",
+  "Unsaved changes": "尚未保存的修改",
+  "This document has unsaved changes. Open another document without saving?": "当前文档有尚未保存的修改。是否不保存并打开另一份文档？"
 }

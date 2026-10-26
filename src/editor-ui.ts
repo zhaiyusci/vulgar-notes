@@ -112,7 +112,9 @@ function regionTex(region:Region,editor=model,isEditing=editing):string {
     tex += `\\class{math-item item-${region.id}-${i}${selection}${structureMarker}}{${content}}`;
   });
   if (active && editor.cursor.offset === region.items.length) tex += caretTex;
-  if (!region.items.length) tex += descriptive?'\\class{math-placeholder}{\\unicode{x2007}}':placeholderTex;
+  // A space has no glyph height: its CSS minimum height grows below the baseline.
+  // Use a hidden text digit so MathJax measures the placeholder in the text font.
+  if (!region.items.length) tex += descriptive?'\\class{math-placeholder text-placeholder}{0}':placeholderTex;
   const result=`\\class{math-region region-${region.id}${active?' math-active-region':''}}{${tex}}`;
   return descriptive?`\\textnormal{${result}}`:result;
 }

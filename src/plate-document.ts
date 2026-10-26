@@ -1,8 +1,22 @@
+import {draftStorage} from './platform';
 import type {TElement, Value, Descendant} from 'platejs';
 import {type JSONContent, migrateLegacy, documentLatex} from './document-format';
 import {EditorModel} from './editor-model';
 
 export const documentStorageKey='math-plate-document-v1';
+export function documentContentKey(source:string):string {
+  return JSON.stringify(JSON.parse(source), (key,value)=>{
+    if(key==='snapshot'&&typeof value==='string')return JSON.parse(value).root;
+    return value;
+  });
+}
+export function parseDocumentFile(source:string):Value {
+  const saved=JSON.parse(source);
+  if(saved?.version!==1||!Array.isArray(saved.value)||!saved.value.length)throw Error('Invalid document format');
+  validate(saved.value);
+  if(saved.value.some((node:any)=>typeof node.type!=='string'||!Array.isArray(node.children)))throw Error('Invalid document root');
+  return saved.value;
+}
 export const isFormula=(n:unknown):boolean=>!!n&&typeof n==='object'&&'type' in n&&(n.type==='equation'||n.type==='inline_equation');
 export type FormulaNode=TElement & {id:string; snapshot?:string;texExpression:string;numbered:boolean;display?:boolean};
 export const newId=()=>'math-'+crypto.randomUUID();
@@ -53,13 +67,13 @@ export function fromTiptap(doc:JSONContent):Value {
 }
 export function restoreDocument(initial:EditorModel):Value {
   try {
-    const current=sessionStorage.getItem(documentStorageKey);
+    const current=draftStorage().getItem(documentStorageKey);
     if(current){const saved=JSON.parse(current);if(saved.version!==1||!Array.isArray(saved.value))throw Error('Invalid Plate document');validate(saved.value);return saved.value;}
-    const tiptap=sessionStorage.getItem('math-tiptap-document-v1');
+    const tiptap=draftStorage().getItem('math-tiptap-document-v1');
     if(tiptap){const saved=JSON.parse(tiptap);if(saved.version!==2)throw Error('Invalid previous document');return fromTiptap(saved.doc);}
-    const legacy=sessionStorage.getItem('math-text-flow-state');if(legacy)return fromTiptap(migrateLegacy(legacy));
+    const legacy=draftStorage().getItem('math-text-flow-state');if(legacy)return fromTiptap(migrateLegacy(legacy));
   }catch(error){
-    for(const key of [documentStorageKey,'math-tiptap-document-v1','math-text-flow-state']){const value=sessionStorage.getItem(key);if(value)sessionStorage.setItem(key+'-recovery',value);}
+    for(const key of [documentStorageKey,'math-tiptap-document-v1','math-text-flow-state']){const value=draftStorage().getItem(key);if(value)draftStorage().setItem(key+'-recovery',value);}
     console.warn('The original draft has been preserved for recovery.',error);
   }
   return [{type:'p',children:[{text:'在这里输入正文。已知 '},formulaNode(initial),{text:'，可以继续输入文字，也可以在光标处插入新的公式。'}]}];
@@ -75,7 +89,7 @@ export function validate(nodes:unknown[]):void {
   }
 }
 /** Keep the established LaTeX prose exporter independent of the document engine. */
-export function plateLatex(value:Value):string {
+export function plateLatex(value:Value,formatMath?:(source:string)=>string):string {
   const read=(n:any):JSONContent=>{
     if(typeof n.text==='string')return {type:'text',text:n.text,marks:Object.keys(n).filter(k=>k!=='text'&&n[k]===true).map(type=>({type:type==='strikethrough'?'strike':type}))};
     if(isFormula(n)&&n.snapshot)return {type:n.type==='equation'||n.display?'displayMath':'inlineMath',attrs:n};
@@ -83,5 +97,5 @@ export function plateLatex(value:Value):string {
     const type=/^h[1-6]$/.test(n.type)?'heading':({p:'paragraph',a:'text',code_block:'codeBlock',code_line:'paragraph',hr:'horizontalRule'} as Record<string,string>)[n.type]||n.type;
     return {type,attrs:{level:Number(n.type[1]),language:n.lang},content:n.children?.map(read)};
   };
-  return documentLatex({type:'doc',content:value.map(read)}).trim();
+  return documentLatex({type:'doc',content:value.map(read)},formatMath).trim();
 }

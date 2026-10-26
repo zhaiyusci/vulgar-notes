@@ -1,0 +1,1947 @@
+% !TeX program = lualatex
+% Compile with LuaLaTeX or XeLaTeX (TeX Live).
+\documentclass[UTF8,fontset=fandol,scheme=plain]{ctexart}
+\usepackage{mathtools}
+\usepackage{amssymb}
+\usepackage{extarrows}
+\usepackage{cancel}
+\usepackage{unicode-math}
+\unimathsetup{mathrm=sym,mathit=sym,mathbf=sym,mathsf=sym,mathtt=sym}
+\setmathfont{NewCMMath-Regular.otf}
+\setmathfont{NewCMMath-Bold.otf}[version=bold]
+\usepackage{physics}
+\usepackage[version=4]{mhchem}
+% BBoldX supplies mathbb and native Greek math symbols such as bbalpha.
+\usepackage[bbsymbols]{bboldx}
+
+
+\begin{document}
+\section*{导出编译验证}
+
+中文正文 English 100\% \& x\_y \(\frac{\sqrt{x+1}}{a+\frac{b}{c}}\)
+
+
+\begin{equation}
+\frac{\sqrt{x+1}}{a+\frac{b}{c}}
+\end{equation}
+
+\begin{equation*}
+\frac{\sqrt{x+1}}{a+\frac{b}{c}}
+\end{equation*}
+% frac
+\[\frac{x}{x}\]
+% dfrac
+\[\dfrac{x}{x}\]
+% tfrac
+\[\tfrac{x}{x}\]
+% binom
+\[\binom{x}{x}\]
+% sqrt
+\[\sqrt{x}\]
+% nthroot
+\[\sqrt[x]{x}\]
+% power
+\[{x}^{x}\]
+% subscript
+\[{x}_{x}\]
+% sup
+\[{x}_{x}^{x}\]
+% parens
+\[\left( x\right)\]
+% brackets
+\[\left[ x\right]\]
+% braces
+\[\left\{ x\right\}\]
+% abs
+\[\left| x\right|\]
+% norm
+\[\left\lVert x\right\rVert\]
+% floor
+\[\left\lfloor x\right\rfloor\]
+% ceil
+\[\left\lceil x\right\rceil\]
+% sum
+\[\sum_{}^{} \]
+% prod
+\[\prod_{}^{} \]
+% bigcup
+\[\bigcup_{}^{} \]
+% bigcap
+\[\bigcap_{}^{} \]
+% integral
+\[\int_{}^{} \]
+% doubleIntegral
+\[\iint_{}^{} \]
+% contourIntegral
+\[\oint_{}^{} \]
+% limit
+\[\lim_{} \]
+% matrix
+\[\begin{pmatrix}x&x\\x&x\end{pmatrix}\]
+% bmatrix
+\[\begin{bmatrix}x&x\\x&x\end{bmatrix}\]
+% plainmatrix
+\[\begin{matrix}x&x\\x&x\end{matrix}\]
+% determinant
+\[\begin{vmatrix}x&x\\x&x\end{vmatrix}\]
+% normmatrix
+\[\begin{Vmatrix}x&x\\x&x\end{Vmatrix}\]
+% matrix3
+\[\begin{pmatrix}x&x&x\\x&x&x\\x&x&x\end{pmatrix}\]
+% cases
+\[\begin{cases}x&x\\x&x\end{cases}\]
+% aligned
+\[\begin{aligned}x&x\\x&x\end{aligned}\]
+% hat
+\[\hat{x}\]
+% widehat
+\[\widehat{xy}\]
+% tilde
+\[\tilde{x}\]
+% widetilde
+\[\widetilde{xy}\]
+% bar
+\[\bar{x}\]
+% overline
+\[\overline{xy}\]
+% underline
+\[\underline{xy}\]
+% acute
+\[\acute{x}\]
+% grave
+\[\grave{x}\]
+% breve
+\[\breve{x}\]
+% check
+\[\check{x}\]
+% mathring
+\[\mathring{x}\]
+% dot
+\[\dot{x}\]
+% ddot
+\[\ddot{x}\]
+% dddot
+\[\dddot{x}\]
+% ddddot
+\[\ddddot{x}\]
+% vector
+\[\vec{x}\]
+% overrightarrow
+\[\overrightarrow{xy}\]
+% overleftarrow
+\[\overleftarrow{xy}\]
+% overleftrightarrow
+\[\overleftrightarrow{xy}\]
+% underrightarrow
+\[\underrightarrow{xy}\]
+% underleftarrow
+\[\underleftarrow{xy}\]
+% underleftrightarrow
+\[\underleftrightarrow{xy}\]
+% overbrace
+\[\overbrace{x}^{x}\]
+% underbrace
+\[\underbrace{x}_{x}\]
+% overset
+\[\overset{x}{x}\]
+% underset
+\[\underset{x}{x}\]
+% arrow
+\[\xrightarrow[x]{x}\]
+% boxed
+\[\boxed{x}\]
+% cancel
+\[\cancel{x}\]
+% dbinom
+\[\dbinom{x}{x}\]
+% tbinom
+\[\tbinom{x}{x}\]
+% cfrac
+\[\cfrac{x}{x}\]
+% cfracl
+\[\cfrac[l]{x}{x}\]
+% cfracr
+\[\cfrac[r]{x}{x}\]
+% splitfrac
+\[\splitfrac{x}{x}\]
+% splitdfrac
+\[\splitdfrac{x}{x}\]
+% atop
+\[{x\atop x}\]
+% genfracBrackets
+\[\genfrac{[}{]}{0pt}{}{x}{x}\]
+% genfracBraces
+\[\genfrac{\{}{\}}{0pt}{}{x}{x}\]
+% substack
+\[\substack{x\\x}\]
+% subarrayl
+\[\begin{subarray}{l}x\\x\end{subarray}\]
+% subarrayc
+\[\begin{subarray}{c}x\\x\end{subarray}\]
+% prescript
+\[\prescript{x}{x}{x}\]
+% leftPower
+\[\prescript{x}{}{x}\]
+% leftSubscript
+\[\prescript{}{x}{x}\]
+% sideset
+\[\sideset{_{}^{}}{_{}^{}}\sum \]
+% angles
+\[\left\langle x\right\rangle\]
+% leftBrace
+\[\left\{ x\right.\]
+% rightBrace
+\[\left. x\right\}\]
+% evaluation
+\[\left. x\right|\]
+% slashFence
+\[\left/ x\right/\]
+% backslashFence
+\[\left\backslash x\right\backslash\]
+% parenbig
+\[\bigl( x\bigr)\]
+% parenBig
+\[\Bigl( x\Bigr)\]
+% parenbigg
+\[\biggl( x\biggr)\]
+% parenBigg
+\[\Biggl( x\Biggr)\]
+% coprod
+\[\coprod_{}^{} \]
+% bigsqcup
+\[\bigsqcup_{}^{} \]
+% biguplus
+\[\biguplus_{}^{} \]
+% bigvee
+\[\bigvee_{}^{} \]
+% bigwedge
+\[\bigwedge_{}^{} \]
+% bigodot
+\[\bigodot_{}^{} \]
+% bigoplus
+\[\bigoplus_{}^{} \]
+% bigotimes
+\[\bigotimes_{}^{} \]
+% iiint
+\[\iiint_{}^{} \]
+% iiiint
+\[\iiiint_{}^{} \]
+% idotsint
+\[\idotsint_{}^{} \]
+% sumSide
+\[\sum\nolimits_{}^{} \]
+% prodSide
+\[\prod\nolimits_{}^{} \]
+% intSide
+\[\int\nolimits_{}^{} \]
+% iintSide
+\[\iint\nolimits_{}^{} \]
+% iiintSide
+\[\iiint\nolimits_{}^{} \]
+% ointSide
+\[\oint\nolimits_{}^{} \]
+% oplimsup
+\[\limsup_{} \]
+% opliminf
+\[\liminf_{} \]
+% opsup
+\[\sup_{} \]
+% opinf
+\[\inf_{} \]
+% opmax
+\[\max_{} \]
+% opmin
+\[\min_{} \]
+% Bmatrix
+\[\begin{Bmatrix}x&x\\x&x\end{Bmatrix}\]
+% smallmatrix
+\[\begin{smallmatrix}x&x\\x&x\end{smallmatrix}\]
+% psmallmatrix
+\[\begin{psmallmatrix}x&x\\x&x\end{psmallmatrix}\]
+% bsmallmatrix
+\[\begin{bsmallmatrix}x&x\\x&x\end{bsmallmatrix}\]
+% Bsmallmatrix
+\[\begin{Bsmallmatrix}x&x\\x&x\end{Bsmallmatrix}\]
+% vsmallmatrix
+\[\begin{vsmallmatrix}x&x\\x&x\end{vsmallmatrix}\]
+% Vsmallmatrix
+\[\begin{Vsmallmatrix}x&x\\x&x\end{Vsmallmatrix}\]
+% rcases
+\[\begin{rcases}x&x\\x&x\end{rcases}\]
+% dcases
+\[\begin{dcases}x&x\\x&x\end{dcases}\]
+% drcases
+\[\begin{drcases}x&x\\x&x\end{drcases}\]
+% gathered
+\[\begin{gathered}x\\x\end{gathered}\]
+% lgathered
+\[\begin{lgathered}x\\x\end{lgathered}\]
+% rgathered
+\[\begin{rgathered}x\\x\end{rgathered}\]
+% multlined
+\[\begin{multlined}x\\x\end{multlined}\]
+% alignedat
+\[\begin{alignedat}{1}x&x\\x&x\end{alignedat}\]
+% array
+\[\begin{array}{ll}x&x\\x&x\end{array}\]
+% pmatrixl
+\[\begin{pmatrix*}[l]x&x\\x&x\end{pmatrix*}\]
+% pmatrixr
+\[\begin{pmatrix*}[r]x&x\\x&x\end{pmatrix*}\]
+% bmatrixl
+\[\begin{bmatrix*}[l]x&x\\x&x\end{bmatrix*}\]
+% bmatrixr
+\[\begin{bmatrix*}[r]x&x\\x&x\end{bmatrix*}\]
+% overbracket
+\[\overbracket{x}^{x}\]
+% underbracket
+\[\underbracket{x}_{x}\]
+% xleftarrow
+\[\xleftarrow[x]{x}\]
+% xleftrightarrow
+\[\xleftrightarrow[x]{x}\]
+% xLeftarrow
+\[\xLeftarrow[x]{x}\]
+% xRightarrow
+\[\xRightarrow[x]{x}\]
+% xLeftrightarrow
+\[\xLeftrightarrow[x]{x}\]
+% xhookleftarrow
+\[\xhookleftarrow[x]{x}\]
+% xhookrightarrow
+\[\xhookrightarrow[x]{x}\]
+% xmapsto
+\[\xmapsto[x]{x}\]
+% xleftharpoonup
+\[\xleftharpoonup[x]{x}\]
+% xleftharpoondown
+\[\xleftharpoondown[x]{x}\]
+% xrightharpoonup
+\[\xrightharpoonup[x]{x}\]
+% xrightharpoondown
+\[\xrightharpoondown[x]{x}\]
+% xleftrightharpoons
+\[\xleftrightharpoons[x]{x}\]
+% xrightleftharpoons
+\[\xrightleftharpoons[x]{x}\]
+% bcancel
+\[\bcancel{x}\]
+% xcancel
+\[\xcancel{x}\]
+% cancelto
+\[\cancelto{x}{x}\]
+% xlongleftarrow
+\[\xlongleftarrow[x]{x}\]
+% xlongrightarrow
+\[\xlongrightarrow[x]{x}\]
+% xLongleftarrow
+\[\xLongleftarrow[x]{x}\]
+% xLongrightarrow
+\[\xLongrightarrow[x]{x}\]
+% physics-dv
+\[\dv{x}{x}\]
+% physics-dvFlat
+\[\dv*{x}{x}\]
+% physics-pdv
+\[\pdv{x}{x}\]
+% physics-pdvFlat
+\[\pdv*{x}{x}\]
+% physics-fdv
+\[\fdv{x}{x}\]
+% physics-fdvFlat
+\[\fdv*{x}{x}\]
+% physics-dd
+\[\dd{x}\]
+% physics-var
+\[\var{x}\]
+% physics-vb
+\[\vb{x}\]
+% physics-va
+\[\va{x}\]
+% physics-vu
+\[\vu{x}\]
+% physics-grad
+\[\grad{x}\]
+% physics-divergence
+\[\divergence{x}\]
+% physics-curl
+\[\curl{x}\]
+% physics-laplacian
+\[\laplacian{x}\]
+% physics-bra
+\[\bra{x}\]
+% physics-ket
+\[\ket{x}\]
+% physics-expval
+\[\expval{x}\]
+% physics-abs
+\[\abs{x}\]
+% physics-norm
+\[\norm{x}\]
+% physics-ev
+\[\ev{x}\]
+% physics-order
+\[\order{x}\]
+% physics-qty
+\[\qty(x)\]
+% physics-braket
+\[\braket{x}{x}\]
+% physics-ketbra
+\[\ketbra{x}{x}\]
+% physics-comm
+\[\comm{x}{x}\]
+% physics-acomm
+\[\acomm{x}{x}\]
+% physics-pb
+\[\pb{x}{x}\]
+% physics-flatfrac
+\[\flatfrac{x}{x}\]
+% physics-mel
+\[\mel{x}{x}{x}\]
+% chem-ce
+\[\ce{2 H2 + O2 -> 2 H2O}\]
+% chem-pu
+\[{1.2\cdot 10^{3}~\mathrm{kg}\mkern3mu \mathrm{m}\,/\,\mathrm{s^{2}}}\]
+% text-normal
+\[\textnormal{说明}\]
+% sumLimits
+\[\sum\limits_{}^{} \]
+% prodLimits
+\[\prod\limits_{}^{} \]
+% bigcupLimits
+\[\bigcup\limits_{}^{} \]
+% bigcupSide
+\[\bigcup\nolimits_{}^{} \]
+% bigcapLimits
+\[\bigcap\limits_{}^{} \]
+% bigcapSide
+\[\bigcap\nolimits_{}^{} \]
+% integralLimits
+\[\int\limits_{}^{} \]
+% doubleIntegralLimits
+\[\iint\limits_{}^{} \]
+% contourIntegralLimits
+\[\oint\limits_{}^{} \]
+% limitLimits
+\[\lim\limits_{} \]
+% limitSide
+\[\lim\nolimits_{} \]
+% coprodLimits
+\[\coprod\limits_{}^{} \]
+% coprodSide
+\[\coprod\nolimits_{}^{} \]
+% bigsqcupLimits
+\[\bigsqcup\limits_{}^{} \]
+% bigsqcupSide
+\[\bigsqcup\nolimits_{}^{} \]
+% biguplusLimits
+\[\biguplus\limits_{}^{} \]
+% biguplusSide
+\[\biguplus\nolimits_{}^{} \]
+% bigveeLimits
+\[\bigvee\limits_{}^{} \]
+% bigveeSide
+\[\bigvee\nolimits_{}^{} \]
+% bigwedgeLimits
+\[\bigwedge\limits_{}^{} \]
+% bigwedgeSide
+\[\bigwedge\nolimits_{}^{} \]
+% bigodotLimits
+\[\bigodot\limits_{}^{} \]
+% bigodotSide
+\[\bigodot\nolimits_{}^{} \]
+% bigoplusLimits
+\[\bigoplus\limits_{}^{} \]
+% bigoplusSide
+\[\bigoplus\nolimits_{}^{} \]
+% bigotimesLimits
+\[\bigotimes\limits_{}^{} \]
+% bigotimesSide
+\[\bigotimes\nolimits_{}^{} \]
+% iiintLimits
+\[\iiint\limits_{}^{} \]
+% iiiintLimits
+\[\iiiint\limits_{}^{} \]
+% iiiintSide
+\[\iiiint\nolimits_{}^{} \]
+% idotsintLimits
+\[\idotsint\limits_{}^{} \]
+% idotsintSide
+\[\idotsint\nolimits_{}^{} \]
+% oplimsupLimits
+\[\limsup\limits_{} \]
+% oplimsupSide
+\[\limsup\nolimits_{} \]
+% opliminfLimits
+\[\liminf\limits_{} \]
+% opliminfSide
+\[\liminf\nolimits_{} \]
+% opsupLimits
+\[\sup\limits_{} \]
+% opsupSide
+\[\sup\nolimits_{} \]
+% opinfLimits
+\[\inf\limits_{} \]
+% opinfSide
+\[\inf\nolimits_{} \]
+% opmaxLimits
+\[\max\limits_{} \]
+% opmaxSide
+\[\max\nolimits_{} \]
+% opminLimits
+\[\min\limits_{} \]
+% opminSide
+\[\min\nolimits_{} \]
+\typeout{SYMBOL symbol-alpha}\(\alpha \)\quad
+\typeout{SYMBOL symbol-beta}\(\beta \)\quad
+\typeout{SYMBOL symbol-gamma}\(\gamma \)\quad
+\typeout{SYMBOL symbol-delta}\(\delta \)\quad
+\typeout{SYMBOL symbol-epsilon}\(\epsilon \)\quad
+\typeout{SYMBOL symbol-varepsilon}\(\varepsilon \)\quad
+\typeout{SYMBOL symbol-zeta}\(\zeta \)\quad
+\typeout{SYMBOL symbol-eta}\(\eta \)\quad
+\typeout{SYMBOL symbol-theta}\(\theta \)\quad
+\typeout{SYMBOL symbol-vartheta}\(\vartheta \)\quad
+\typeout{SYMBOL symbol-iota}\(\iota \)\quad
+\typeout{SYMBOL symbol-kappa}\(\kappa \)\quad
+\typeout{SYMBOL symbol-varkappa}\(\varkappa \)\quad
+\typeout{SYMBOL symbol-lambda}\(\lambda \)\quad
+\typeout{SYMBOL symbol-mu}\(\mu \)\quad
+\typeout{SYMBOL symbol-nu}\(\nu \)\quad
+\typeout{SYMBOL symbol-xi}\(\xi \)\quad
+\typeout{SYMBOL symbol-omicron}\(\omicron \)\quad
+\typeout{SYMBOL symbol-pi}\(\pi \)\quad
+\typeout{SYMBOL symbol-varpi}\(\varpi \)\quad
+\typeout{SYMBOL symbol-rho}\(\rho \)\quad
+\typeout{SYMBOL symbol-varrho}\(\varrho \)\quad
+\typeout{SYMBOL symbol-sigma}\(\sigma \)\quad
+\typeout{SYMBOL symbol-varsigma}\(\varsigma \)\quad
+\typeout{SYMBOL symbol-tau}\(\tau \)\quad
+\typeout{SYMBOL symbol-upsilon}\(\upsilon \)\quad
+\typeout{SYMBOL symbol-phi}\(\phi \)\quad
+\typeout{SYMBOL symbol-varphi}\(\varphi \)\quad
+\typeout{SYMBOL symbol-chi}\(\chi \)\quad
+\typeout{SYMBOL symbol-psi}\(\psi \)\quad
+\typeout{SYMBOL symbol-omega}\(\omega \)\quad
+\typeout{SYMBOL symbol-Gamma}\(\Gamma \)\quad
+\typeout{SYMBOL symbol-Delta}\(\Delta \)\quad
+\typeout{SYMBOL symbol-Theta}\(\Theta \)\quad
+\typeout{SYMBOL symbol-Lambda}\(\Lambda \)\quad
+\typeout{SYMBOL symbol-Xi}\(\Xi \)\quad
+\typeout{SYMBOL symbol-Pi}\(\Pi \)\quad
+\typeout{SYMBOL symbol-Sigma}\(\Sigma \)\quad
+\typeout{SYMBOL symbol-Upsilon}\(\Upsilon \)\quad
+\typeout{SYMBOL symbol-Phi}\(\Phi \)\quad
+\typeout{SYMBOL symbol-Psi}\(\Psi \)\quad
+\typeout{SYMBOL symbol-Omega}\(\Omega \)\quad
+\typeout{SYMBOL symbol-pm}\(\pm \)\quad
+\typeout{SYMBOL symbol-mp}\(\mp \)\quad
+\typeout{SYMBOL symbol-times}\(\times \)\quad
+\typeout{SYMBOL symbol-div}\(÷ \)\quad
+\typeout{SYMBOL symbol-cdot}\(\cdot \)\quad
+\typeout{SYMBOL symbol-ast}\(\ast \)\quad
+\typeout{SYMBOL symbol-star}\(\star \)\quad
+\typeout{SYMBOL symbol-circ}\(\circ \)\quad
+\typeout{SYMBOL symbol-bullet}\(\bullet \)\quad
+\typeout{SYMBOL symbol-oplus}\(\oplus \)\quad
+\typeout{SYMBOL symbol-ominus}\(\ominus \)\quad
+\typeout{SYMBOL symbol-otimes}\(\otimes \)\quad
+\typeout{SYMBOL symbol-oslash}\(\oslash \)\quad
+\typeout{SYMBOL symbol-odot}\(\odot \)\quad
+\typeout{SYMBOL symbol-cap}\(\cap \)\quad
+\typeout{SYMBOL symbol-cup}\(\cup \)\quad
+\typeout{SYMBOL symbol-uplus}\(\uplus \)\quad
+\typeout{SYMBOL symbol-sqcap}\(\sqcap \)\quad
+\typeout{SYMBOL symbol-sqcup}\(\sqcup \)\quad
+\typeout{SYMBOL symbol-wedge}\(\wedge \)\quad
+\typeout{SYMBOL symbol-vee}\(\vee \)\quad
+\typeout{SYMBOL symbol-setminus}\(\setminus \)\quad
+\typeout{SYMBOL symbol-wr}\(\wr \)\quad
+\typeout{SYMBOL symbol-diamond}\(\diamond \)\quad
+\typeout{SYMBOL symbol-leq}\(\leq \)\quad
+\typeout{SYMBOL symbol-geq}\(\geq \)\quad
+\typeout{SYMBOL symbol-neq}\(\neq \)\quad
+\typeout{SYMBOL symbol-equiv}\(\equiv \)\quad
+\typeout{SYMBOL symbol-approx}\(\approx \)\quad
+\typeout{SYMBOL symbol-sim}\(\sim \)\quad
+\typeout{SYMBOL symbol-simeq}\(\simeq \)\quad
+\typeout{SYMBOL symbol-cong}\(\cong \)\quad
+\typeout{SYMBOL symbol-asymp}\(\asymp \)\quad
+\typeout{SYMBOL symbol-propto}\(\propto \)\quad
+\typeout{SYMBOL symbol-ll}\(\ll \)\quad
+\typeout{SYMBOL symbol-gg}\(\gg \)\quad
+\typeout{SYMBOL symbol-prec}\(\prec \)\quad
+\typeout{SYMBOL symbol-succ}\(\succ \)\quad
+\typeout{SYMBOL symbol-preceq}\(\preceq \)\quad
+\typeout{SYMBOL symbol-succeq}\(\succeq \)\quad
+\typeout{SYMBOL symbol-in}\(\in \)\quad
+\typeout{SYMBOL symbol-notin}\(\notin \)\quad
+\typeout{SYMBOL symbol-ni}\(\ni \)\quad
+\typeout{SYMBOL symbol-subset}\(\subset \)\quad
+\typeout{SYMBOL symbol-supset}\(\supset \)\quad
+\typeout{SYMBOL symbol-subseteq}\(\subseteq \)\quad
+\typeout{SYMBOL symbol-supseteq}\(\supseteq \)\quad
+\typeout{SYMBOL symbol-subsetneq}\(\subsetneq \)\quad
+\typeout{SYMBOL symbol-supsetneq}\(\supsetneq \)\quad
+\typeout{SYMBOL symbol-nsubseteq}\(\nsubseteq \)\quad
+\typeout{SYMBOL symbol-nsupseteq}\(\nsupseteq \)\quad
+\typeout{SYMBOL symbol-parallel}\(\parallel \)\quad
+\typeout{SYMBOL symbol-nparallel}\(\nparallel \)\quad
+\typeout{SYMBOL symbol-perp}\(\perp \)\quad
+\typeout{SYMBOL symbol-mid}\(\mid \)\quad
+\typeout{SYMBOL symbol-nmid}\(\nmid \)\quad
+\typeout{SYMBOL symbol-models}\(\models \)\quad
+\typeout{SYMBOL symbol-vdash}\(\vdash \)\quad
+\typeout{SYMBOL symbol-dashv}\(\dashv \)\quad
+\typeout{SYMBOL symbol-bowtie}\(\bowtie \)\quad
+\typeout{SYMBOL symbol-leftarrow}\(\leftarrow \)\quad
+\typeout{SYMBOL symbol-rightarrow}\(\rightarrow \)\quad
+\typeout{SYMBOL symbol-leftrightarrow}\(\leftrightarrow \)\quad
+\typeout{SYMBOL symbol-Leftarrow}\(\Leftarrow \)\quad
+\typeout{SYMBOL symbol-Rightarrow}\(\Rightarrow \)\quad
+\typeout{SYMBOL symbol-Leftrightarrow}\(\Leftrightarrow \)\quad
+\typeout{SYMBOL symbol-longleftarrow}\(\longleftarrow \)\quad
+\typeout{SYMBOL symbol-longrightarrow}\(\longrightarrow \)\quad
+\typeout{SYMBOL symbol-longleftrightarrow}\(\longleftrightarrow \)\quad
+\typeout{SYMBOL symbol-Longleftarrow}\(\Longleftarrow \)\quad
+\typeout{SYMBOL symbol-Longrightarrow}\(\Longrightarrow \)\quad
+\typeout{SYMBOL symbol-Longleftrightarrow}\(\Longleftrightarrow \)\quad
+\typeout{SYMBOL symbol-mapsto}\(\mapsto \)\quad
+\typeout{SYMBOL symbol-longmapsto}\(\longmapsto \)\quad
+\typeout{SYMBOL symbol-hookleftarrow}\(\hookleftarrow \)\quad
+\typeout{SYMBOL symbol-hookrightarrow}\(\hookrightarrow \)\quad
+\typeout{SYMBOL symbol-uparrow}\(\uparrow \)\quad
+\typeout{SYMBOL symbol-downarrow}\(\downarrow \)\quad
+\typeout{SYMBOL symbol-updownarrow}\(\updownarrow \)\quad
+\typeout{SYMBOL symbol-Uparrow}\(\Uparrow \)\quad
+\typeout{SYMBOL symbol-Downarrow}\(\Downarrow \)\quad
+\typeout{SYMBOL symbol-Updownarrow}\(\Updownarrow \)\quad
+\typeout{SYMBOL symbol-nearrow}\(\nearrow \)\quad
+\typeout{SYMBOL symbol-searrow}\(\searrow \)\quad
+\typeout{SYMBOL symbol-swarrow}\(\swarrow \)\quad
+\typeout{SYMBOL symbol-nwarrow}\(\nwarrow \)\quad
+\typeout{SYMBOL symbol-leftharpoonup}\(\leftharpoonup \)\quad
+\typeout{SYMBOL symbol-leftharpoondown}\(\leftharpoondown \)\quad
+\typeout{SYMBOL symbol-rightharpoonup}\(\rightharpoonup \)\quad
+\typeout{SYMBOL symbol-rightharpoondown}\(\rightharpoondown \)\quad
+\typeout{SYMBOL symbol-rightleftharpoons}\(\rightleftharpoons \)\quad
+\typeout{SYMBOL symbol-infty}\(\infty \)\quad
+\typeout{SYMBOL symbol-partial}\(\partial \)\quad
+\typeout{SYMBOL symbol-nabla}\(\nabla \)\quad
+\typeout{SYMBOL symbol-forall}\(\forall \)\quad
+\typeout{SYMBOL symbol-exists}\(\exists \)\quad
+\typeout{SYMBOL symbol-nexists}\(\nexists \)\quad
+\typeout{SYMBOL symbol-neg}\(\neg \)\quad
+\typeout{SYMBOL symbol-emptyset}\(\emptyset \)\quad
+\typeout{SYMBOL symbol-varnothing}\(\varnothing \)\quad
+\typeout{SYMBOL symbol-aleph}\(\aleph \)\quad
+\typeout{SYMBOL symbol-hbar}\(\hbar \)\quad
+\typeout{SYMBOL symbol-ell}\(\ell \)\quad
+\typeout{SYMBOL symbol-imath}\(\imath \)\quad
+\typeout{SYMBOL symbol-jmath}\(\jmath \)\quad
+\typeout{SYMBOL symbol-Re}\(\Re \)\quad
+\typeout{SYMBOL symbol-Im}\(\Im \)\quad
+\typeout{SYMBOL symbol-wp}\(\wp \)\quad
+\typeout{SYMBOL symbol-angle}\(\angle \)\quad
+\typeout{SYMBOL symbol-triangle}\(\triangle \)\quad
+\typeout{SYMBOL symbol-square}\(\square \)\quad
+\typeout{SYMBOL symbol-top}\(\top \)\quad
+\typeout{SYMBOL symbol-bot}\(\bot \)\quad
+\typeout{SYMBOL symbol-prime}\(\prime \)\quad
+\typeout{SYMBOL symbol-backprime}\(\backprime \)\quad
+\typeout{SYMBOL symbol-ldots}\(\ldots \)\quad
+\typeout{SYMBOL symbol-cdots}\(\cdots \)\quad
+\typeout{SYMBOL symbol-vdots}\(\vdots \)\quad
+\typeout{SYMBOL symbol-ddots}\(\ddots \)\quad
+\typeout{SYMBOL symbol-sin}\(\sin \)\quad
+\typeout{SYMBOL symbol-cos}\(\cos \)\quad
+\typeout{SYMBOL symbol-tan}\(\tan \)\quad
+\typeout{SYMBOL symbol-cot}\(\cot \)\quad
+\typeout{SYMBOL symbol-sec}\(\sec \)\quad
+\typeout{SYMBOL symbol-csc}\(\csc \)\quad
+\typeout{SYMBOL symbol-arcsin}\(\arcsin \)\quad
+\typeout{SYMBOL symbol-arccos}\(\arccos \)\quad
+\typeout{SYMBOL symbol-arctan}\(\arctan \)\quad
+\typeout{SYMBOL symbol-sinh}\(\sinh \)\quad
+\typeout{SYMBOL symbol-cosh}\(\cosh \)\quad
+\typeout{SYMBOL symbol-tanh}\(\tanh \)\quad
+\typeout{SYMBOL symbol-coth}\(\coth \)\quad
+\typeout{SYMBOL symbol-exp}\(\exp \)\quad
+\typeout{SYMBOL symbol-ln}\(\ln \)\quad
+\typeout{SYMBOL symbol-log}\(\log \)\quad
+\typeout{SYMBOL symbol-lg}\(\lg \)\quad
+\typeout{SYMBOL symbol-arg}\(\arg \)\quad
+\typeout{SYMBOL symbol-deg}\(\deg \)\quad
+\typeout{SYMBOL symbol-det}\(\det \)\quad
+\typeout{SYMBOL symbol-dim}\(\dim \)\quad
+\typeout{SYMBOL symbol-gcd}\(\gcd \)\quad
+\typeout{SYMBOL symbol-hom}\(\hom \)\quad
+\typeout{SYMBOL symbol-ker}\(\ker \)\quad
+\typeout{SYMBOL symbol-Pr}\(\Pr \)\quad
+\typeout{SYMBOL symbol-arcsinh}\(\operatorname{arcsinh}\)\quad
+\typeout{SYMBOL symbol-arccosh}\(\operatorname{arccosh}\)\quad
+\typeout{SYMBOL symbol-arctanh}\(\operatorname{arctanh}\)\quad
+\typeout{SYMBOL symbol-sgn}\(\operatorname{sgn}\)\quad
+\typeout{SYMBOL symbol-tr}\(\operatorname{tr}\)\quad
+\typeout{SYMBOL symbol-rank}\(\operatorname{rank}\)\quad
+\typeout{SYMBOL symbol-erf}\(\operatorname{erf}\)\quad
+\typeout{SYMBOL symbol-letter-A}\(A\)\quad
+\typeout{SYMBOL symbol-letter-B}\(B\)\quad
+\typeout{SYMBOL symbol-letter-C}\(C\)\quad
+\typeout{SYMBOL symbol-letter-D}\(D\)\quad
+\typeout{SYMBOL symbol-letter-E}\(E\)\quad
+\typeout{SYMBOL symbol-letter-F}\(F\)\quad
+\typeout{SYMBOL symbol-letter-G}\(G\)\quad
+\typeout{SYMBOL symbol-letter-H}\(H\)\quad
+\typeout{SYMBOL symbol-letter-I}\(I\)\quad
+\typeout{SYMBOL symbol-letter-J}\(J\)\quad
+\typeout{SYMBOL symbol-letter-K}\(K\)\quad
+\typeout{SYMBOL symbol-letter-L}\(L\)\quad
+\typeout{SYMBOL symbol-letter-M}\(M\)\quad
+\typeout{SYMBOL symbol-letter-N}\(N\)\quad
+\typeout{SYMBOL symbol-letter-O}\(O\)\quad
+\typeout{SYMBOL symbol-letter-P}\(P\)\quad
+\typeout{SYMBOL symbol-letter-Q}\(Q\)\quad
+\typeout{SYMBOL symbol-letter-R}\(R\)\quad
+\typeout{SYMBOL symbol-letter-S}\(S\)\quad
+\typeout{SYMBOL symbol-letter-T}\(T\)\quad
+\typeout{SYMBOL symbol-letter-U}\(U\)\quad
+\typeout{SYMBOL symbol-letter-V}\(V\)\quad
+\typeout{SYMBOL symbol-letter-W}\(W\)\quad
+\typeout{SYMBOL symbol-letter-X}\(X\)\quad
+\typeout{SYMBOL symbol-letter-Y}\(Y\)\quad
+\typeout{SYMBOL symbol-letter-Z}\(Z\)\quad
+\typeout{SYMBOL symbol-letter-a}\(a\)\quad
+\typeout{SYMBOL symbol-letter-b}\(b\)\quad
+\typeout{SYMBOL symbol-letter-c}\(c\)\quad
+\typeout{SYMBOL symbol-letter-d}\(d\)\quad
+\typeout{SYMBOL symbol-letter-e}\(e\)\quad
+\typeout{SYMBOL symbol-letter-f}\(f\)\quad
+\typeout{SYMBOL symbol-letter-g}\(g\)\quad
+\typeout{SYMBOL symbol-letter-h}\(h\)\quad
+\typeout{SYMBOL symbol-letter-i}\(i\)\quad
+\typeout{SYMBOL symbol-letter-j}\(j\)\quad
+\typeout{SYMBOL symbol-letter-k}\(k\)\quad
+\typeout{SYMBOL symbol-letter-l}\(l\)\quad
+\typeout{SYMBOL symbol-letter-m}\(m\)\quad
+\typeout{SYMBOL symbol-letter-n}\(n\)\quad
+\typeout{SYMBOL symbol-letter-o}\(o\)\quad
+\typeout{SYMBOL symbol-letter-p}\(p\)\quad
+\typeout{SYMBOL symbol-letter-q}\(q\)\quad
+\typeout{SYMBOL symbol-letter-r}\(r\)\quad
+\typeout{SYMBOL symbol-letter-s}\(s\)\quad
+\typeout{SYMBOL symbol-letter-t}\(t\)\quad
+\typeout{SYMBOL symbol-letter-u}\(u\)\quad
+\typeout{SYMBOL symbol-letter-v}\(v\)\quad
+\typeout{SYMBOL symbol-letter-w}\(w\)\quad
+\typeout{SYMBOL symbol-letter-x}\(x\)\quad
+\typeout{SYMBOL symbol-letter-y}\(y\)\quad
+\typeout{SYMBOL symbol-letter-z}\(z\)\quad
+\typeout{SYMBOL symbol-letter-0}\(0\)\quad
+\typeout{SYMBOL symbol-letter-1}\(1\)\quad
+\typeout{SYMBOL symbol-letter-2}\(2\)\quad
+\typeout{SYMBOL symbol-letter-3}\(3\)\quad
+\typeout{SYMBOL symbol-letter-4}\(4\)\quad
+\typeout{SYMBOL symbol-letter-5}\(5\)\quad
+\typeout{SYMBOL symbol-letter-6}\(6\)\quad
+\typeout{SYMBOL symbol-letter-7}\(7\)\quad
+\typeout{SYMBOL symbol-letter-8}\(8\)\quad
+\typeout{SYMBOL symbol-letter-9}\(9\)\quad
+\typeout{SYMBOL symbol-letter-A--symup}\(\mathrm{A}\)\quad
+\typeout{SYMBOL symbol-letter-A--symit}\(\mathit{A}\)\quad
+\typeout{SYMBOL symbol-letter-A--symbf}\(\mathbf{A}\)\quad
+\typeout{SYMBOL symbol-letter-A--symbfit}\(\mathbfit{A}\)\quad
+\typeout{SYMBOL symbol-letter-A--symsf}\(\mathsf{A}\)\quad
+\typeout{SYMBOL symbol-letter-A--symsfit}\(\mathsfit{A}\)\quad
+\typeout{SYMBOL symbol-letter-A--symbfsf}\(\mathbfsf{A}\)\quad
+\typeout{SYMBOL symbol-letter-A--symbfsfit}\(\mathbfsfit{A}\)\quad
+\typeout{SYMBOL symbol-letter-A--symcal}\(\mathcal{A}\)\quad
+\typeout{SYMBOL symbol-letter-A--symscr}\(\mathscr{A}\)\quad
+\typeout{SYMBOL symbol-letter-A--symfrak}\(\mathfrak{A}\)\quad
+\typeout{SYMBOL symbol-letter-A--symtt}\(\mathtt{A}\)\quad
+\typeout{SYMBOL symbol-letter-A--symbfcal}\(\mathbfcal{A}\)\quad
+\typeout{SYMBOL symbol-letter-A--symbfscr}\(\mathbfscr{A}\)\quad
+\typeout{SYMBOL symbol-letter-A--symbffrak}\(\mathbffrak{A}\)\quad
+\typeout{SYMBOL symbol-letter-A--editorbboldx}\(\mathbb{A}\)\quad
+\typeout{SYMBOL symbol-letter-B--symup}\(\mathrm{B}\)\quad
+\typeout{SYMBOL symbol-letter-B--symit}\(\mathit{B}\)\quad
+\typeout{SYMBOL symbol-letter-B--symbf}\(\mathbf{B}\)\quad
+\typeout{SYMBOL symbol-letter-B--symbfit}\(\mathbfit{B}\)\quad
+\typeout{SYMBOL symbol-letter-B--symsf}\(\mathsf{B}\)\quad
+\typeout{SYMBOL symbol-letter-B--symsfit}\(\mathsfit{B}\)\quad
+\typeout{SYMBOL symbol-letter-B--symbfsf}\(\mathbfsf{B}\)\quad
+\typeout{SYMBOL symbol-letter-B--symbfsfit}\(\mathbfsfit{B}\)\quad
+\typeout{SYMBOL symbol-letter-B--symcal}\(\mathcal{B}\)\quad
+\typeout{SYMBOL symbol-letter-B--symscr}\(\mathscr{B}\)\quad
+\typeout{SYMBOL symbol-letter-B--symfrak}\(\mathfrak{B}\)\quad
+\typeout{SYMBOL symbol-letter-B--symtt}\(\mathtt{B}\)\quad
+\typeout{SYMBOL symbol-letter-B--symbfcal}\(\mathbfcal{B}\)\quad
+\typeout{SYMBOL symbol-letter-B--symbfscr}\(\mathbfscr{B}\)\quad
+\typeout{SYMBOL symbol-letter-B--symbffrak}\(\mathbffrak{B}\)\quad
+\typeout{SYMBOL symbol-letter-B--editorbboldx}\(\mathbb{B}\)\quad
+\typeout{SYMBOL symbol-letter-C--symup}\(\mathrm{C}\)\quad
+\typeout{SYMBOL symbol-letter-C--symit}\(\mathit{C}\)\quad
+\typeout{SYMBOL symbol-letter-C--symbf}\(\mathbf{C}\)\quad
+\typeout{SYMBOL symbol-letter-C--symbfit}\(\mathbfit{C}\)\quad
+\typeout{SYMBOL symbol-letter-C--symsf}\(\mathsf{C}\)\quad
+\typeout{SYMBOL symbol-letter-C--symsfit}\(\mathsfit{C}\)\quad
+\typeout{SYMBOL symbol-letter-C--symbfsf}\(\mathbfsf{C}\)\quad
+\typeout{SYMBOL symbol-letter-C--symbfsfit}\(\mathbfsfit{C}\)\quad
+\typeout{SYMBOL symbol-letter-C--symcal}\(\mathcal{C}\)\quad
+\typeout{SYMBOL symbol-letter-C--symscr}\(\mathscr{C}\)\quad
+\typeout{SYMBOL symbol-letter-C--symfrak}\(\mathfrak{C}\)\quad
+\typeout{SYMBOL symbol-letter-C--symtt}\(\mathtt{C}\)\quad
+\typeout{SYMBOL symbol-letter-C--symbfcal}\(\mathbfcal{C}\)\quad
+\typeout{SYMBOL symbol-letter-C--symbfscr}\(\mathbfscr{C}\)\quad
+\typeout{SYMBOL symbol-letter-C--symbffrak}\(\mathbffrak{C}\)\quad
+\typeout{SYMBOL symbol-letter-C--editorbboldx}\(\mathbb{C}\)\quad
+\typeout{SYMBOL symbol-letter-D--symup}\(\mathrm{D}\)\quad
+\typeout{SYMBOL symbol-letter-D--symit}\(\mathit{D}\)\quad
+\typeout{SYMBOL symbol-letter-D--symbf}\(\mathbf{D}\)\quad
+\typeout{SYMBOL symbol-letter-D--symbfit}\(\mathbfit{D}\)\quad
+\typeout{SYMBOL symbol-letter-D--symsf}\(\mathsf{D}\)\quad
+\typeout{SYMBOL symbol-letter-D--symsfit}\(\mathsfit{D}\)\quad
+\typeout{SYMBOL symbol-letter-D--symbfsf}\(\mathbfsf{D}\)\quad
+\typeout{SYMBOL symbol-letter-D--symbfsfit}\(\mathbfsfit{D}\)\quad
+\typeout{SYMBOL symbol-letter-D--symcal}\(\mathcal{D}\)\quad
+\typeout{SYMBOL symbol-letter-D--symscr}\(\mathscr{D}\)\quad
+\typeout{SYMBOL symbol-letter-D--symfrak}\(\mathfrak{D}\)\quad
+\typeout{SYMBOL symbol-letter-D--symtt}\(\mathtt{D}\)\quad
+\typeout{SYMBOL symbol-letter-D--symbfcal}\(\mathbfcal{D}\)\quad
+\typeout{SYMBOL symbol-letter-D--symbfscr}\(\mathbfscr{D}\)\quad
+\typeout{SYMBOL symbol-letter-D--symbffrak}\(\mathbffrak{D}\)\quad
+\typeout{SYMBOL symbol-letter-D--editorbboldx}\(\mathbb{D}\)\quad
+\typeout{SYMBOL symbol-letter-E--symup}\(\mathrm{E}\)\quad
+\typeout{SYMBOL symbol-letter-E--symit}\(\mathit{E}\)\quad
+\typeout{SYMBOL symbol-letter-E--symbf}\(\mathbf{E}\)\quad
+\typeout{SYMBOL symbol-letter-E--symbfit}\(\mathbfit{E}\)\quad
+\typeout{SYMBOL symbol-letter-E--symsf}\(\mathsf{E}\)\quad
+\typeout{SYMBOL symbol-letter-E--symsfit}\(\mathsfit{E}\)\quad
+\typeout{SYMBOL symbol-letter-E--symbfsf}\(\mathbfsf{E}\)\quad
+\typeout{SYMBOL symbol-letter-E--symbfsfit}\(\mathbfsfit{E}\)\quad
+\typeout{SYMBOL symbol-letter-E--symcal}\(\mathcal{E}\)\quad
+\typeout{SYMBOL symbol-letter-E--symscr}\(\mathscr{E}\)\quad
+\typeout{SYMBOL symbol-letter-E--symfrak}\(\mathfrak{E}\)\quad
+\typeout{SYMBOL symbol-letter-E--symtt}\(\mathtt{E}\)\quad
+\typeout{SYMBOL symbol-letter-E--symbfcal}\(\mathbfcal{E}\)\quad
+\typeout{SYMBOL symbol-letter-E--symbfscr}\(\mathbfscr{E}\)\quad
+\typeout{SYMBOL symbol-letter-E--symbffrak}\(\mathbffrak{E}\)\quad
+\typeout{SYMBOL symbol-letter-E--editorbboldx}\(\mathbb{E}\)\quad
+\typeout{SYMBOL symbol-letter-F--symup}\(\mathrm{F}\)\quad
+\typeout{SYMBOL symbol-letter-F--symit}\(\mathit{F}\)\quad
+\typeout{SYMBOL symbol-letter-F--symbf}\(\mathbf{F}\)\quad
+\typeout{SYMBOL symbol-letter-F--symbfit}\(\mathbfit{F}\)\quad
+\typeout{SYMBOL symbol-letter-F--symsf}\(\mathsf{F}\)\quad
+\typeout{SYMBOL symbol-letter-F--symsfit}\(\mathsfit{F}\)\quad
+\typeout{SYMBOL symbol-letter-F--symbfsf}\(\mathbfsf{F}\)\quad
+\typeout{SYMBOL symbol-letter-F--symbfsfit}\(\mathbfsfit{F}\)\quad
+\typeout{SYMBOL symbol-letter-F--symcal}\(\mathcal{F}\)\quad
+\typeout{SYMBOL symbol-letter-F--symscr}\(\mathscr{F}\)\quad
+\typeout{SYMBOL symbol-letter-F--symfrak}\(\mathfrak{F}\)\quad
+\typeout{SYMBOL symbol-letter-F--symtt}\(\mathtt{F}\)\quad
+\typeout{SYMBOL symbol-letter-F--symbfcal}\(\mathbfcal{F}\)\quad
+\typeout{SYMBOL symbol-letter-F--symbfscr}\(\mathbfscr{F}\)\quad
+\typeout{SYMBOL symbol-letter-F--symbffrak}\(\mathbffrak{F}\)\quad
+\typeout{SYMBOL symbol-letter-F--editorbboldx}\(\mathbb{F}\)\quad
+\typeout{SYMBOL symbol-letter-G--symup}\(\mathrm{G}\)\quad
+\typeout{SYMBOL symbol-letter-G--symit}\(\mathit{G}\)\quad
+\typeout{SYMBOL symbol-letter-G--symbf}\(\mathbf{G}\)\quad
+\typeout{SYMBOL symbol-letter-G--symbfit}\(\mathbfit{G}\)\quad
+\typeout{SYMBOL symbol-letter-G--symsf}\(\mathsf{G}\)\quad
+\typeout{SYMBOL symbol-letter-G--symsfit}\(\mathsfit{G}\)\quad
+\typeout{SYMBOL symbol-letter-G--symbfsf}\(\mathbfsf{G}\)\quad
+\typeout{SYMBOL symbol-letter-G--symbfsfit}\(\mathbfsfit{G}\)\quad
+\typeout{SYMBOL symbol-letter-G--symcal}\(\mathcal{G}\)\quad
+\typeout{SYMBOL symbol-letter-G--symscr}\(\mathscr{G}\)\quad
+\typeout{SYMBOL symbol-letter-G--symfrak}\(\mathfrak{G}\)\quad
+\typeout{SYMBOL symbol-letter-G--symtt}\(\mathtt{G}\)\quad
+\typeout{SYMBOL symbol-letter-G--symbfcal}\(\mathbfcal{G}\)\quad
+\typeout{SYMBOL symbol-letter-G--symbfscr}\(\mathbfscr{G}\)\quad
+\typeout{SYMBOL symbol-letter-G--symbffrak}\(\mathbffrak{G}\)\quad
+\typeout{SYMBOL symbol-letter-G--editorbboldx}\(\mathbb{G}\)\quad
+\typeout{SYMBOL symbol-letter-H--symup}\(\mathrm{H}\)\quad
+\typeout{SYMBOL symbol-letter-H--symit}\(\mathit{H}\)\quad
+\typeout{SYMBOL symbol-letter-H--symbf}\(\mathbf{H}\)\quad
+\typeout{SYMBOL symbol-letter-H--symbfit}\(\mathbfit{H}\)\quad
+\typeout{SYMBOL symbol-letter-H--symsf}\(\mathsf{H}\)\quad
+\typeout{SYMBOL symbol-letter-H--symsfit}\(\mathsfit{H}\)\quad
+\typeout{SYMBOL symbol-letter-H--symbfsf}\(\mathbfsf{H}\)\quad
+\typeout{SYMBOL symbol-letter-H--symbfsfit}\(\mathbfsfit{H}\)\quad
+\typeout{SYMBOL symbol-letter-H--symcal}\(\mathcal{H}\)\quad
+\typeout{SYMBOL symbol-letter-H--symscr}\(\mathscr{H}\)\quad
+\typeout{SYMBOL symbol-letter-H--symfrak}\(\mathfrak{H}\)\quad
+\typeout{SYMBOL symbol-letter-H--symtt}\(\mathtt{H}\)\quad
+\typeout{SYMBOL symbol-letter-H--symbfcal}\(\mathbfcal{H}\)\quad
+\typeout{SYMBOL symbol-letter-H--symbfscr}\(\mathbfscr{H}\)\quad
+\typeout{SYMBOL symbol-letter-H--symbffrak}\(\mathbffrak{H}\)\quad
+\typeout{SYMBOL symbol-letter-H--editorbboldx}\(\mathbb{H}\)\quad
+\typeout{SYMBOL symbol-letter-I--symup}\(\mathrm{I}\)\quad
+\typeout{SYMBOL symbol-letter-I--symit}\(\mathit{I}\)\quad
+\typeout{SYMBOL symbol-letter-I--symbf}\(\mathbf{I}\)\quad
+\typeout{SYMBOL symbol-letter-I--symbfit}\(\mathbfit{I}\)\quad
+\typeout{SYMBOL symbol-letter-I--symsf}\(\mathsf{I}\)\quad
+\typeout{SYMBOL symbol-letter-I--symsfit}\(\mathsfit{I}\)\quad
+\typeout{SYMBOL symbol-letter-I--symbfsf}\(\mathbfsf{I}\)\quad
+\typeout{SYMBOL symbol-letter-I--symbfsfit}\(\mathbfsfit{I}\)\quad
+\typeout{SYMBOL symbol-letter-I--symcal}\(\mathcal{I}\)\quad
+\typeout{SYMBOL symbol-letter-I--symscr}\(\mathscr{I}\)\quad
+\typeout{SYMBOL symbol-letter-I--symfrak}\(\mathfrak{I}\)\quad
+\typeout{SYMBOL symbol-letter-I--symtt}\(\mathtt{I}\)\quad
+\typeout{SYMBOL symbol-letter-I--symbfcal}\(\mathbfcal{I}\)\quad
+\typeout{SYMBOL symbol-letter-I--symbfscr}\(\mathbfscr{I}\)\quad
+\typeout{SYMBOL symbol-letter-I--symbffrak}\(\mathbffrak{I}\)\quad
+\typeout{SYMBOL symbol-letter-I--editorbboldx}\(\mathbb{I}\)\quad
+\typeout{SYMBOL symbol-letter-J--symup}\(\mathrm{J}\)\quad
+\typeout{SYMBOL symbol-letter-J--symit}\(\mathit{J}\)\quad
+\typeout{SYMBOL symbol-letter-J--symbf}\(\mathbf{J}\)\quad
+\typeout{SYMBOL symbol-letter-J--symbfit}\(\mathbfit{J}\)\quad
+\typeout{SYMBOL symbol-letter-J--symsf}\(\mathsf{J}\)\quad
+\typeout{SYMBOL symbol-letter-J--symsfit}\(\mathsfit{J}\)\quad
+\typeout{SYMBOL symbol-letter-J--symbfsf}\(\mathbfsf{J}\)\quad
+\typeout{SYMBOL symbol-letter-J--symbfsfit}\(\mathbfsfit{J}\)\quad
+\typeout{SYMBOL symbol-letter-J--symcal}\(\mathcal{J}\)\quad
+\typeout{SYMBOL symbol-letter-J--symscr}\(\mathscr{J}\)\quad
+\typeout{SYMBOL symbol-letter-J--symfrak}\(\mathfrak{J}\)\quad
+\typeout{SYMBOL symbol-letter-J--symtt}\(\mathtt{J}\)\quad
+\typeout{SYMBOL symbol-letter-J--symbfcal}\(\mathbfcal{J}\)\quad
+\typeout{SYMBOL symbol-letter-J--symbfscr}\(\mathbfscr{J}\)\quad
+\typeout{SYMBOL symbol-letter-J--symbffrak}\(\mathbffrak{J}\)\quad
+\typeout{SYMBOL symbol-letter-J--editorbboldx}\(\mathbb{J}\)\quad
+\typeout{SYMBOL symbol-letter-K--symup}\(\mathrm{K}\)\quad
+\typeout{SYMBOL symbol-letter-K--symit}\(\mathit{K}\)\quad
+\typeout{SYMBOL symbol-letter-K--symbf}\(\mathbf{K}\)\quad
+\typeout{SYMBOL symbol-letter-K--symbfit}\(\mathbfit{K}\)\quad
+\typeout{SYMBOL symbol-letter-K--symsf}\(\mathsf{K}\)\quad
+\typeout{SYMBOL symbol-letter-K--symsfit}\(\mathsfit{K}\)\quad
+\typeout{SYMBOL symbol-letter-K--symbfsf}\(\mathbfsf{K}\)\quad
+\typeout{SYMBOL symbol-letter-K--symbfsfit}\(\mathbfsfit{K}\)\quad
+\typeout{SYMBOL symbol-letter-K--symcal}\(\mathcal{K}\)\quad
+\typeout{SYMBOL symbol-letter-K--symscr}\(\mathscr{K}\)\quad
+\typeout{SYMBOL symbol-letter-K--symfrak}\(\mathfrak{K}\)\quad
+\typeout{SYMBOL symbol-letter-K--symtt}\(\mathtt{K}\)\quad
+\typeout{SYMBOL symbol-letter-K--symbfcal}\(\mathbfcal{K}\)\quad
+\typeout{SYMBOL symbol-letter-K--symbfscr}\(\mathbfscr{K}\)\quad
+\typeout{SYMBOL symbol-letter-K--symbffrak}\(\mathbffrak{K}\)\quad
+\typeout{SYMBOL symbol-letter-K--editorbboldx}\(\mathbb{K}\)\quad
+\typeout{SYMBOL symbol-letter-L--symup}\(\mathrm{L}\)\quad
+\typeout{SYMBOL symbol-letter-L--symit}\(\mathit{L}\)\quad
+\typeout{SYMBOL symbol-letter-L--symbf}\(\mathbf{L}\)\quad
+\typeout{SYMBOL symbol-letter-L--symbfit}\(\mathbfit{L}\)\quad
+\typeout{SYMBOL symbol-letter-L--symsf}\(\mathsf{L}\)\quad
+\typeout{SYMBOL symbol-letter-L--symsfit}\(\mathsfit{L}\)\quad
+\typeout{SYMBOL symbol-letter-L--symbfsf}\(\mathbfsf{L}\)\quad
+\typeout{SYMBOL symbol-letter-L--symbfsfit}\(\mathbfsfit{L}\)\quad
+\typeout{SYMBOL symbol-letter-L--symcal}\(\mathcal{L}\)\quad
+\typeout{SYMBOL symbol-letter-L--symscr}\(\mathscr{L}\)\quad
+\typeout{SYMBOL symbol-letter-L--symfrak}\(\mathfrak{L}\)\quad
+\typeout{SYMBOL symbol-letter-L--symtt}\(\mathtt{L}\)\quad
+\typeout{SYMBOL symbol-letter-L--symbfcal}\(\mathbfcal{L}\)\quad
+\typeout{SYMBOL symbol-letter-L--symbfscr}\(\mathbfscr{L}\)\quad
+\typeout{SYMBOL symbol-letter-L--symbffrak}\(\mathbffrak{L}\)\quad
+\typeout{SYMBOL symbol-letter-L--editorbboldx}\(\mathbb{L}\)\quad
+\typeout{SYMBOL symbol-letter-M--symup}\(\mathrm{M}\)\quad
+\typeout{SYMBOL symbol-letter-M--symit}\(\mathit{M}\)\quad
+\typeout{SYMBOL symbol-letter-M--symbf}\(\mathbf{M}\)\quad
+\typeout{SYMBOL symbol-letter-M--symbfit}\(\mathbfit{M}\)\quad
+\typeout{SYMBOL symbol-letter-M--symsf}\(\mathsf{M}\)\quad
+\typeout{SYMBOL symbol-letter-M--symsfit}\(\mathsfit{M}\)\quad
+\typeout{SYMBOL symbol-letter-M--symbfsf}\(\mathbfsf{M}\)\quad
+\typeout{SYMBOL symbol-letter-M--symbfsfit}\(\mathbfsfit{M}\)\quad
+\typeout{SYMBOL symbol-letter-M--symcal}\(\mathcal{M}\)\quad
+\typeout{SYMBOL symbol-letter-M--symscr}\(\mathscr{M}\)\quad
+\typeout{SYMBOL symbol-letter-M--symfrak}\(\mathfrak{M}\)\quad
+\typeout{SYMBOL symbol-letter-M--symtt}\(\mathtt{M}\)\quad
+\typeout{SYMBOL symbol-letter-M--symbfcal}\(\mathbfcal{M}\)\quad
+\typeout{SYMBOL symbol-letter-M--symbfscr}\(\mathbfscr{M}\)\quad
+\typeout{SYMBOL symbol-letter-M--symbffrak}\(\mathbffrak{M}\)\quad
+\typeout{SYMBOL symbol-letter-M--editorbboldx}\(\mathbb{M}\)\quad
+\typeout{SYMBOL symbol-letter-N--symup}\(\mathrm{N}\)\quad
+\typeout{SYMBOL symbol-letter-N--symit}\(\mathit{N}\)\quad
+\typeout{SYMBOL symbol-letter-N--symbf}\(\mathbf{N}\)\quad
+\typeout{SYMBOL symbol-letter-N--symbfit}\(\mathbfit{N}\)\quad
+\typeout{SYMBOL symbol-letter-N--symsf}\(\mathsf{N}\)\quad
+\typeout{SYMBOL symbol-letter-N--symsfit}\(\mathsfit{N}\)\quad
+\typeout{SYMBOL symbol-letter-N--symbfsf}\(\mathbfsf{N}\)\quad
+\typeout{SYMBOL symbol-letter-N--symbfsfit}\(\mathbfsfit{N}\)\quad
+\typeout{SYMBOL symbol-letter-N--symcal}\(\mathcal{N}\)\quad
+\typeout{SYMBOL symbol-letter-N--symscr}\(\mathscr{N}\)\quad
+\typeout{SYMBOL symbol-letter-N--symfrak}\(\mathfrak{N}\)\quad
+\typeout{SYMBOL symbol-letter-N--symtt}\(\mathtt{N}\)\quad
+\typeout{SYMBOL symbol-letter-N--symbfcal}\(\mathbfcal{N}\)\quad
+\typeout{SYMBOL symbol-letter-N--symbfscr}\(\mathbfscr{N}\)\quad
+\typeout{SYMBOL symbol-letter-N--symbffrak}\(\mathbffrak{N}\)\quad
+\typeout{SYMBOL symbol-letter-N--editorbboldx}\(\mathbb{N}\)\quad
+\typeout{SYMBOL symbol-letter-O--symup}\(\mathrm{O}\)\quad
+\typeout{SYMBOL symbol-letter-O--symit}\(\mathit{O}\)\quad
+\typeout{SYMBOL symbol-letter-O--symbf}\(\mathbf{O}\)\quad
+\typeout{SYMBOL symbol-letter-O--symbfit}\(\mathbfit{O}\)\quad
+\typeout{SYMBOL symbol-letter-O--symsf}\(\mathsf{O}\)\quad
+\typeout{SYMBOL symbol-letter-O--symsfit}\(\mathsfit{O}\)\quad
+\typeout{SYMBOL symbol-letter-O--symbfsf}\(\mathbfsf{O}\)\quad
+\typeout{SYMBOL symbol-letter-O--symbfsfit}\(\mathbfsfit{O}\)\quad
+\typeout{SYMBOL symbol-letter-O--symcal}\(\mathcal{O}\)\quad
+\typeout{SYMBOL symbol-letter-O--symscr}\(\mathscr{O}\)\quad
+\typeout{SYMBOL symbol-letter-O--symfrak}\(\mathfrak{O}\)\quad
+\typeout{SYMBOL symbol-letter-O--symtt}\(\mathtt{O}\)\quad
+\typeout{SYMBOL symbol-letter-O--symbfcal}\(\mathbfcal{O}\)\quad
+\typeout{SYMBOL symbol-letter-O--symbfscr}\(\mathbfscr{O}\)\quad
+\typeout{SYMBOL symbol-letter-O--symbffrak}\(\mathbffrak{O}\)\quad
+\typeout{SYMBOL symbol-letter-O--editorbboldx}\(\mathbb{O}\)\quad
+\typeout{SYMBOL symbol-letter-P--symup}\(\mathrm{P}\)\quad
+\typeout{SYMBOL symbol-letter-P--symit}\(\mathit{P}\)\quad
+\typeout{SYMBOL symbol-letter-P--symbf}\(\mathbf{P}\)\quad
+\typeout{SYMBOL symbol-letter-P--symbfit}\(\mathbfit{P}\)\quad
+\typeout{SYMBOL symbol-letter-P--symsf}\(\mathsf{P}\)\quad
+\typeout{SYMBOL symbol-letter-P--symsfit}\(\mathsfit{P}\)\quad
+\typeout{SYMBOL symbol-letter-P--symbfsf}\(\mathbfsf{P}\)\quad
+\typeout{SYMBOL symbol-letter-P--symbfsfit}\(\mathbfsfit{P}\)\quad
+\typeout{SYMBOL symbol-letter-P--symcal}\(\mathcal{P}\)\quad
+\typeout{SYMBOL symbol-letter-P--symscr}\(\mathscr{P}\)\quad
+\typeout{SYMBOL symbol-letter-P--symfrak}\(\mathfrak{P}\)\quad
+\typeout{SYMBOL symbol-letter-P--symtt}\(\mathtt{P}\)\quad
+\typeout{SYMBOL symbol-letter-P--symbfcal}\(\mathbfcal{P}\)\quad
+\typeout{SYMBOL symbol-letter-P--symbfscr}\(\mathbfscr{P}\)\quad
+\typeout{SYMBOL symbol-letter-P--symbffrak}\(\mathbffrak{P}\)\quad
+\typeout{SYMBOL symbol-letter-P--editorbboldx}\(\mathbb{P}\)\quad
+\typeout{SYMBOL symbol-letter-Q--symup}\(\mathrm{Q}\)\quad
+\typeout{SYMBOL symbol-letter-Q--symit}\(\mathit{Q}\)\quad
+\typeout{SYMBOL symbol-letter-Q--symbf}\(\mathbf{Q}\)\quad
+\typeout{SYMBOL symbol-letter-Q--symbfit}\(\mathbfit{Q}\)\quad
+\typeout{SYMBOL symbol-letter-Q--symsf}\(\mathsf{Q}\)\quad
+\typeout{SYMBOL symbol-letter-Q--symsfit}\(\mathsfit{Q}\)\quad
+\typeout{SYMBOL symbol-letter-Q--symbfsf}\(\mathbfsf{Q}\)\quad
+\typeout{SYMBOL symbol-letter-Q--symbfsfit}\(\mathbfsfit{Q}\)\quad
+\typeout{SYMBOL symbol-letter-Q--symcal}\(\mathcal{Q}\)\quad
+\typeout{SYMBOL symbol-letter-Q--symscr}\(\mathscr{Q}\)\quad
+\typeout{SYMBOL symbol-letter-Q--symfrak}\(\mathfrak{Q}\)\quad
+\typeout{SYMBOL symbol-letter-Q--symtt}\(\mathtt{Q}\)\quad
+\typeout{SYMBOL symbol-letter-Q--symbfcal}\(\mathbfcal{Q}\)\quad
+\typeout{SYMBOL symbol-letter-Q--symbfscr}\(\mathbfscr{Q}\)\quad
+\typeout{SYMBOL symbol-letter-Q--symbffrak}\(\mathbffrak{Q}\)\quad
+\typeout{SYMBOL symbol-letter-Q--editorbboldx}\(\mathbb{Q}\)\quad
+\typeout{SYMBOL symbol-letter-R--symup}\(\mathrm{R}\)\quad
+\typeout{SYMBOL symbol-letter-R--symit}\(\mathit{R}\)\quad
+\typeout{SYMBOL symbol-letter-R--symbf}\(\mathbf{R}\)\quad
+\typeout{SYMBOL symbol-letter-R--symbfit}\(\mathbfit{R}\)\quad
+\typeout{SYMBOL symbol-letter-R--symsf}\(\mathsf{R}\)\quad
+\typeout{SYMBOL symbol-letter-R--symsfit}\(\mathsfit{R}\)\quad
+\typeout{SYMBOL symbol-letter-R--symbfsf}\(\mathbfsf{R}\)\quad
+\typeout{SYMBOL symbol-letter-R--symbfsfit}\(\mathbfsfit{R}\)\quad
+\typeout{SYMBOL symbol-letter-R--symcal}\(\mathcal{R}\)\quad
+\typeout{SYMBOL symbol-letter-R--symscr}\(\mathscr{R}\)\quad
+\typeout{SYMBOL symbol-letter-R--symfrak}\(\mathfrak{R}\)\quad
+\typeout{SYMBOL symbol-letter-R--symtt}\(\mathtt{R}\)\quad
+\typeout{SYMBOL symbol-letter-R--symbfcal}\(\mathbfcal{R}\)\quad
+\typeout{SYMBOL symbol-letter-R--symbfscr}\(\mathbfscr{R}\)\quad
+\typeout{SYMBOL symbol-letter-R--symbffrak}\(\mathbffrak{R}\)\quad
+\typeout{SYMBOL symbol-letter-R--editorbboldx}\(\mathbb{R}\)\quad
+\typeout{SYMBOL symbol-letter-S--symup}\(\mathrm{S}\)\quad
+\typeout{SYMBOL symbol-letter-S--symit}\(\mathit{S}\)\quad
+\typeout{SYMBOL symbol-letter-S--symbf}\(\mathbf{S}\)\quad
+\typeout{SYMBOL symbol-letter-S--symbfit}\(\mathbfit{S}\)\quad
+\typeout{SYMBOL symbol-letter-S--symsf}\(\mathsf{S}\)\quad
+\typeout{SYMBOL symbol-letter-S--symsfit}\(\mathsfit{S}\)\quad
+\typeout{SYMBOL symbol-letter-S--symbfsf}\(\mathbfsf{S}\)\quad
+\typeout{SYMBOL symbol-letter-S--symbfsfit}\(\mathbfsfit{S}\)\quad
+\typeout{SYMBOL symbol-letter-S--symcal}\(\mathcal{S}\)\quad
+\typeout{SYMBOL symbol-letter-S--symscr}\(\mathscr{S}\)\quad
+\typeout{SYMBOL symbol-letter-S--symfrak}\(\mathfrak{S}\)\quad
+\typeout{SYMBOL symbol-letter-S--symtt}\(\mathtt{S}\)\quad
+\typeout{SYMBOL symbol-letter-S--symbfcal}\(\mathbfcal{S}\)\quad
+\typeout{SYMBOL symbol-letter-S--symbfscr}\(\mathbfscr{S}\)\quad
+\typeout{SYMBOL symbol-letter-S--symbffrak}\(\mathbffrak{S}\)\quad
+\typeout{SYMBOL symbol-letter-S--editorbboldx}\(\mathbb{S}\)\quad
+\typeout{SYMBOL symbol-letter-T--symup}\(\mathrm{T}\)\quad
+\typeout{SYMBOL symbol-letter-T--symit}\(\mathit{T}\)\quad
+\typeout{SYMBOL symbol-letter-T--symbf}\(\mathbf{T}\)\quad
+\typeout{SYMBOL symbol-letter-T--symbfit}\(\mathbfit{T}\)\quad
+\typeout{SYMBOL symbol-letter-T--symsf}\(\mathsf{T}\)\quad
+\typeout{SYMBOL symbol-letter-T--symsfit}\(\mathsfit{T}\)\quad
+\typeout{SYMBOL symbol-letter-T--symbfsf}\(\mathbfsf{T}\)\quad
+\typeout{SYMBOL symbol-letter-T--symbfsfit}\(\mathbfsfit{T}\)\quad
+\typeout{SYMBOL symbol-letter-T--symcal}\(\mathcal{T}\)\quad
+\typeout{SYMBOL symbol-letter-T--symscr}\(\mathscr{T}\)\quad
+\typeout{SYMBOL symbol-letter-T--symfrak}\(\mathfrak{T}\)\quad
+\typeout{SYMBOL symbol-letter-T--symtt}\(\mathtt{T}\)\quad
+\typeout{SYMBOL symbol-letter-T--symbfcal}\(\mathbfcal{T}\)\quad
+\typeout{SYMBOL symbol-letter-T--symbfscr}\(\mathbfscr{T}\)\quad
+\typeout{SYMBOL symbol-letter-T--symbffrak}\(\mathbffrak{T}\)\quad
+\typeout{SYMBOL symbol-letter-T--editorbboldx}\(\mathbb{T}\)\quad
+\typeout{SYMBOL symbol-letter-U--symup}\(\mathrm{U}\)\quad
+\typeout{SYMBOL symbol-letter-U--symit}\(\mathit{U}\)\quad
+\typeout{SYMBOL symbol-letter-U--symbf}\(\mathbf{U}\)\quad
+\typeout{SYMBOL symbol-letter-U--symbfit}\(\mathbfit{U}\)\quad
+\typeout{SYMBOL symbol-letter-U--symsf}\(\mathsf{U}\)\quad
+\typeout{SYMBOL symbol-letter-U--symsfit}\(\mathsfit{U}\)\quad
+\typeout{SYMBOL symbol-letter-U--symbfsf}\(\mathbfsf{U}\)\quad
+\typeout{SYMBOL symbol-letter-U--symbfsfit}\(\mathbfsfit{U}\)\quad
+\typeout{SYMBOL symbol-letter-U--symcal}\(\mathcal{U}\)\quad
+\typeout{SYMBOL symbol-letter-U--symscr}\(\mathscr{U}\)\quad
+\typeout{SYMBOL symbol-letter-U--symfrak}\(\mathfrak{U}\)\quad
+\typeout{SYMBOL symbol-letter-U--symtt}\(\mathtt{U}\)\quad
+\typeout{SYMBOL symbol-letter-U--symbfcal}\(\mathbfcal{U}\)\quad
+\typeout{SYMBOL symbol-letter-U--symbfscr}\(\mathbfscr{U}\)\quad
+\typeout{SYMBOL symbol-letter-U--symbffrak}\(\mathbffrak{U}\)\quad
+\typeout{SYMBOL symbol-letter-U--editorbboldx}\(\mathbb{U}\)\quad
+\typeout{SYMBOL symbol-letter-V--symup}\(\mathrm{V}\)\quad
+\typeout{SYMBOL symbol-letter-V--symit}\(\mathit{V}\)\quad
+\typeout{SYMBOL symbol-letter-V--symbf}\(\mathbf{V}\)\quad
+\typeout{SYMBOL symbol-letter-V--symbfit}\(\mathbfit{V}\)\quad
+\typeout{SYMBOL symbol-letter-V--symsf}\(\mathsf{V}\)\quad
+\typeout{SYMBOL symbol-letter-V--symsfit}\(\mathsfit{V}\)\quad
+\typeout{SYMBOL symbol-letter-V--symbfsf}\(\mathbfsf{V}\)\quad
+\typeout{SYMBOL symbol-letter-V--symbfsfit}\(\mathbfsfit{V}\)\quad
+\typeout{SYMBOL symbol-letter-V--symcal}\(\mathcal{V}\)\quad
+\typeout{SYMBOL symbol-letter-V--symscr}\(\mathscr{V}\)\quad
+\typeout{SYMBOL symbol-letter-V--symfrak}\(\mathfrak{V}\)\quad
+\typeout{SYMBOL symbol-letter-V--symtt}\(\mathtt{V}\)\quad
+\typeout{SYMBOL symbol-letter-V--symbfcal}\(\mathbfcal{V}\)\quad
+\typeout{SYMBOL symbol-letter-V--symbfscr}\(\mathbfscr{V}\)\quad
+\typeout{SYMBOL symbol-letter-V--symbffrak}\(\mathbffrak{V}\)\quad
+\typeout{SYMBOL symbol-letter-V--editorbboldx}\(\mathbb{V}\)\quad
+\typeout{SYMBOL symbol-letter-W--symup}\(\mathrm{W}\)\quad
+\typeout{SYMBOL symbol-letter-W--symit}\(\mathit{W}\)\quad
+\typeout{SYMBOL symbol-letter-W--symbf}\(\mathbf{W}\)\quad
+\typeout{SYMBOL symbol-letter-W--symbfit}\(\mathbfit{W}\)\quad
+\typeout{SYMBOL symbol-letter-W--symsf}\(\mathsf{W}\)\quad
+\typeout{SYMBOL symbol-letter-W--symsfit}\(\mathsfit{W}\)\quad
+\typeout{SYMBOL symbol-letter-W--symbfsf}\(\mathbfsf{W}\)\quad
+\typeout{SYMBOL symbol-letter-W--symbfsfit}\(\mathbfsfit{W}\)\quad
+\typeout{SYMBOL symbol-letter-W--symcal}\(\mathcal{W}\)\quad
+\typeout{SYMBOL symbol-letter-W--symscr}\(\mathscr{W}\)\quad
+\typeout{SYMBOL symbol-letter-W--symfrak}\(\mathfrak{W}\)\quad
+\typeout{SYMBOL symbol-letter-W--symtt}\(\mathtt{W}\)\quad
+\typeout{SYMBOL symbol-letter-W--symbfcal}\(\mathbfcal{W}\)\quad
+\typeout{SYMBOL symbol-letter-W--symbfscr}\(\mathbfscr{W}\)\quad
+\typeout{SYMBOL symbol-letter-W--symbffrak}\(\mathbffrak{W}\)\quad
+\typeout{SYMBOL symbol-letter-W--editorbboldx}\(\mathbb{W}\)\quad
+\typeout{SYMBOL symbol-letter-X--symup}\(\mathrm{X}\)\quad
+\typeout{SYMBOL symbol-letter-X--symit}\(\mathit{X}\)\quad
+\typeout{SYMBOL symbol-letter-X--symbf}\(\mathbf{X}\)\quad
+\typeout{SYMBOL symbol-letter-X--symbfit}\(\mathbfit{X}\)\quad
+\typeout{SYMBOL symbol-letter-X--symsf}\(\mathsf{X}\)\quad
+\typeout{SYMBOL symbol-letter-X--symsfit}\(\mathsfit{X}\)\quad
+\typeout{SYMBOL symbol-letter-X--symbfsf}\(\mathbfsf{X}\)\quad
+\typeout{SYMBOL symbol-letter-X--symbfsfit}\(\mathbfsfit{X}\)\quad
+\typeout{SYMBOL symbol-letter-X--symcal}\(\mathcal{X}\)\quad
+\typeout{SYMBOL symbol-letter-X--symscr}\(\mathscr{X}\)\quad
+\typeout{SYMBOL symbol-letter-X--symfrak}\(\mathfrak{X}\)\quad
+\typeout{SYMBOL symbol-letter-X--symtt}\(\mathtt{X}\)\quad
+\typeout{SYMBOL symbol-letter-X--symbfcal}\(\mathbfcal{X}\)\quad
+\typeout{SYMBOL symbol-letter-X--symbfscr}\(\mathbfscr{X}\)\quad
+\typeout{SYMBOL symbol-letter-X--symbffrak}\(\mathbffrak{X}\)\quad
+\typeout{SYMBOL symbol-letter-X--editorbboldx}\(\mathbb{X}\)\quad
+\typeout{SYMBOL symbol-letter-Y--symup}\(\mathrm{Y}\)\quad
+\typeout{SYMBOL symbol-letter-Y--symit}\(\mathit{Y}\)\quad
+\typeout{SYMBOL symbol-letter-Y--symbf}\(\mathbf{Y}\)\quad
+\typeout{SYMBOL symbol-letter-Y--symbfit}\(\mathbfit{Y}\)\quad
+\typeout{SYMBOL symbol-letter-Y--symsf}\(\mathsf{Y}\)\quad
+\typeout{SYMBOL symbol-letter-Y--symsfit}\(\mathsfit{Y}\)\quad
+\typeout{SYMBOL symbol-letter-Y--symbfsf}\(\mathbfsf{Y}\)\quad
+\typeout{SYMBOL symbol-letter-Y--symbfsfit}\(\mathbfsfit{Y}\)\quad
+\typeout{SYMBOL symbol-letter-Y--symcal}\(\mathcal{Y}\)\quad
+\typeout{SYMBOL symbol-letter-Y--symscr}\(\mathscr{Y}\)\quad
+\typeout{SYMBOL symbol-letter-Y--symfrak}\(\mathfrak{Y}\)\quad
+\typeout{SYMBOL symbol-letter-Y--symtt}\(\mathtt{Y}\)\quad
+\typeout{SYMBOL symbol-letter-Y--symbfcal}\(\mathbfcal{Y}\)\quad
+\typeout{SYMBOL symbol-letter-Y--symbfscr}\(\mathbfscr{Y}\)\quad
+\typeout{SYMBOL symbol-letter-Y--symbffrak}\(\mathbffrak{Y}\)\quad
+\typeout{SYMBOL symbol-letter-Y--editorbboldx}\(\mathbb{Y}\)\quad
+\typeout{SYMBOL symbol-letter-Z--symup}\(\mathrm{Z}\)\quad
+\typeout{SYMBOL symbol-letter-Z--symit}\(\mathit{Z}\)\quad
+\typeout{SYMBOL symbol-letter-Z--symbf}\(\mathbf{Z}\)\quad
+\typeout{SYMBOL symbol-letter-Z--symbfit}\(\mathbfit{Z}\)\quad
+\typeout{SYMBOL symbol-letter-Z--symsf}\(\mathsf{Z}\)\quad
+\typeout{SYMBOL symbol-letter-Z--symsfit}\(\mathsfit{Z}\)\quad
+\typeout{SYMBOL symbol-letter-Z--symbfsf}\(\mathbfsf{Z}\)\quad
+\typeout{SYMBOL symbol-letter-Z--symbfsfit}\(\mathbfsfit{Z}\)\quad
+\typeout{SYMBOL symbol-letter-Z--symcal}\(\mathcal{Z}\)\quad
+\typeout{SYMBOL symbol-letter-Z--symscr}\(\mathscr{Z}\)\quad
+\typeout{SYMBOL symbol-letter-Z--symfrak}\(\mathfrak{Z}\)\quad
+\typeout{SYMBOL symbol-letter-Z--symtt}\(\mathtt{Z}\)\quad
+\typeout{SYMBOL symbol-letter-Z--symbfcal}\(\mathbfcal{Z}\)\quad
+\typeout{SYMBOL symbol-letter-Z--symbfscr}\(\mathbfscr{Z}\)\quad
+\typeout{SYMBOL symbol-letter-Z--symbffrak}\(\mathbffrak{Z}\)\quad
+\typeout{SYMBOL symbol-letter-Z--editorbboldx}\(\mathbb{Z}\)\quad
+\typeout{SYMBOL symbol-letter-a--symup}\(\mathrm{a}\)\quad
+\typeout{SYMBOL symbol-letter-a--symit}\(\mathit{a}\)\quad
+\typeout{SYMBOL symbol-letter-a--symbf}\(\mathbf{a}\)\quad
+\typeout{SYMBOL symbol-letter-a--symbfit}\(\mathbfit{a}\)\quad
+\typeout{SYMBOL symbol-letter-a--symsf}\(\mathsf{a}\)\quad
+\typeout{SYMBOL symbol-letter-a--symsfit}\(\mathsfit{a}\)\quad
+\typeout{SYMBOL symbol-letter-a--symbfsf}\(\mathbfsf{a}\)\quad
+\typeout{SYMBOL symbol-letter-a--symbfsfit}\(\mathbfsfit{a}\)\quad
+\typeout{SYMBOL symbol-letter-a--symcal}\(\mathcal{a}\)\quad
+\typeout{SYMBOL symbol-letter-a--symscr}\(\mathscr{a}\)\quad
+\typeout{SYMBOL symbol-letter-a--symfrak}\(\mathfrak{a}\)\quad
+\typeout{SYMBOL symbol-letter-a--symtt}\(\mathtt{a}\)\quad
+\typeout{SYMBOL symbol-letter-a--symbfcal}\(\mathbfcal{a}\)\quad
+\typeout{SYMBOL symbol-letter-a--symbfscr}\(\mathbfscr{a}\)\quad
+\typeout{SYMBOL symbol-letter-a--symbffrak}\(\mathbffrak{a}\)\quad
+\typeout{SYMBOL symbol-letter-a--editorbboldx}\(\mathbb{a}\)\quad
+\typeout{SYMBOL symbol-letter-b--symup}\(\mathrm{b}\)\quad
+\typeout{SYMBOL symbol-letter-b--symit}\(\mathit{b}\)\quad
+\typeout{SYMBOL symbol-letter-b--symbf}\(\mathbf{b}\)\quad
+\typeout{SYMBOL symbol-letter-b--symbfit}\(\mathbfit{b}\)\quad
+\typeout{SYMBOL symbol-letter-b--symsf}\(\mathsf{b}\)\quad
+\typeout{SYMBOL symbol-letter-b--symsfit}\(\mathsfit{b}\)\quad
+\typeout{SYMBOL symbol-letter-b--symbfsf}\(\mathbfsf{b}\)\quad
+\typeout{SYMBOL symbol-letter-b--symbfsfit}\(\mathbfsfit{b}\)\quad
+\typeout{SYMBOL symbol-letter-b--symcal}\(\mathcal{b}\)\quad
+\typeout{SYMBOL symbol-letter-b--symscr}\(\mathscr{b}\)\quad
+\typeout{SYMBOL symbol-letter-b--symfrak}\(\mathfrak{b}\)\quad
+\typeout{SYMBOL symbol-letter-b--symtt}\(\mathtt{b}\)\quad
+\typeout{SYMBOL symbol-letter-b--symbfcal}\(\mathbfcal{b}\)\quad
+\typeout{SYMBOL symbol-letter-b--symbfscr}\(\mathbfscr{b}\)\quad
+\typeout{SYMBOL symbol-letter-b--symbffrak}\(\mathbffrak{b}\)\quad
+\typeout{SYMBOL symbol-letter-b--editorbboldx}\(\mathbb{b}\)\quad
+\typeout{SYMBOL symbol-letter-c--symup}\(\mathrm{c}\)\quad
+\typeout{SYMBOL symbol-letter-c--symit}\(\mathit{c}\)\quad
+\typeout{SYMBOL symbol-letter-c--symbf}\(\mathbf{c}\)\quad
+\typeout{SYMBOL symbol-letter-c--symbfit}\(\mathbfit{c}\)\quad
+\typeout{SYMBOL symbol-letter-c--symsf}\(\mathsf{c}\)\quad
+\typeout{SYMBOL symbol-letter-c--symsfit}\(\mathsfit{c}\)\quad
+\typeout{SYMBOL symbol-letter-c--symbfsf}\(\mathbfsf{c}\)\quad
+\typeout{SYMBOL symbol-letter-c--symbfsfit}\(\mathbfsfit{c}\)\quad
+\typeout{SYMBOL symbol-letter-c--symcal}\(\mathcal{c}\)\quad
+\typeout{SYMBOL symbol-letter-c--symscr}\(\mathscr{c}\)\quad
+\typeout{SYMBOL symbol-letter-c--symfrak}\(\mathfrak{c}\)\quad
+\typeout{SYMBOL symbol-letter-c--symtt}\(\mathtt{c}\)\quad
+\typeout{SYMBOL symbol-letter-c--symbfcal}\(\mathbfcal{c}\)\quad
+\typeout{SYMBOL symbol-letter-c--symbfscr}\(\mathbfscr{c}\)\quad
+\typeout{SYMBOL symbol-letter-c--symbffrak}\(\mathbffrak{c}\)\quad
+\typeout{SYMBOL symbol-letter-c--editorbboldx}\(\mathbb{c}\)\quad
+\typeout{SYMBOL symbol-letter-d--symup}\(\mathrm{d}\)\quad
+\typeout{SYMBOL symbol-letter-d--symit}\(\mathit{d}\)\quad
+\typeout{SYMBOL symbol-letter-d--symbf}\(\mathbf{d}\)\quad
+\typeout{SYMBOL symbol-letter-d--symbfit}\(\mathbfit{d}\)\quad
+\typeout{SYMBOL symbol-letter-d--symsf}\(\mathsf{d}\)\quad
+\typeout{SYMBOL symbol-letter-d--symsfit}\(\mathsfit{d}\)\quad
+\typeout{SYMBOL symbol-letter-d--symbfsf}\(\mathbfsf{d}\)\quad
+\typeout{SYMBOL symbol-letter-d--symbfsfit}\(\mathbfsfit{d}\)\quad
+\typeout{SYMBOL symbol-letter-d--symcal}\(\mathcal{d}\)\quad
+\typeout{SYMBOL symbol-letter-d--symscr}\(\mathscr{d}\)\quad
+\typeout{SYMBOL symbol-letter-d--symfrak}\(\mathfrak{d}\)\quad
+\typeout{SYMBOL symbol-letter-d--symtt}\(\mathtt{d}\)\quad
+\typeout{SYMBOL symbol-letter-d--symbfcal}\(\mathbfcal{d}\)\quad
+\typeout{SYMBOL symbol-letter-d--symbfscr}\(\mathbfscr{d}\)\quad
+\typeout{SYMBOL symbol-letter-d--symbffrak}\(\mathbffrak{d}\)\quad
+\typeout{SYMBOL symbol-letter-d--editorbboldx}\(\mathbb{d}\)\quad
+\typeout{SYMBOL symbol-letter-e--symup}\(\mathrm{e}\)\quad
+\typeout{SYMBOL symbol-letter-e--symit}\(\mathit{e}\)\quad
+\typeout{SYMBOL symbol-letter-e--symbf}\(\mathbf{e}\)\quad
+\typeout{SYMBOL symbol-letter-e--symbfit}\(\mathbfit{e}\)\quad
+\typeout{SYMBOL symbol-letter-e--symsf}\(\mathsf{e}\)\quad
+\typeout{SYMBOL symbol-letter-e--symsfit}\(\mathsfit{e}\)\quad
+\typeout{SYMBOL symbol-letter-e--symbfsf}\(\mathbfsf{e}\)\quad
+\typeout{SYMBOL symbol-letter-e--symbfsfit}\(\mathbfsfit{e}\)\quad
+\typeout{SYMBOL symbol-letter-e--symcal}\(\mathcal{e}\)\quad
+\typeout{SYMBOL symbol-letter-e--symscr}\(\mathscr{e}\)\quad
+\typeout{SYMBOL symbol-letter-e--symfrak}\(\mathfrak{e}\)\quad
+\typeout{SYMBOL symbol-letter-e--symtt}\(\mathtt{e}\)\quad
+\typeout{SYMBOL symbol-letter-e--symbfcal}\(\mathbfcal{e}\)\quad
+\typeout{SYMBOL symbol-letter-e--symbfscr}\(\mathbfscr{e}\)\quad
+\typeout{SYMBOL symbol-letter-e--symbffrak}\(\mathbffrak{e}\)\quad
+\typeout{SYMBOL symbol-letter-e--editorbboldx}\(\mathbb{e}\)\quad
+\typeout{SYMBOL symbol-letter-f--symup}\(\mathrm{f}\)\quad
+\typeout{SYMBOL symbol-letter-f--symit}\(\mathit{f}\)\quad
+\typeout{SYMBOL symbol-letter-f--symbf}\(\mathbf{f}\)\quad
+\typeout{SYMBOL symbol-letter-f--symbfit}\(\mathbfit{f}\)\quad
+\typeout{SYMBOL symbol-letter-f--symsf}\(\mathsf{f}\)\quad
+\typeout{SYMBOL symbol-letter-f--symsfit}\(\mathsfit{f}\)\quad
+\typeout{SYMBOL symbol-letter-f--symbfsf}\(\mathbfsf{f}\)\quad
+\typeout{SYMBOL symbol-letter-f--symbfsfit}\(\mathbfsfit{f}\)\quad
+\typeout{SYMBOL symbol-letter-f--symcal}\(\mathcal{f}\)\quad
+\typeout{SYMBOL symbol-letter-f--symscr}\(\mathscr{f}\)\quad
+\typeout{SYMBOL symbol-letter-f--symfrak}\(\mathfrak{f}\)\quad
+\typeout{SYMBOL symbol-letter-f--symtt}\(\mathtt{f}\)\quad
+\typeout{SYMBOL symbol-letter-f--symbfcal}\(\mathbfcal{f}\)\quad
+\typeout{SYMBOL symbol-letter-f--symbfscr}\(\mathbfscr{f}\)\quad
+\typeout{SYMBOL symbol-letter-f--symbffrak}\(\mathbffrak{f}\)\quad
+\typeout{SYMBOL symbol-letter-f--editorbboldx}\(\mathbb{f}\)\quad
+\typeout{SYMBOL symbol-letter-g--symup}\(\mathrm{g}\)\quad
+\typeout{SYMBOL symbol-letter-g--symit}\(\mathit{g}\)\quad
+\typeout{SYMBOL symbol-letter-g--symbf}\(\mathbf{g}\)\quad
+\typeout{SYMBOL symbol-letter-g--symbfit}\(\mathbfit{g}\)\quad
+\typeout{SYMBOL symbol-letter-g--symsf}\(\mathsf{g}\)\quad
+\typeout{SYMBOL symbol-letter-g--symsfit}\(\mathsfit{g}\)\quad
+\typeout{SYMBOL symbol-letter-g--symbfsf}\(\mathbfsf{g}\)\quad
+\typeout{SYMBOL symbol-letter-g--symbfsfit}\(\mathbfsfit{g}\)\quad
+\typeout{SYMBOL symbol-letter-g--symcal}\(\mathcal{g}\)\quad
+\typeout{SYMBOL symbol-letter-g--symscr}\(\mathscr{g}\)\quad
+\typeout{SYMBOL symbol-letter-g--symfrak}\(\mathfrak{g}\)\quad
+\typeout{SYMBOL symbol-letter-g--symtt}\(\mathtt{g}\)\quad
+\typeout{SYMBOL symbol-letter-g--symbfcal}\(\mathbfcal{g}\)\quad
+\typeout{SYMBOL symbol-letter-g--symbfscr}\(\mathbfscr{g}\)\quad
+\typeout{SYMBOL symbol-letter-g--symbffrak}\(\mathbffrak{g}\)\quad
+\typeout{SYMBOL symbol-letter-g--editorbboldx}\(\mathbb{g}\)\quad
+\typeout{SYMBOL symbol-letter-h--symup}\(\mathrm{h}\)\quad
+\typeout{SYMBOL symbol-letter-h--symit}\(\mathit{h}\)\quad
+\typeout{SYMBOL symbol-letter-h--symbf}\(\mathbf{h}\)\quad
+\typeout{SYMBOL symbol-letter-h--symbfit}\(\mathbfit{h}\)\quad
+\typeout{SYMBOL symbol-letter-h--symsf}\(\mathsf{h}\)\quad
+\typeout{SYMBOL symbol-letter-h--symsfit}\(\mathsfit{h}\)\quad
+\typeout{SYMBOL symbol-letter-h--symbfsf}\(\mathbfsf{h}\)\quad
+\typeout{SYMBOL symbol-letter-h--symbfsfit}\(\mathbfsfit{h}\)\quad
+\typeout{SYMBOL symbol-letter-h--symcal}\(\mathcal{h}\)\quad
+\typeout{SYMBOL symbol-letter-h--symscr}\(\mathscr{h}\)\quad
+\typeout{SYMBOL symbol-letter-h--symfrak}\(\mathfrak{h}\)\quad
+\typeout{SYMBOL symbol-letter-h--symtt}\(\mathtt{h}\)\quad
+\typeout{SYMBOL symbol-letter-h--symbfcal}\(\mathbfcal{h}\)\quad
+\typeout{SYMBOL symbol-letter-h--symbfscr}\(\mathbfscr{h}\)\quad
+\typeout{SYMBOL symbol-letter-h--symbffrak}\(\mathbffrak{h}\)\quad
+\typeout{SYMBOL symbol-letter-h--editorbboldx}\(\mathbb{h}\)\quad
+\typeout{SYMBOL symbol-letter-i--symup}\(\mathrm{i}\)\quad
+\typeout{SYMBOL symbol-letter-i--symit}\(\mathit{i}\)\quad
+\typeout{SYMBOL symbol-letter-i--symbf}\(\mathbf{i}\)\quad
+\typeout{SYMBOL symbol-letter-i--symbfit}\(\mathbfit{i}\)\quad
+\typeout{SYMBOL symbol-letter-i--symsf}\(\mathsf{i}\)\quad
+\typeout{SYMBOL symbol-letter-i--symsfit}\(\mathsfit{i}\)\quad
+\typeout{SYMBOL symbol-letter-i--symbfsf}\(\mathbfsf{i}\)\quad
+\typeout{SYMBOL symbol-letter-i--symbfsfit}\(\mathbfsfit{i}\)\quad
+\typeout{SYMBOL symbol-letter-i--symcal}\(\mathcal{i}\)\quad
+\typeout{SYMBOL symbol-letter-i--symscr}\(\mathscr{i}\)\quad
+\typeout{SYMBOL symbol-letter-i--symfrak}\(\mathfrak{i}\)\quad
+\typeout{SYMBOL symbol-letter-i--symtt}\(\mathtt{i}\)\quad
+\typeout{SYMBOL symbol-letter-i--symbfcal}\(\mathbfcal{i}\)\quad
+\typeout{SYMBOL symbol-letter-i--symbfscr}\(\mathbfscr{i}\)\quad
+\typeout{SYMBOL symbol-letter-i--symbffrak}\(\mathbffrak{i}\)\quad
+\typeout{SYMBOL symbol-letter-i--editorbboldx}\(\mathbb{i}\)\quad
+\typeout{SYMBOL symbol-letter-j--symup}\(\mathrm{j}\)\quad
+\typeout{SYMBOL symbol-letter-j--symit}\(\mathit{j}\)\quad
+\typeout{SYMBOL symbol-letter-j--symbf}\(\mathbf{j}\)\quad
+\typeout{SYMBOL symbol-letter-j--symbfit}\(\mathbfit{j}\)\quad
+\typeout{SYMBOL symbol-letter-j--symsf}\(\mathsf{j}\)\quad
+\typeout{SYMBOL symbol-letter-j--symsfit}\(\mathsfit{j}\)\quad
+\typeout{SYMBOL symbol-letter-j--symbfsf}\(\mathbfsf{j}\)\quad
+\typeout{SYMBOL symbol-letter-j--symbfsfit}\(\mathbfsfit{j}\)\quad
+\typeout{SYMBOL symbol-letter-j--symcal}\(\mathcal{j}\)\quad
+\typeout{SYMBOL symbol-letter-j--symscr}\(\mathscr{j}\)\quad
+\typeout{SYMBOL symbol-letter-j--symfrak}\(\mathfrak{j}\)\quad
+\typeout{SYMBOL symbol-letter-j--symtt}\(\mathtt{j}\)\quad
+\typeout{SYMBOL symbol-letter-j--symbfcal}\(\mathbfcal{j}\)\quad
+\typeout{SYMBOL symbol-letter-j--symbfscr}\(\mathbfscr{j}\)\quad
+\typeout{SYMBOL symbol-letter-j--symbffrak}\(\mathbffrak{j}\)\quad
+\typeout{SYMBOL symbol-letter-j--editorbboldx}\(\mathbb{j}\)\quad
+\typeout{SYMBOL symbol-letter-k--symup}\(\mathrm{k}\)\quad
+\typeout{SYMBOL symbol-letter-k--symit}\(\mathit{k}\)\quad
+\typeout{SYMBOL symbol-letter-k--symbf}\(\mathbf{k}\)\quad
+\typeout{SYMBOL symbol-letter-k--symbfit}\(\mathbfit{k}\)\quad
+\typeout{SYMBOL symbol-letter-k--symsf}\(\mathsf{k}\)\quad
+\typeout{SYMBOL symbol-letter-k--symsfit}\(\mathsfit{k}\)\quad
+\typeout{SYMBOL symbol-letter-k--symbfsf}\(\mathbfsf{k}\)\quad
+\typeout{SYMBOL symbol-letter-k--symbfsfit}\(\mathbfsfit{k}\)\quad
+\typeout{SYMBOL symbol-letter-k--symcal}\(\mathcal{k}\)\quad
+\typeout{SYMBOL symbol-letter-k--symscr}\(\mathscr{k}\)\quad
+\typeout{SYMBOL symbol-letter-k--symfrak}\(\mathfrak{k}\)\quad
+\typeout{SYMBOL symbol-letter-k--symtt}\(\mathtt{k}\)\quad
+\typeout{SYMBOL symbol-letter-k--symbfcal}\(\mathbfcal{k}\)\quad
+\typeout{SYMBOL symbol-letter-k--symbfscr}\(\mathbfscr{k}\)\quad
+\typeout{SYMBOL symbol-letter-k--symbffrak}\(\mathbffrak{k}\)\quad
+\typeout{SYMBOL symbol-letter-k--editorbboldx}\(\mathbb{k}\)\quad
+\typeout{SYMBOL symbol-letter-l--symup}\(\mathrm{l}\)\quad
+\typeout{SYMBOL symbol-letter-l--symit}\(\mathit{l}\)\quad
+\typeout{SYMBOL symbol-letter-l--symbf}\(\mathbf{l}\)\quad
+\typeout{SYMBOL symbol-letter-l--symbfit}\(\mathbfit{l}\)\quad
+\typeout{SYMBOL symbol-letter-l--symsf}\(\mathsf{l}\)\quad
+\typeout{SYMBOL symbol-letter-l--symsfit}\(\mathsfit{l}\)\quad
+\typeout{SYMBOL symbol-letter-l--symbfsf}\(\mathbfsf{l}\)\quad
+\typeout{SYMBOL symbol-letter-l--symbfsfit}\(\mathbfsfit{l}\)\quad
+\typeout{SYMBOL symbol-letter-l--symcal}\(\mathcal{l}\)\quad
+\typeout{SYMBOL symbol-letter-l--symscr}\(\mathscr{l}\)\quad
+\typeout{SYMBOL symbol-letter-l--symfrak}\(\mathfrak{l}\)\quad
+\typeout{SYMBOL symbol-letter-l--symtt}\(\mathtt{l}\)\quad
+\typeout{SYMBOL symbol-letter-l--symbfcal}\(\mathbfcal{l}\)\quad
+\typeout{SYMBOL symbol-letter-l--symbfscr}\(\mathbfscr{l}\)\quad
+\typeout{SYMBOL symbol-letter-l--symbffrak}\(\mathbffrak{l}\)\quad
+\typeout{SYMBOL symbol-letter-l--editorbboldx}\(\mathbb{l}\)\quad
+\typeout{SYMBOL symbol-letter-m--symup}\(\mathrm{m}\)\quad
+\typeout{SYMBOL symbol-letter-m--symit}\(\mathit{m}\)\quad
+\typeout{SYMBOL symbol-letter-m--symbf}\(\mathbf{m}\)\quad
+\typeout{SYMBOL symbol-letter-m--symbfit}\(\mathbfit{m}\)\quad
+\typeout{SYMBOL symbol-letter-m--symsf}\(\mathsf{m}\)\quad
+\typeout{SYMBOL symbol-letter-m--symsfit}\(\mathsfit{m}\)\quad
+\typeout{SYMBOL symbol-letter-m--symbfsf}\(\mathbfsf{m}\)\quad
+\typeout{SYMBOL symbol-letter-m--symbfsfit}\(\mathbfsfit{m}\)\quad
+\typeout{SYMBOL symbol-letter-m--symcal}\(\mathcal{m}\)\quad
+\typeout{SYMBOL symbol-letter-m--symscr}\(\mathscr{m}\)\quad
+\typeout{SYMBOL symbol-letter-m--symfrak}\(\mathfrak{m}\)\quad
+\typeout{SYMBOL symbol-letter-m--symtt}\(\mathtt{m}\)\quad
+\typeout{SYMBOL symbol-letter-m--symbfcal}\(\mathbfcal{m}\)\quad
+\typeout{SYMBOL symbol-letter-m--symbfscr}\(\mathbfscr{m}\)\quad
+\typeout{SYMBOL symbol-letter-m--symbffrak}\(\mathbffrak{m}\)\quad
+\typeout{SYMBOL symbol-letter-m--editorbboldx}\(\mathbb{m}\)\quad
+\typeout{SYMBOL symbol-letter-n--symup}\(\mathrm{n}\)\quad
+\typeout{SYMBOL symbol-letter-n--symit}\(\mathit{n}\)\quad
+\typeout{SYMBOL symbol-letter-n--symbf}\(\mathbf{n}\)\quad
+\typeout{SYMBOL symbol-letter-n--symbfit}\(\mathbfit{n}\)\quad
+\typeout{SYMBOL symbol-letter-n--symsf}\(\mathsf{n}\)\quad
+\typeout{SYMBOL symbol-letter-n--symsfit}\(\mathsfit{n}\)\quad
+\typeout{SYMBOL symbol-letter-n--symbfsf}\(\mathbfsf{n}\)\quad
+\typeout{SYMBOL symbol-letter-n--symbfsfit}\(\mathbfsfit{n}\)\quad
+\typeout{SYMBOL symbol-letter-n--symcal}\(\mathcal{n}\)\quad
+\typeout{SYMBOL symbol-letter-n--symscr}\(\mathscr{n}\)\quad
+\typeout{SYMBOL symbol-letter-n--symfrak}\(\mathfrak{n}\)\quad
+\typeout{SYMBOL symbol-letter-n--symtt}\(\mathtt{n}\)\quad
+\typeout{SYMBOL symbol-letter-n--symbfcal}\(\mathbfcal{n}\)\quad
+\typeout{SYMBOL symbol-letter-n--symbfscr}\(\mathbfscr{n}\)\quad
+\typeout{SYMBOL symbol-letter-n--symbffrak}\(\mathbffrak{n}\)\quad
+\typeout{SYMBOL symbol-letter-n--editorbboldx}\(\mathbb{n}\)\quad
+\typeout{SYMBOL symbol-letter-o--symup}\(\mathrm{o}\)\quad
+\typeout{SYMBOL symbol-letter-o--symit}\(\mathit{o}\)\quad
+\typeout{SYMBOL symbol-letter-o--symbf}\(\mathbf{o}\)\quad
+\typeout{SYMBOL symbol-letter-o--symbfit}\(\mathbfit{o}\)\quad
+\typeout{SYMBOL symbol-letter-o--symsf}\(\mathsf{o}\)\quad
+\typeout{SYMBOL symbol-letter-o--symsfit}\(\mathsfit{o}\)\quad
+\typeout{SYMBOL symbol-letter-o--symbfsf}\(\mathbfsf{o}\)\quad
+\typeout{SYMBOL symbol-letter-o--symbfsfit}\(\mathbfsfit{o}\)\quad
+\typeout{SYMBOL symbol-letter-o--symcal}\(\mathcal{o}\)\quad
+\typeout{SYMBOL symbol-letter-o--symscr}\(\mathscr{o}\)\quad
+\typeout{SYMBOL symbol-letter-o--symfrak}\(\mathfrak{o}\)\quad
+\typeout{SYMBOL symbol-letter-o--symtt}\(\mathtt{o}\)\quad
+\typeout{SYMBOL symbol-letter-o--symbfcal}\(\mathbfcal{o}\)\quad
+\typeout{SYMBOL symbol-letter-o--symbfscr}\(\mathbfscr{o}\)\quad
+\typeout{SYMBOL symbol-letter-o--symbffrak}\(\mathbffrak{o}\)\quad
+\typeout{SYMBOL symbol-letter-o--editorbboldx}\(\mathbb{o}\)\quad
+\typeout{SYMBOL symbol-letter-p--symup}\(\mathrm{p}\)\quad
+\typeout{SYMBOL symbol-letter-p--symit}\(\mathit{p}\)\quad
+\typeout{SYMBOL symbol-letter-p--symbf}\(\mathbf{p}\)\quad
+\typeout{SYMBOL symbol-letter-p--symbfit}\(\mathbfit{p}\)\quad
+\typeout{SYMBOL symbol-letter-p--symsf}\(\mathsf{p}\)\quad
+\typeout{SYMBOL symbol-letter-p--symsfit}\(\mathsfit{p}\)\quad
+\typeout{SYMBOL symbol-letter-p--symbfsf}\(\mathbfsf{p}\)\quad
+\typeout{SYMBOL symbol-letter-p--symbfsfit}\(\mathbfsfit{p}\)\quad
+\typeout{SYMBOL symbol-letter-p--symcal}\(\mathcal{p}\)\quad
+\typeout{SYMBOL symbol-letter-p--symscr}\(\mathscr{p}\)\quad
+\typeout{SYMBOL symbol-letter-p--symfrak}\(\mathfrak{p}\)\quad
+\typeout{SYMBOL symbol-letter-p--symtt}\(\mathtt{p}\)\quad
+\typeout{SYMBOL symbol-letter-p--symbfcal}\(\mathbfcal{p}\)\quad
+\typeout{SYMBOL symbol-letter-p--symbfscr}\(\mathbfscr{p}\)\quad
+\typeout{SYMBOL symbol-letter-p--symbffrak}\(\mathbffrak{p}\)\quad
+\typeout{SYMBOL symbol-letter-p--editorbboldx}\(\mathbb{p}\)\quad
+\typeout{SYMBOL symbol-letter-q--symup}\(\mathrm{q}\)\quad
+\typeout{SYMBOL symbol-letter-q--symit}\(\mathit{q}\)\quad
+\typeout{SYMBOL symbol-letter-q--symbf}\(\mathbf{q}\)\quad
+\typeout{SYMBOL symbol-letter-q--symbfit}\(\mathbfit{q}\)\quad
+\typeout{SYMBOL symbol-letter-q--symsf}\(\mathsf{q}\)\quad
+\typeout{SYMBOL symbol-letter-q--symsfit}\(\mathsfit{q}\)\quad
+\typeout{SYMBOL symbol-letter-q--symbfsf}\(\mathbfsf{q}\)\quad
+\typeout{SYMBOL symbol-letter-q--symbfsfit}\(\mathbfsfit{q}\)\quad
+\typeout{SYMBOL symbol-letter-q--symcal}\(\mathcal{q}\)\quad
+\typeout{SYMBOL symbol-letter-q--symscr}\(\mathscr{q}\)\quad
+\typeout{SYMBOL symbol-letter-q--symfrak}\(\mathfrak{q}\)\quad
+\typeout{SYMBOL symbol-letter-q--symtt}\(\mathtt{q}\)\quad
+\typeout{SYMBOL symbol-letter-q--symbfcal}\(\mathbfcal{q}\)\quad
+\typeout{SYMBOL symbol-letter-q--symbfscr}\(\mathbfscr{q}\)\quad
+\typeout{SYMBOL symbol-letter-q--symbffrak}\(\mathbffrak{q}\)\quad
+\typeout{SYMBOL symbol-letter-q--editorbboldx}\(\mathbb{q}\)\quad
+\typeout{SYMBOL symbol-letter-r--symup}\(\mathrm{r}\)\quad
+\typeout{SYMBOL symbol-letter-r--symit}\(\mathit{r}\)\quad
+\typeout{SYMBOL symbol-letter-r--symbf}\(\mathbf{r}\)\quad
+\typeout{SYMBOL symbol-letter-r--symbfit}\(\mathbfit{r}\)\quad
+\typeout{SYMBOL symbol-letter-r--symsf}\(\mathsf{r}\)\quad
+\typeout{SYMBOL symbol-letter-r--symsfit}\(\mathsfit{r}\)\quad
+\typeout{SYMBOL symbol-letter-r--symbfsf}\(\mathbfsf{r}\)\quad
+\typeout{SYMBOL symbol-letter-r--symbfsfit}\(\mathbfsfit{r}\)\quad
+\typeout{SYMBOL symbol-letter-r--symcal}\(\mathcal{r}\)\quad
+\typeout{SYMBOL symbol-letter-r--symscr}\(\mathscr{r}\)\quad
+\typeout{SYMBOL symbol-letter-r--symfrak}\(\mathfrak{r}\)\quad
+\typeout{SYMBOL symbol-letter-r--symtt}\(\mathtt{r}\)\quad
+\typeout{SYMBOL symbol-letter-r--symbfcal}\(\mathbfcal{r}\)\quad
+\typeout{SYMBOL symbol-letter-r--symbfscr}\(\mathbfscr{r}\)\quad
+\typeout{SYMBOL symbol-letter-r--symbffrak}\(\mathbffrak{r}\)\quad
+\typeout{SYMBOL symbol-letter-r--editorbboldx}\(\mathbb{r}\)\quad
+\typeout{SYMBOL symbol-letter-s--symup}\(\mathrm{s}\)\quad
+\typeout{SYMBOL symbol-letter-s--symit}\(\mathit{s}\)\quad
+\typeout{SYMBOL symbol-letter-s--symbf}\(\mathbf{s}\)\quad
+\typeout{SYMBOL symbol-letter-s--symbfit}\(\mathbfit{s}\)\quad
+\typeout{SYMBOL symbol-letter-s--symsf}\(\mathsf{s}\)\quad
+\typeout{SYMBOL symbol-letter-s--symsfit}\(\mathsfit{s}\)\quad
+\typeout{SYMBOL symbol-letter-s--symbfsf}\(\mathbfsf{s}\)\quad
+\typeout{SYMBOL symbol-letter-s--symbfsfit}\(\mathbfsfit{s}\)\quad
+\typeout{SYMBOL symbol-letter-s--symcal}\(\mathcal{s}\)\quad
+\typeout{SYMBOL symbol-letter-s--symscr}\(\mathscr{s}\)\quad
+\typeout{SYMBOL symbol-letter-s--symfrak}\(\mathfrak{s}\)\quad
+\typeout{SYMBOL symbol-letter-s--symtt}\(\mathtt{s}\)\quad
+\typeout{SYMBOL symbol-letter-s--symbfcal}\(\mathbfcal{s}\)\quad
+\typeout{SYMBOL symbol-letter-s--symbfscr}\(\mathbfscr{s}\)\quad
+\typeout{SYMBOL symbol-letter-s--symbffrak}\(\mathbffrak{s}\)\quad
+\typeout{SYMBOL symbol-letter-s--editorbboldx}\(\mathbb{s}\)\quad
+\typeout{SYMBOL symbol-letter-t--symup}\(\mathrm{t}\)\quad
+\typeout{SYMBOL symbol-letter-t--symit}\(\mathit{t}\)\quad
+\typeout{SYMBOL symbol-letter-t--symbf}\(\mathbf{t}\)\quad
+\typeout{SYMBOL symbol-letter-t--symbfit}\(\mathbfit{t}\)\quad
+\typeout{SYMBOL symbol-letter-t--symsf}\(\mathsf{t}\)\quad
+\typeout{SYMBOL symbol-letter-t--symsfit}\(\mathsfit{t}\)\quad
+\typeout{SYMBOL symbol-letter-t--symbfsf}\(\mathbfsf{t}\)\quad
+\typeout{SYMBOL symbol-letter-t--symbfsfit}\(\mathbfsfit{t}\)\quad
+\typeout{SYMBOL symbol-letter-t--symcal}\(\mathcal{t}\)\quad
+\typeout{SYMBOL symbol-letter-t--symscr}\(\mathscr{t}\)\quad
+\typeout{SYMBOL symbol-letter-t--symfrak}\(\mathfrak{t}\)\quad
+\typeout{SYMBOL symbol-letter-t--symtt}\(\mathtt{t}\)\quad
+\typeout{SYMBOL symbol-letter-t--symbfcal}\(\mathbfcal{t}\)\quad
+\typeout{SYMBOL symbol-letter-t--symbfscr}\(\mathbfscr{t}\)\quad
+\typeout{SYMBOL symbol-letter-t--symbffrak}\(\mathbffrak{t}\)\quad
+\typeout{SYMBOL symbol-letter-t--editorbboldx}\(\mathbb{t}\)\quad
+\typeout{SYMBOL symbol-letter-u--symup}\(\mathrm{u}\)\quad
+\typeout{SYMBOL symbol-letter-u--symit}\(\mathit{u}\)\quad
+\typeout{SYMBOL symbol-letter-u--symbf}\(\mathbf{u}\)\quad
+\typeout{SYMBOL symbol-letter-u--symbfit}\(\mathbfit{u}\)\quad
+\typeout{SYMBOL symbol-letter-u--symsf}\(\mathsf{u}\)\quad
+\typeout{SYMBOL symbol-letter-u--symsfit}\(\mathsfit{u}\)\quad
+\typeout{SYMBOL symbol-letter-u--symbfsf}\(\mathbfsf{u}\)\quad
+\typeout{SYMBOL symbol-letter-u--symbfsfit}\(\mathbfsfit{u}\)\quad
+\typeout{SYMBOL symbol-letter-u--symcal}\(\mathcal{u}\)\quad
+\typeout{SYMBOL symbol-letter-u--symscr}\(\mathscr{u}\)\quad
+\typeout{SYMBOL symbol-letter-u--symfrak}\(\mathfrak{u}\)\quad
+\typeout{SYMBOL symbol-letter-u--symtt}\(\mathtt{u}\)\quad
+\typeout{SYMBOL symbol-letter-u--symbfcal}\(\mathbfcal{u}\)\quad
+\typeout{SYMBOL symbol-letter-u--symbfscr}\(\mathbfscr{u}\)\quad
+\typeout{SYMBOL symbol-letter-u--symbffrak}\(\mathbffrak{u}\)\quad
+\typeout{SYMBOL symbol-letter-u--editorbboldx}\(\mathbb{u}\)\quad
+\typeout{SYMBOL symbol-letter-v--symup}\(\mathrm{v}\)\quad
+\typeout{SYMBOL symbol-letter-v--symit}\(\mathit{v}\)\quad
+\typeout{SYMBOL symbol-letter-v--symbf}\(\mathbf{v}\)\quad
+\typeout{SYMBOL symbol-letter-v--symbfit}\(\mathbfit{v}\)\quad
+\typeout{SYMBOL symbol-letter-v--symsf}\(\mathsf{v}\)\quad
+\typeout{SYMBOL symbol-letter-v--symsfit}\(\mathsfit{v}\)\quad
+\typeout{SYMBOL symbol-letter-v--symbfsf}\(\mathbfsf{v}\)\quad
+\typeout{SYMBOL symbol-letter-v--symbfsfit}\(\mathbfsfit{v}\)\quad
+\typeout{SYMBOL symbol-letter-v--symcal}\(\mathcal{v}\)\quad
+\typeout{SYMBOL symbol-letter-v--symscr}\(\mathscr{v}\)\quad
+\typeout{SYMBOL symbol-letter-v--symfrak}\(\mathfrak{v}\)\quad
+\typeout{SYMBOL symbol-letter-v--symtt}\(\mathtt{v}\)\quad
+\typeout{SYMBOL symbol-letter-v--symbfcal}\(\mathbfcal{v}\)\quad
+\typeout{SYMBOL symbol-letter-v--symbfscr}\(\mathbfscr{v}\)\quad
+\typeout{SYMBOL symbol-letter-v--symbffrak}\(\mathbffrak{v}\)\quad
+\typeout{SYMBOL symbol-letter-v--editorbboldx}\(\mathbb{v}\)\quad
+\typeout{SYMBOL symbol-letter-w--symup}\(\mathrm{w}\)\quad
+\typeout{SYMBOL symbol-letter-w--symit}\(\mathit{w}\)\quad
+\typeout{SYMBOL symbol-letter-w--symbf}\(\mathbf{w}\)\quad
+\typeout{SYMBOL symbol-letter-w--symbfit}\(\mathbfit{w}\)\quad
+\typeout{SYMBOL symbol-letter-w--symsf}\(\mathsf{w}\)\quad
+\typeout{SYMBOL symbol-letter-w--symsfit}\(\mathsfit{w}\)\quad
+\typeout{SYMBOL symbol-letter-w--symbfsf}\(\mathbfsf{w}\)\quad
+\typeout{SYMBOL symbol-letter-w--symbfsfit}\(\mathbfsfit{w}\)\quad
+\typeout{SYMBOL symbol-letter-w--symcal}\(\mathcal{w}\)\quad
+\typeout{SYMBOL symbol-letter-w--symscr}\(\mathscr{w}\)\quad
+\typeout{SYMBOL symbol-letter-w--symfrak}\(\mathfrak{w}\)\quad
+\typeout{SYMBOL symbol-letter-w--symtt}\(\mathtt{w}\)\quad
+\typeout{SYMBOL symbol-letter-w--symbfcal}\(\mathbfcal{w}\)\quad
+\typeout{SYMBOL symbol-letter-w--symbfscr}\(\mathbfscr{w}\)\quad
+\typeout{SYMBOL symbol-letter-w--symbffrak}\(\mathbffrak{w}\)\quad
+\typeout{SYMBOL symbol-letter-w--editorbboldx}\(\mathbb{w}\)\quad
+\typeout{SYMBOL symbol-letter-x--symup}\(\mathrm{x}\)\quad
+\typeout{SYMBOL symbol-letter-x--symit}\(\mathit{x}\)\quad
+\typeout{SYMBOL symbol-letter-x--symbf}\(\mathbf{x}\)\quad
+\typeout{SYMBOL symbol-letter-x--symbfit}\(\mathbfit{x}\)\quad
+\typeout{SYMBOL symbol-letter-x--symsf}\(\mathsf{x}\)\quad
+\typeout{SYMBOL symbol-letter-x--symsfit}\(\mathsfit{x}\)\quad
+\typeout{SYMBOL symbol-letter-x--symbfsf}\(\mathbfsf{x}\)\quad
+\typeout{SYMBOL symbol-letter-x--symbfsfit}\(\mathbfsfit{x}\)\quad
+\typeout{SYMBOL symbol-letter-x--symcal}\(\mathcal{x}\)\quad
+\typeout{SYMBOL symbol-letter-x--symscr}\(\mathscr{x}\)\quad
+\typeout{SYMBOL symbol-letter-x--symfrak}\(\mathfrak{x}\)\quad
+\typeout{SYMBOL symbol-letter-x--symtt}\(\mathtt{x}\)\quad
+\typeout{SYMBOL symbol-letter-x--symbfcal}\(\mathbfcal{x}\)\quad
+\typeout{SYMBOL symbol-letter-x--symbfscr}\(\mathbfscr{x}\)\quad
+\typeout{SYMBOL symbol-letter-x--symbffrak}\(\mathbffrak{x}\)\quad
+\typeout{SYMBOL symbol-letter-x--editorbboldx}\(\mathbb{x}\)\quad
+\typeout{SYMBOL symbol-letter-y--symup}\(\mathrm{y}\)\quad
+\typeout{SYMBOL symbol-letter-y--symit}\(\mathit{y}\)\quad
+\typeout{SYMBOL symbol-letter-y--symbf}\(\mathbf{y}\)\quad
+\typeout{SYMBOL symbol-letter-y--symbfit}\(\mathbfit{y}\)\quad
+\typeout{SYMBOL symbol-letter-y--symsf}\(\mathsf{y}\)\quad
+\typeout{SYMBOL symbol-letter-y--symsfit}\(\mathsfit{y}\)\quad
+\typeout{SYMBOL symbol-letter-y--symbfsf}\(\mathbfsf{y}\)\quad
+\typeout{SYMBOL symbol-letter-y--symbfsfit}\(\mathbfsfit{y}\)\quad
+\typeout{SYMBOL symbol-letter-y--symcal}\(\mathcal{y}\)\quad
+\typeout{SYMBOL symbol-letter-y--symscr}\(\mathscr{y}\)\quad
+\typeout{SYMBOL symbol-letter-y--symfrak}\(\mathfrak{y}\)\quad
+\typeout{SYMBOL symbol-letter-y--symtt}\(\mathtt{y}\)\quad
+\typeout{SYMBOL symbol-letter-y--symbfcal}\(\mathbfcal{y}\)\quad
+\typeout{SYMBOL symbol-letter-y--symbfscr}\(\mathbfscr{y}\)\quad
+\typeout{SYMBOL symbol-letter-y--symbffrak}\(\mathbffrak{y}\)\quad
+\typeout{SYMBOL symbol-letter-y--editorbboldx}\(\mathbb{y}\)\quad
+\typeout{SYMBOL symbol-letter-z--symup}\(\mathrm{z}\)\quad
+\typeout{SYMBOL symbol-letter-z--symit}\(\mathit{z}\)\quad
+\typeout{SYMBOL symbol-letter-z--symbf}\(\mathbf{z}\)\quad
+\typeout{SYMBOL symbol-letter-z--symbfit}\(\mathbfit{z}\)\quad
+\typeout{SYMBOL symbol-letter-z--symsf}\(\mathsf{z}\)\quad
+\typeout{SYMBOL symbol-letter-z--symsfit}\(\mathsfit{z}\)\quad
+\typeout{SYMBOL symbol-letter-z--symbfsf}\(\mathbfsf{z}\)\quad
+\typeout{SYMBOL symbol-letter-z--symbfsfit}\(\mathbfsfit{z}\)\quad
+\typeout{SYMBOL symbol-letter-z--symcal}\(\mathcal{z}\)\quad
+\typeout{SYMBOL symbol-letter-z--symscr}\(\mathscr{z}\)\quad
+\typeout{SYMBOL symbol-letter-z--symfrak}\(\mathfrak{z}\)\quad
+\typeout{SYMBOL symbol-letter-z--symtt}\(\mathtt{z}\)\quad
+\typeout{SYMBOL symbol-letter-z--symbfcal}\(\mathbfcal{z}\)\quad
+\typeout{SYMBOL symbol-letter-z--symbfscr}\(\mathbfscr{z}\)\quad
+\typeout{SYMBOL symbol-letter-z--symbffrak}\(\mathbffrak{z}\)\quad
+\typeout{SYMBOL symbol-letter-z--editorbboldx}\(\mathbb{z}\)\quad
+\typeout{SYMBOL symbol-letter-0--symup}\(\mathrm{0}\)\quad
+\typeout{SYMBOL symbol-letter-0--symbf}\(\mathbf{0}\)\quad
+\typeout{SYMBOL symbol-letter-0--symsf}\(\mathsf{0}\)\quad
+\typeout{SYMBOL symbol-letter-0--symbfsf}\(\mathbfsf{0}\)\quad
+\typeout{SYMBOL symbol-letter-0--symtt}\(\mathtt{0}\)\quad
+\typeout{SYMBOL symbol-letter-0--editorbboldx}\(\mathbb{0}\)\quad
+\typeout{SYMBOL symbol-letter-1--symup}\(\mathrm{1}\)\quad
+\typeout{SYMBOL symbol-letter-1--symbf}\(\mathbf{1}\)\quad
+\typeout{SYMBOL symbol-letter-1--symsf}\(\mathsf{1}\)\quad
+\typeout{SYMBOL symbol-letter-1--symbfsf}\(\mathbfsf{1}\)\quad
+\typeout{SYMBOL symbol-letter-1--symtt}\(\mathtt{1}\)\quad
+\typeout{SYMBOL symbol-letter-1--editorbboldx}\(\mathbb{1}\)\quad
+\typeout{SYMBOL symbol-letter-2--symup}\(\mathrm{2}\)\quad
+\typeout{SYMBOL symbol-letter-2--symbf}\(\mathbf{2}\)\quad
+\typeout{SYMBOL symbol-letter-2--symsf}\(\mathsf{2}\)\quad
+\typeout{SYMBOL symbol-letter-2--symbfsf}\(\mathbfsf{2}\)\quad
+\typeout{SYMBOL symbol-letter-2--symtt}\(\mathtt{2}\)\quad
+\typeout{SYMBOL symbol-letter-2--editorbboldx}\(\mathbb{2}\)\quad
+\typeout{SYMBOL symbol-letter-3--symup}\(\mathrm{3}\)\quad
+\typeout{SYMBOL symbol-letter-3--symbf}\(\mathbf{3}\)\quad
+\typeout{SYMBOL symbol-letter-3--symsf}\(\mathsf{3}\)\quad
+\typeout{SYMBOL symbol-letter-3--symbfsf}\(\mathbfsf{3}\)\quad
+\typeout{SYMBOL symbol-letter-3--symtt}\(\mathtt{3}\)\quad
+\typeout{SYMBOL symbol-letter-3--editorbboldx}\(\mathbb{3}\)\quad
+\typeout{SYMBOL symbol-letter-4--symup}\(\mathrm{4}\)\quad
+\typeout{SYMBOL symbol-letter-4--symbf}\(\mathbf{4}\)\quad
+\typeout{SYMBOL symbol-letter-4--symsf}\(\mathsf{4}\)\quad
+\typeout{SYMBOL symbol-letter-4--symbfsf}\(\mathbfsf{4}\)\quad
+\typeout{SYMBOL symbol-letter-4--symtt}\(\mathtt{4}\)\quad
+\typeout{SYMBOL symbol-letter-4--editorbboldx}\(\mathbb{4}\)\quad
+\typeout{SYMBOL symbol-letter-5--symup}\(\mathrm{5}\)\quad
+\typeout{SYMBOL symbol-letter-5--symbf}\(\mathbf{5}\)\quad
+\typeout{SYMBOL symbol-letter-5--symsf}\(\mathsf{5}\)\quad
+\typeout{SYMBOL symbol-letter-5--symbfsf}\(\mathbfsf{5}\)\quad
+\typeout{SYMBOL symbol-letter-5--symtt}\(\mathtt{5}\)\quad
+\typeout{SYMBOL symbol-letter-5--editorbboldx}\(\mathbb{5}\)\quad
+\typeout{SYMBOL symbol-letter-6--symup}\(\mathrm{6}\)\quad
+\typeout{SYMBOL symbol-letter-6--symbf}\(\mathbf{6}\)\quad
+\typeout{SYMBOL symbol-letter-6--symsf}\(\mathsf{6}\)\quad
+\typeout{SYMBOL symbol-letter-6--symbfsf}\(\mathbfsf{6}\)\quad
+\typeout{SYMBOL symbol-letter-6--symtt}\(\mathtt{6}\)\quad
+\typeout{SYMBOL symbol-letter-6--editorbboldx}\(\mathbb{6}\)\quad
+\typeout{SYMBOL symbol-letter-7--symup}\(\mathrm{7}\)\quad
+\typeout{SYMBOL symbol-letter-7--symbf}\(\mathbf{7}\)\quad
+\typeout{SYMBOL symbol-letter-7--symsf}\(\mathsf{7}\)\quad
+\typeout{SYMBOL symbol-letter-7--symbfsf}\(\mathbfsf{7}\)\quad
+\typeout{SYMBOL symbol-letter-7--symtt}\(\mathtt{7}\)\quad
+\typeout{SYMBOL symbol-letter-7--editorbboldx}\(\mathbb{7}\)\quad
+\typeout{SYMBOL symbol-letter-8--symup}\(\mathrm{8}\)\quad
+\typeout{SYMBOL symbol-letter-8--symbf}\(\mathbf{8}\)\quad
+\typeout{SYMBOL symbol-letter-8--symsf}\(\mathsf{8}\)\quad
+\typeout{SYMBOL symbol-letter-8--symbfsf}\(\mathbfsf{8}\)\quad
+\typeout{SYMBOL symbol-letter-8--symtt}\(\mathtt{8}\)\quad
+\typeout{SYMBOL symbol-letter-8--editorbboldx}\(\mathbb{8}\)\quad
+\typeout{SYMBOL symbol-letter-9--symup}\(\mathrm{9}\)\quad
+\typeout{SYMBOL symbol-letter-9--symbf}\(\mathbf{9}\)\quad
+\typeout{SYMBOL symbol-letter-9--symsf}\(\mathsf{9}\)\quad
+\typeout{SYMBOL symbol-letter-9--symbfsf}\(\mathbfsf{9}\)\quad
+\typeout{SYMBOL symbol-letter-9--symtt}\(\mathtt{9}\)\quad
+\typeout{SYMBOL symbol-letter-9--editorbboldx}\(\mathbb{9}\)\quad
+\typeout{SYMBOL symbol-alpha--symup}\(\mathrm{\alpha}\)\quad
+\typeout{SYMBOL symbol-alpha--symit}\(\mathit{\alpha}\)\quad
+\typeout{SYMBOL symbol-alpha--symbf}\(\mathbf{\alpha}\)\quad
+\typeout{SYMBOL symbol-alpha--symbfup}\(\mathbfup{\alpha}\)\quad
+\typeout{SYMBOL symbol-alpha--symbfsf}\(\mathbfsf{\alpha}\)\quad
+\typeout{SYMBOL symbol-alpha--symbfsfit}\(\mathbfsfit{\alpha}\)\quad
+\typeout{SYMBOL symbol-alpha--editorbboldx}\(\bbalpha \)\quad
+\typeout{SYMBOL symbol-beta--symup}\(\mathrm{\beta}\)\quad
+\typeout{SYMBOL symbol-beta--symit}\(\mathit{\beta}\)\quad
+\typeout{SYMBOL symbol-beta--symbf}\(\mathbf{\beta}\)\quad
+\typeout{SYMBOL symbol-beta--symbfup}\(\mathbfup{\beta}\)\quad
+\typeout{SYMBOL symbol-beta--symbfsf}\(\mathbfsf{\beta}\)\quad
+\typeout{SYMBOL symbol-beta--symbfsfit}\(\mathbfsfit{\beta}\)\quad
+\typeout{SYMBOL symbol-beta--editorbboldx}\(\bbbeta \)\quad
+\typeout{SYMBOL symbol-gamma--symup}\(\mathrm{\gamma}\)\quad
+\typeout{SYMBOL symbol-gamma--symit}\(\mathit{\gamma}\)\quad
+\typeout{SYMBOL symbol-gamma--symbf}\(\mathbf{\gamma}\)\quad
+\typeout{SYMBOL symbol-gamma--symbfup}\(\mathbfup{\gamma}\)\quad
+\typeout{SYMBOL symbol-gamma--symbfsf}\(\mathbfsf{\gamma}\)\quad
+\typeout{SYMBOL symbol-gamma--symbfsfit}\(\mathbfsfit{\gamma}\)\quad
+\typeout{SYMBOL symbol-gamma--editorbboldx}\(\bbgamma \)\quad
+\typeout{SYMBOL symbol-delta--symup}\(\mathrm{\delta}\)\quad
+\typeout{SYMBOL symbol-delta--symit}\(\mathit{\delta}\)\quad
+\typeout{SYMBOL symbol-delta--symbf}\(\mathbf{\delta}\)\quad
+\typeout{SYMBOL symbol-delta--symbfup}\(\mathbfup{\delta}\)\quad
+\typeout{SYMBOL symbol-delta--symbfsf}\(\mathbfsf{\delta}\)\quad
+\typeout{SYMBOL symbol-delta--symbfsfit}\(\mathbfsfit{\delta}\)\quad
+\typeout{SYMBOL symbol-delta--editorbboldx}\(\bbdelta \)\quad
+\typeout{SYMBOL symbol-epsilon--symup}\(\mathrm{\epsilon}\)\quad
+\typeout{SYMBOL symbol-epsilon--symit}\(\mathit{\epsilon}\)\quad
+\typeout{SYMBOL symbol-epsilon--symbf}\(\mathbf{\epsilon}\)\quad
+\typeout{SYMBOL symbol-epsilon--symbfup}\(\mathbfup{\epsilon}\)\quad
+\typeout{SYMBOL symbol-epsilon--symbfsf}\(\mathbfsf{\epsilon}\)\quad
+\typeout{SYMBOL symbol-epsilon--symbfsfit}\(\mathbfsfit{\epsilon}\)\quad
+\typeout{SYMBOL symbol-varepsilon--symup}\(\mathrm{\varepsilon}\)\quad
+\typeout{SYMBOL symbol-varepsilon--symit}\(\mathit{\varepsilon}\)\quad
+\typeout{SYMBOL symbol-varepsilon--symbf}\(\mathbf{\varepsilon}\)\quad
+\typeout{SYMBOL symbol-varepsilon--symbfup}\(\mathbfup{\varepsilon}\)\quad
+\typeout{SYMBOL symbol-varepsilon--symbfsf}\(\mathbfsf{\varepsilon}\)\quad
+\typeout{SYMBOL symbol-varepsilon--symbfsfit}\(\mathbfsfit{\varepsilon}\)\quad
+\typeout{SYMBOL symbol-varepsilon--editorbboldx}\(\bbepsilon \)\quad
+\typeout{SYMBOL symbol-zeta--symup}\(\mathrm{\zeta}\)\quad
+\typeout{SYMBOL symbol-zeta--symit}\(\mathit{\zeta}\)\quad
+\typeout{SYMBOL symbol-zeta--symbf}\(\mathbf{\zeta}\)\quad
+\typeout{SYMBOL symbol-zeta--symbfup}\(\mathbfup{\zeta}\)\quad
+\typeout{SYMBOL symbol-zeta--symbfsf}\(\mathbfsf{\zeta}\)\quad
+\typeout{SYMBOL symbol-zeta--symbfsfit}\(\mathbfsfit{\zeta}\)\quad
+\typeout{SYMBOL symbol-zeta--editorbboldx}\(\bbzeta \)\quad
+\typeout{SYMBOL symbol-eta--symup}\(\mathrm{\eta}\)\quad
+\typeout{SYMBOL symbol-eta--symit}\(\mathit{\eta}\)\quad
+\typeout{SYMBOL symbol-eta--symbf}\(\mathbf{\eta}\)\quad
+\typeout{SYMBOL symbol-eta--symbfup}\(\mathbfup{\eta}\)\quad
+\typeout{SYMBOL symbol-eta--symbfsf}\(\mathbfsf{\eta}\)\quad
+\typeout{SYMBOL symbol-eta--symbfsfit}\(\mathbfsfit{\eta}\)\quad
+\typeout{SYMBOL symbol-eta--editorbboldx}\(\bbeta \)\quad
+\typeout{SYMBOL symbol-theta--symup}\(\mathrm{\theta}\)\quad
+\typeout{SYMBOL symbol-theta--symit}\(\mathit{\theta}\)\quad
+\typeout{SYMBOL symbol-theta--symbf}\(\mathbf{\theta}\)\quad
+\typeout{SYMBOL symbol-theta--symbfup}\(\mathbfup{\theta}\)\quad
+\typeout{SYMBOL symbol-theta--symbfsf}\(\mathbfsf{\theta}\)\quad
+\typeout{SYMBOL symbol-theta--symbfsfit}\(\mathbfsfit{\theta}\)\quad
+\typeout{SYMBOL symbol-theta--editorbboldx}\(\bbtheta \)\quad
+\typeout{SYMBOL symbol-vartheta--symup}\(\mathrm{\vartheta}\)\quad
+\typeout{SYMBOL symbol-vartheta--symit}\(\mathit{\vartheta}\)\quad
+\typeout{SYMBOL symbol-vartheta--symbf}\(\mathbf{\vartheta}\)\quad
+\typeout{SYMBOL symbol-vartheta--symbfup}\(\mathbfup{\vartheta}\)\quad
+\typeout{SYMBOL symbol-vartheta--symbfsf}\(\mathbfsf{\vartheta}\)\quad
+\typeout{SYMBOL symbol-vartheta--symbfsfit}\(\mathbfsfit{\vartheta}\)\quad
+\typeout{SYMBOL symbol-iota--symup}\(\mathrm{\iota}\)\quad
+\typeout{SYMBOL symbol-iota--symit}\(\mathit{\iota}\)\quad
+\typeout{SYMBOL symbol-iota--symbf}\(\mathbf{\iota}\)\quad
+\typeout{SYMBOL symbol-iota--symbfup}\(\mathbfup{\iota}\)\quad
+\typeout{SYMBOL symbol-iota--symbfsf}\(\mathbfsf{\iota}\)\quad
+\typeout{SYMBOL symbol-iota--symbfsfit}\(\mathbfsfit{\iota}\)\quad
+\typeout{SYMBOL symbol-iota--editorbboldx}\(\bbiota \)\quad
+\typeout{SYMBOL symbol-kappa--symup}\(\mathrm{\kappa}\)\quad
+\typeout{SYMBOL symbol-kappa--symit}\(\mathit{\kappa}\)\quad
+\typeout{SYMBOL symbol-kappa--symbf}\(\mathbf{\kappa}\)\quad
+\typeout{SYMBOL symbol-kappa--symbfup}\(\mathbfup{\kappa}\)\quad
+\typeout{SYMBOL symbol-kappa--symbfsf}\(\mathbfsf{\kappa}\)\quad
+\typeout{SYMBOL symbol-kappa--symbfsfit}\(\mathbfsfit{\kappa}\)\quad
+\typeout{SYMBOL symbol-kappa--editorbboldx}\(\bbkappa \)\quad
+\typeout{SYMBOL symbol-varkappa--symup}\(\mathrm{\varkappa}\)\quad
+\typeout{SYMBOL symbol-varkappa--symit}\(\mathit{\varkappa}\)\quad
+\typeout{SYMBOL symbol-varkappa--symbf}\(\mathbf{\varkappa}\)\quad
+\typeout{SYMBOL symbol-varkappa--symbfup}\(\mathbfup{\varkappa}\)\quad
+\typeout{SYMBOL symbol-varkappa--symbfsf}\(\mathbfsf{\varkappa}\)\quad
+\typeout{SYMBOL symbol-varkappa--symbfsfit}\(\mathbfsfit{\varkappa}\)\quad
+\typeout{SYMBOL symbol-lambda--symup}\(\mathrm{\lambda}\)\quad
+\typeout{SYMBOL symbol-lambda--symit}\(\mathit{\lambda}\)\quad
+\typeout{SYMBOL symbol-lambda--symbf}\(\mathbf{\lambda}\)\quad
+\typeout{SYMBOL symbol-lambda--symbfup}\(\mathbfup{\lambda}\)\quad
+\typeout{SYMBOL symbol-lambda--symbfsf}\(\mathbfsf{\lambda}\)\quad
+\typeout{SYMBOL symbol-lambda--symbfsfit}\(\mathbfsfit{\lambda}\)\quad
+\typeout{SYMBOL symbol-lambda--editorbboldx}\(\bblambda \)\quad
+\typeout{SYMBOL symbol-mu--symup}\(\mathrm{\mu}\)\quad
+\typeout{SYMBOL symbol-mu--symit}\(\mathit{\mu}\)\quad
+\typeout{SYMBOL symbol-mu--symbf}\(\mathbf{\mu}\)\quad
+\typeout{SYMBOL symbol-mu--symbfup}\(\mathbfup{\mu}\)\quad
+\typeout{SYMBOL symbol-mu--symbfsf}\(\mathbfsf{\mu}\)\quad
+\typeout{SYMBOL symbol-mu--symbfsfit}\(\mathbfsfit{\mu}\)\quad
+\typeout{SYMBOL symbol-mu--editorbboldx}\(\bbmu \)\quad
+\typeout{SYMBOL symbol-nu--symup}\(\mathrm{\nu}\)\quad
+\typeout{SYMBOL symbol-nu--symit}\(\mathit{\nu}\)\quad
+\typeout{SYMBOL symbol-nu--symbf}\(\mathbf{\nu}\)\quad
+\typeout{SYMBOL symbol-nu--symbfup}\(\mathbfup{\nu}\)\quad
+\typeout{SYMBOL symbol-nu--symbfsf}\(\mathbfsf{\nu}\)\quad
+\typeout{SYMBOL symbol-nu--symbfsfit}\(\mathbfsfit{\nu}\)\quad
+\typeout{SYMBOL symbol-nu--editorbboldx}\(\bbnu \)\quad
+\typeout{SYMBOL symbol-xi--symup}\(\mathrm{\xi}\)\quad
+\typeout{SYMBOL symbol-xi--symit}\(\mathit{\xi}\)\quad
+\typeout{SYMBOL symbol-xi--symbf}\(\mathbf{\xi}\)\quad
+\typeout{SYMBOL symbol-xi--symbfup}\(\mathbfup{\xi}\)\quad
+\typeout{SYMBOL symbol-xi--symbfsf}\(\mathbfsf{\xi}\)\quad
+\typeout{SYMBOL symbol-xi--symbfsfit}\(\mathbfsfit{\xi}\)\quad
+\typeout{SYMBOL symbol-xi--editorbboldx}\(\bbxi \)\quad
+\typeout{SYMBOL symbol-omicron--symup}\(\mathrm{\omicron}\)\quad
+\typeout{SYMBOL symbol-omicron--symit}\(\mathit{\omicron}\)\quad
+\typeout{SYMBOL symbol-omicron--symbf}\(\mathbf{\omicron}\)\quad
+\typeout{SYMBOL symbol-omicron--symbfup}\(\mathbfup{\omicron}\)\quad
+\typeout{SYMBOL symbol-omicron--symbfsf}\(\mathbfsf{\omicron}\)\quad
+\typeout{SYMBOL symbol-omicron--symbfsfit}\(\mathbfsfit{\omicron}\)\quad
+\typeout{SYMBOL symbol-omicron--editorbboldx}\(\mathbb{o}\)\quad
+\typeout{SYMBOL symbol-pi--symup}\(\mathrm{\pi}\)\quad
+\typeout{SYMBOL symbol-pi--symit}\(\mathit{\pi}\)\quad
+\typeout{SYMBOL symbol-pi--symbf}\(\mathbf{\pi}\)\quad
+\typeout{SYMBOL symbol-pi--symbfup}\(\mathbfup{\pi}\)\quad
+\typeout{SYMBOL symbol-pi--symbfsf}\(\mathbfsf{\pi}\)\quad
+\typeout{SYMBOL symbol-pi--symbfsfit}\(\mathbfsfit{\pi}\)\quad
+\typeout{SYMBOL symbol-pi--editorbboldx}\(\bbpi \)\quad
+\typeout{SYMBOL symbol-varpi--symup}\(\mathrm{\varpi}\)\quad
+\typeout{SYMBOL symbol-varpi--symit}\(\mathit{\varpi}\)\quad
+\typeout{SYMBOL symbol-varpi--symbf}\(\mathbf{\varpi}\)\quad
+\typeout{SYMBOL symbol-varpi--symbfup}\(\mathbfup{\varpi}\)\quad
+\typeout{SYMBOL symbol-varpi--symbfsf}\(\mathbfsf{\varpi}\)\quad
+\typeout{SYMBOL symbol-varpi--symbfsfit}\(\mathbfsfit{\varpi}\)\quad
+\typeout{SYMBOL symbol-rho--symup}\(\mathrm{\rho}\)\quad
+\typeout{SYMBOL symbol-rho--symit}\(\mathit{\rho}\)\quad
+\typeout{SYMBOL symbol-rho--symbf}\(\mathbf{\rho}\)\quad
+\typeout{SYMBOL symbol-rho--symbfup}\(\mathbfup{\rho}\)\quad
+\typeout{SYMBOL symbol-rho--symbfsf}\(\mathbfsf{\rho}\)\quad
+\typeout{SYMBOL symbol-rho--symbfsfit}\(\mathbfsfit{\rho}\)\quad
+\typeout{SYMBOL symbol-rho--editorbboldx}\(\bbrho \)\quad
+\typeout{SYMBOL symbol-varrho--symup}\(\mathrm{\varrho}\)\quad
+\typeout{SYMBOL symbol-varrho--symit}\(\mathit{\varrho}\)\quad
+\typeout{SYMBOL symbol-varrho--symbf}\(\mathbf{\varrho}\)\quad
+\typeout{SYMBOL symbol-varrho--symbfup}\(\mathbfup{\varrho}\)\quad
+\typeout{SYMBOL symbol-varrho--symbfsf}\(\mathbfsf{\varrho}\)\quad
+\typeout{SYMBOL symbol-varrho--symbfsfit}\(\mathbfsfit{\varrho}\)\quad
+\typeout{SYMBOL symbol-sigma--symup}\(\mathrm{\sigma}\)\quad
+\typeout{SYMBOL symbol-sigma--symit}\(\mathit{\sigma}\)\quad
+\typeout{SYMBOL symbol-sigma--symbf}\(\mathbf{\sigma}\)\quad
+\typeout{SYMBOL symbol-sigma--symbfup}\(\mathbfup{\sigma}\)\quad
+\typeout{SYMBOL symbol-sigma--symbfsf}\(\mathbfsf{\sigma}\)\quad
+\typeout{SYMBOL symbol-sigma--symbfsfit}\(\mathbfsfit{\sigma}\)\quad
+\typeout{SYMBOL symbol-sigma--editorbboldx}\(\bbsigma \)\quad
+\typeout{SYMBOL symbol-varsigma--symup}\(\mathrm{\varsigma}\)\quad
+\typeout{SYMBOL symbol-varsigma--symit}\(\mathit{\varsigma}\)\quad
+\typeout{SYMBOL symbol-varsigma--symbf}\(\mathbf{\varsigma}\)\quad
+\typeout{SYMBOL symbol-varsigma--symbfup}\(\mathbfup{\varsigma}\)\quad
+\typeout{SYMBOL symbol-varsigma--symbfsf}\(\mathbfsf{\varsigma}\)\quad
+\typeout{SYMBOL symbol-varsigma--symbfsfit}\(\mathbfsfit{\varsigma}\)\quad
+\typeout{SYMBOL symbol-tau--symup}\(\mathrm{\tau}\)\quad
+\typeout{SYMBOL symbol-tau--symit}\(\mathit{\tau}\)\quad
+\typeout{SYMBOL symbol-tau--symbf}\(\mathbf{\tau}\)\quad
+\typeout{SYMBOL symbol-tau--symbfup}\(\mathbfup{\tau}\)\quad
+\typeout{SYMBOL symbol-tau--symbfsf}\(\mathbfsf{\tau}\)\quad
+\typeout{SYMBOL symbol-tau--symbfsfit}\(\mathbfsfit{\tau}\)\quad
+\typeout{SYMBOL symbol-tau--editorbboldx}\(\bbtau \)\quad
+\typeout{SYMBOL symbol-upsilon--symup}\(\mathrm{\upsilon}\)\quad
+\typeout{SYMBOL symbol-upsilon--symit}\(\mathit{\upsilon}\)\quad
+\typeout{SYMBOL symbol-upsilon--symbf}\(\mathbf{\upsilon}\)\quad
+\typeout{SYMBOL symbol-upsilon--symbfup}\(\mathbfup{\upsilon}\)\quad
+\typeout{SYMBOL symbol-upsilon--symbfsf}\(\mathbfsf{\upsilon}\)\quad
+\typeout{SYMBOL symbol-upsilon--symbfsfit}\(\mathbfsfit{\upsilon}\)\quad
+\typeout{SYMBOL symbol-upsilon--editorbboldx}\(\bbupsilon \)\quad
+\typeout{SYMBOL symbol-phi--symup}\(\mathrm{\phi}\)\quad
+\typeout{SYMBOL symbol-phi--symit}\(\mathit{\phi}\)\quad
+\typeout{SYMBOL symbol-phi--symbf}\(\mathbf{\phi}\)\quad
+\typeout{SYMBOL symbol-phi--symbfup}\(\mathbfup{\phi}\)\quad
+\typeout{SYMBOL symbol-phi--symbfsf}\(\mathbfsf{\phi}\)\quad
+\typeout{SYMBOL symbol-phi--symbfsfit}\(\mathbfsfit{\phi}\)\quad
+\typeout{SYMBOL symbol-varphi--symup}\(\mathrm{\varphi}\)\quad
+\typeout{SYMBOL symbol-varphi--symit}\(\mathit{\varphi}\)\quad
+\typeout{SYMBOL symbol-varphi--symbf}\(\mathbf{\varphi}\)\quad
+\typeout{SYMBOL symbol-varphi--symbfup}\(\mathbfup{\varphi}\)\quad
+\typeout{SYMBOL symbol-varphi--symbfsf}\(\mathbfsf{\varphi}\)\quad
+\typeout{SYMBOL symbol-varphi--symbfsfit}\(\mathbfsfit{\varphi}\)\quad
+\typeout{SYMBOL symbol-varphi--editorbboldx}\(\bbphi \)\quad
+\typeout{SYMBOL symbol-chi--symup}\(\mathrm{\chi}\)\quad
+\typeout{SYMBOL symbol-chi--symit}\(\mathit{\chi}\)\quad
+\typeout{SYMBOL symbol-chi--symbf}\(\mathbf{\chi}\)\quad
+\typeout{SYMBOL symbol-chi--symbfup}\(\mathbfup{\chi}\)\quad
+\typeout{SYMBOL symbol-chi--symbfsf}\(\mathbfsf{\chi}\)\quad
+\typeout{SYMBOL symbol-chi--symbfsfit}\(\mathbfsfit{\chi}\)\quad
+\typeout{SYMBOL symbol-chi--editorbboldx}\(\bbchi \)\quad
+\typeout{SYMBOL symbol-psi--symup}\(\mathrm{\psi}\)\quad
+\typeout{SYMBOL symbol-psi--symit}\(\mathit{\psi}\)\quad
+\typeout{SYMBOL symbol-psi--symbf}\(\mathbf{\psi}\)\quad
+\typeout{SYMBOL symbol-psi--symbfup}\(\mathbfup{\psi}\)\quad
+\typeout{SYMBOL symbol-psi--symbfsf}\(\mathbfsf{\psi}\)\quad
+\typeout{SYMBOL symbol-psi--symbfsfit}\(\mathbfsfit{\psi}\)\quad
+\typeout{SYMBOL symbol-psi--editorbboldx}\(\bbpsi \)\quad
+\typeout{SYMBOL symbol-omega--symup}\(\mathrm{\omega}\)\quad
+\typeout{SYMBOL symbol-omega--symit}\(\mathit{\omega}\)\quad
+\typeout{SYMBOL symbol-omega--symbf}\(\mathbf{\omega}\)\quad
+\typeout{SYMBOL symbol-omega--symbfup}\(\mathbfup{\omega}\)\quad
+\typeout{SYMBOL symbol-omega--symbfsf}\(\mathbfsf{\omega}\)\quad
+\typeout{SYMBOL symbol-omega--symbfsfit}\(\mathbfsfit{\omega}\)\quad
+\typeout{SYMBOL symbol-omega--editorbboldx}\(\bbomega \)\quad
+\typeout{SYMBOL symbol-Gamma--symup}\(\mathrm{\Gamma}\)\quad
+\typeout{SYMBOL symbol-Gamma--symit}\(\mathit{\Gamma}\)\quad
+\typeout{SYMBOL symbol-Gamma--symbf}\(\mathbf{\Gamma}\)\quad
+\typeout{SYMBOL symbol-Gamma--symbfit}\(\mathbfit{\Gamma}\)\quad
+\typeout{SYMBOL symbol-Gamma--symbfsf}\(\mathbfsf{\Gamma}\)\quad
+\typeout{SYMBOL symbol-Gamma--symbfsfit}\(\mathbfsfit{\Gamma}\)\quad
+\typeout{SYMBOL symbol-Gamma--editorbboldx}\(\bbGamma \)\quad
+\typeout{SYMBOL symbol-Delta--symup}\(\mathrm{\Delta}\)\quad
+\typeout{SYMBOL symbol-Delta--symit}\(\mathit{\Delta}\)\quad
+\typeout{SYMBOL symbol-Delta--symbf}\(\mathbf{\Delta}\)\quad
+\typeout{SYMBOL symbol-Delta--symbfit}\(\mathbfit{\Delta}\)\quad
+\typeout{SYMBOL symbol-Delta--symbfsf}\(\mathbfsf{\Delta}\)\quad
+\typeout{SYMBOL symbol-Delta--symbfsfit}\(\mathbfsfit{\Delta}\)\quad
+\typeout{SYMBOL symbol-Delta--editorbboldx}\(\bbDelta \)\quad
+\typeout{SYMBOL symbol-Theta--symup}\(\mathrm{\Theta}\)\quad
+\typeout{SYMBOL symbol-Theta--symit}\(\mathit{\Theta}\)\quad
+\typeout{SYMBOL symbol-Theta--symbf}\(\mathbf{\Theta}\)\quad
+\typeout{SYMBOL symbol-Theta--symbfit}\(\mathbfit{\Theta}\)\quad
+\typeout{SYMBOL symbol-Theta--symbfsf}\(\mathbfsf{\Theta}\)\quad
+\typeout{SYMBOL symbol-Theta--symbfsfit}\(\mathbfsfit{\Theta}\)\quad
+\typeout{SYMBOL symbol-Theta--editorbboldx}\(\bbTheta \)\quad
+\typeout{SYMBOL symbol-Lambda--symup}\(\mathrm{\Lambda}\)\quad
+\typeout{SYMBOL symbol-Lambda--symit}\(\mathit{\Lambda}\)\quad
+\typeout{SYMBOL symbol-Lambda--symbf}\(\mathbf{\Lambda}\)\quad
+\typeout{SYMBOL symbol-Lambda--symbfit}\(\mathbfit{\Lambda}\)\quad
+\typeout{SYMBOL symbol-Lambda--symbfsf}\(\mathbfsf{\Lambda}\)\quad
+\typeout{SYMBOL symbol-Lambda--symbfsfit}\(\mathbfsfit{\Lambda}\)\quad
+\typeout{SYMBOL symbol-Lambda--editorbboldx}\(\bbLambda \)\quad
+\typeout{SYMBOL symbol-Xi--symup}\(\mathrm{\Xi}\)\quad
+\typeout{SYMBOL symbol-Xi--symit}\(\mathit{\Xi}\)\quad
+\typeout{SYMBOL symbol-Xi--symbf}\(\mathbf{\Xi}\)\quad
+\typeout{SYMBOL symbol-Xi--symbfit}\(\mathbfit{\Xi}\)\quad
+\typeout{SYMBOL symbol-Xi--symbfsf}\(\mathbfsf{\Xi}\)\quad
+\typeout{SYMBOL symbol-Xi--symbfsfit}\(\mathbfsfit{\Xi}\)\quad
+\typeout{SYMBOL symbol-Xi--editorbboldx}\(\bbXi \)\quad
+\typeout{SYMBOL symbol-Pi--symup}\(\mathrm{\Pi}\)\quad
+\typeout{SYMBOL symbol-Pi--symit}\(\mathit{\Pi}\)\quad
+\typeout{SYMBOL symbol-Pi--symbf}\(\mathbf{\Pi}\)\quad
+\typeout{SYMBOL symbol-Pi--symbfit}\(\mathbfit{\Pi}\)\quad
+\typeout{SYMBOL symbol-Pi--symbfsf}\(\mathbfsf{\Pi}\)\quad
+\typeout{SYMBOL symbol-Pi--symbfsfit}\(\mathbfsfit{\Pi}\)\quad
+\typeout{SYMBOL symbol-Pi--editorbboldx}\(\bbPi \)\quad
+\typeout{SYMBOL symbol-Sigma--symup}\(\mathrm{\Sigma}\)\quad
+\typeout{SYMBOL symbol-Sigma--symit}\(\mathit{\Sigma}\)\quad
+\typeout{SYMBOL symbol-Sigma--symbf}\(\mathbf{\Sigma}\)\quad
+\typeout{SYMBOL symbol-Sigma--symbfit}\(\mathbfit{\Sigma}\)\quad
+\typeout{SYMBOL symbol-Sigma--symbfsf}\(\mathbfsf{\Sigma}\)\quad
+\typeout{SYMBOL symbol-Sigma--symbfsfit}\(\mathbfsfit{\Sigma}\)\quad
+\typeout{SYMBOL symbol-Sigma--editorbboldx}\(\bbSigma \)\quad
+\typeout{SYMBOL symbol-Upsilon--symup}\(\mathrm{\Upsilon}\)\quad
+\typeout{SYMBOL symbol-Upsilon--symit}\(\mathit{\Upsilon}\)\quad
+\typeout{SYMBOL symbol-Upsilon--symbf}\(\mathbf{\Upsilon}\)\quad
+\typeout{SYMBOL symbol-Upsilon--symbfit}\(\mathbfit{\Upsilon}\)\quad
+\typeout{SYMBOL symbol-Upsilon--symbfsf}\(\mathbfsf{\Upsilon}\)\quad
+\typeout{SYMBOL symbol-Upsilon--symbfsfit}\(\mathbfsfit{\Upsilon}\)\quad
+\typeout{SYMBOL symbol-Upsilon--editorbboldx}\(\bbUpsilon \)\quad
+\typeout{SYMBOL symbol-Phi--symup}\(\mathrm{\Phi}\)\quad
+\typeout{SYMBOL symbol-Phi--symit}\(\mathit{\Phi}\)\quad
+\typeout{SYMBOL symbol-Phi--symbf}\(\mathbf{\Phi}\)\quad
+\typeout{SYMBOL symbol-Phi--symbfit}\(\mathbfit{\Phi}\)\quad
+\typeout{SYMBOL symbol-Phi--symbfsf}\(\mathbfsf{\Phi}\)\quad
+\typeout{SYMBOL symbol-Phi--symbfsfit}\(\mathbfsfit{\Phi}\)\quad
+\typeout{SYMBOL symbol-Phi--editorbboldx}\(\bbPhi \)\quad
+\typeout{SYMBOL symbol-Psi--symup}\(\mathrm{\Psi}\)\quad
+\typeout{SYMBOL symbol-Psi--symit}\(\mathit{\Psi}\)\quad
+\typeout{SYMBOL symbol-Psi--symbf}\(\mathbf{\Psi}\)\quad
+\typeout{SYMBOL symbol-Psi--symbfit}\(\mathbfit{\Psi}\)\quad
+\typeout{SYMBOL symbol-Psi--symbfsf}\(\mathbfsf{\Psi}\)\quad
+\typeout{SYMBOL symbol-Psi--symbfsfit}\(\mathbfsfit{\Psi}\)\quad
+\typeout{SYMBOL symbol-Psi--editorbboldx}\(\bbPsi \)\quad
+\typeout{SYMBOL symbol-Omega--symup}\(\mathrm{\Omega}\)\quad
+\typeout{SYMBOL symbol-Omega--symit}\(\mathit{\Omega}\)\quad
+\typeout{SYMBOL symbol-Omega--symbf}\(\mathbf{\Omega}\)\quad
+\typeout{SYMBOL symbol-Omega--symbfit}\(\mathbfit{\Omega}\)\quad
+\typeout{SYMBOL symbol-Omega--symbfsf}\(\mathbfsf{\Omega}\)\quad
+\typeout{SYMBOL symbol-Omega--symbfsfit}\(\mathbfsfit{\Omega}\)\quad
+\typeout{SYMBOL symbol-Omega--editorbboldx}\(\bbOmega \)\quad
+\typeout{SYMBOL symbol-partial--symup}\(\mathrm{\partial}\)\quad
+\typeout{SYMBOL symbol-partial--symit}\(\mathit{\partial}\)\quad
+\typeout{SYMBOL symbol-partial--symbf}\(\mathbf{\partial}\)\quad
+\typeout{SYMBOL symbol-partial--symbfup}\(\mathbfup{\partial}\)\quad
+\typeout{SYMBOL symbol-partial--symbfsf}\(\mathbfsf{\partial}\)\quad
+\typeout{SYMBOL symbol-partial--symbfsfup}\(\mathbfsfup{\partial}\)\quad
+\typeout{SYMBOL symbol-nabla--symup}\(\mathrm{\nabla}\)\quad
+\typeout{SYMBOL symbol-nabla--symit}\(\mathit{\nabla}\)\quad
+\typeout{SYMBOL symbol-nabla--symbf}\(\mathbf{\nabla}\)\quad
+\typeout{SYMBOL symbol-nabla--symbfit}\(\mathbfit{\nabla}\)\quad
+\typeout{SYMBOL symbol-nabla--symbfsf}\(\mathbfsf{\nabla}\)\quad
+\typeout{SYMBOL symbol-nabla--symbfsfit}\(\mathbfsfit{\nabla}\)\quad
+\typeout{SYMBOL symbol-imath--symup}\(\mathrm{\imath}\)\quad
+\typeout{SYMBOL symbol-imath--symit}\(\mathit{\imath}\)\quad
+\typeout{SYMBOL symbol-imath--editorbboldx}\(\bbdotlessi \)\quad
+\typeout{SYMBOL symbol-jmath--symup}\(\mathrm{\jmath}\)\quad
+\typeout{SYMBOL symbol-jmath--symit}\(\mathit{\jmath}\)\quad
+\typeout{SYMBOL symbol-jmath--editorbboldx}\(\bbdotlessj \)\quad
+\end{document}

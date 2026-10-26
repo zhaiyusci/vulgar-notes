@@ -1,6 +1,25 @@
 # MathJax 原位公式编辑原型
 
-编辑器使用 TypeScript（`strict: true`）、原生 DOM 和 MathJax 4。无需前端框架。
+编辑器使用 TypeScript（`strict: true`）、Plate / React 和 MathJax 4。桌面版使用 Tauri 2，公式编辑模块与正文引擎保持独立。
+
+## Tauri 桌面应用
+
+- `npm run desktop:dev`：构建本地资源并启动桌面开发窗口；不占用网页预览的 8767 端口。
+- `npm run desktop:build`：生成 Windows 程序和 NSIS 安装包。
+- 程序：`src-tauri/target/release/math-document-editor.exe`。
+- 安装包：`src-tauri/target/release/bundle/nsis/`。
+
+Windows 构建需要 Rust stable MSVC、Visual Studio C++ 工具和 WebView2。安装依赖仍使用 `npm ci --legacy-peer-deps`。其他平台的系统依赖参考 [Tauri 前置条件](https://v2.tauri.app/start/prerequisites/)。当前打包目标为 Windows NSIS，尚未验证 macOS/Linux。
+
+桌面版嵌入 `desktop-dist` 中的静态资源，不需要 Node.js 服务。MathJax 4.1.3、New Computer Modern、BBoldX 和 mhchem 字体随程序打包；正文和数学编辑无需联网，用户引用的网络媒体仍需要网络。原网页预览继续保留 CDN 配置。
+
+桌面草稿保存在 WebView 的持久 localStorage，关闭后重新启动会恢复。网页版仍使用各标签页独立的 sessionStorage；浏览器现有草稿不会自动转移到桌面版，可先保存为 JSON 文档，再在桌面版打开。工具栏提供打开、保存、另存为；桌面版保存会写回本次会话中打开的文件，首次保存或另存为才显示系统文件窗口。浏览器版保存以下载 JSON 实现。重启桌面应用仍会恢复草稿，但需重新打开文件才能重新取得原路径的文件权限。卸载或清理应用数据前应保存重要文档。
+
+Tauri 配置关闭原生文件拖放拦截，让编辑器继续处理段落排序。`src/platform.ts` 集中管理桌面存储和文件导出差异，公式模型不依赖 Tauri。
+
+界面语言在右上角齿轮打开的“首选项”中设置。保存后重新加载并保留草稿；取消或 Esc 不应用修改。JSON 是原生文档的打开/保存格式；导出菜单仅提供 Markdown 和 LaTeX。
+
+MathJax 和编辑器会动态创建样式，因此 `dangerousDisableAssetCspModification` 仅设为 `["style-src"]`，保留已配置的 `style-src 'self' 'unsafe-inline'`。如果 Tauri 再向该指令注入 nonce/hash，浏览器会忽略 `unsafe-inline`，导致动态公式样式和行内布局失效。脚本的 nonce/hash 注入和其他 CSP 限制仍然保留。验证桌面排版时应检查打包后的策略，而不能只测试未经过 Tauri 处理的静态页面。
 
 ## 开发
 
@@ -44,11 +63,11 @@
 - 复制公式保留结构树，并生成独立 ID。阅读模式不允许改动公式。
 - 行内/行间切换保留公式和周围正文；行间公式右键切换编号，未编号公式不占计数。MathJax 根据文档顺序重新编号。
 
-草稿保存在 sessionStorage 的 math-plate-document-v1。首次打开迁移 math-tiptap-document-v1 或更早的 math-text-flow-state，旧键保持不变；损坏数据另存 recovery 键。公式 snapshot 格式不变。浏览器草稿不是永久存储，工具栏的 JSON 导入/导出保留完整可编辑文档和公式快照。
+草稿保存在 sessionStorage 的 math-plate-document-v1。首次打开迁移 math-tiptap-document-v1 或更早的 math-text-flow-state，旧键保持不变；损坏数据另存 recovery 键。公式 snapshot 格式不变。浏览器草稿不是永久存储，工具栏的打开/保存保留完整可编辑文档和公式快照。
 
 Markdown 使用官方 @platejs/markdown。行内使用美元定界符，行间使用双美元定界符；编号公式在 opening fence 上保留 numbered 元数据，不编号公式不加该标记（自动编号不是标准 Markdown 特性）。LaTeX 导出仍使用 equation / equation*。普通分式、根式、函数、上下标等导入可转为可编辑树；任意 TeX 宏、环境不保证可解析，不能识别的公式保留源码并显示提示，不会伪造或损坏结构。JSON 是无损往返格式。
 
-HTML 导出使用 MathJax，并带上当前数学配置和样式；图片/PDF 是当前内容的视觉快照。官方 Word 导出目前把公式输出为 LaTeX 源码，菜单已明确标注，不声称生成 Word 原生公式。
+打开仅接受本工具的 JSON 文档并替换当前正文；先校验再替换，打开前保留一份恢复草稿，并清空旧文档的撤销历史。Ctrl/⌘+O 打开，Ctrl/⌘+S 保存，Ctrl/⌘+Shift+S 另存为。导出仅提供 Markdown（.md）和 LaTeX（.tex 完整文档）。TeX 文件使用 LuaLaTeX 或 XeLaTeX 编译，自带 ctexart、Fandol 中文字体、New Computer Modern 数学字体、unicode-math 与 BBoldX 原生配置，以及 mathtools、extarrows、cancel、physics、mhchem 宏包。MathJax 专用的 `\pu` 在导出时通过官方 mhchemparser 展开为 TeX，不改变保存的公式结构。无需手工补充导言区；所需宏包和字体包含在完整 TeX Live 中。
 
 服务边界：AI 后端未配置，所以没有启用 AI 菜单；附件使用本地 data URL（单文件限 2 MB）或用户提供的 URL，没有模拟上传，也没有接入 UploadThing。批注/建议是本地交互，不是多人实时协作服务。字体与部分绘图资源首次加载仍需要网络。
 

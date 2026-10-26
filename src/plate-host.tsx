@@ -1,3 +1,4 @@
+import {draftStorage} from './platform';
 import {t} from './i18n';
 import React from 'react';
 import {HostContext} from './plate-math-element';
@@ -13,7 +14,7 @@ import {TooltipProvider} from './components/ui/tooltip';
 import {Toaster} from 'sonner';
 import {EditorModel} from './editor-model';
 import type {DocumentHost,MathHostHooks,FormulaEntry} from './document-host';
-import {documentStorageKey,formulaNode,isFormula,newId,plateLatex,restoreDocument,type FormulaNode} from './plate-document';
+import {documentStorageKey,formulaNode,isFormula,newId,plateLatex,restoreDocument,parseDocumentFile,documentContentKey,type FormulaNode} from './plate-document';
 import {importMath} from './tex-import';
 
 export class PlateMathHost implements DocumentHost {
@@ -24,6 +25,7 @@ export class PlateMathHost implements DocumentHost {
   private syncing=false;
   private initialized=false;
   private pending=false;
+  private savedDocument='';
   private activeFormula:HTMLElement|undefined;
   private pendingActivation=new Set<string>();
   get readOnly(){return this.mount.querySelector('[data-slate-editor]')?.getAttribute('contenteditable')==='false';}
@@ -41,6 +43,7 @@ export class PlateMathHost implements DocumentHost {
       }
       originalNormalize(entry);
     };
+    this.savedDocument=JSON.stringify({version:1,value:this.editor.children},null,2);
     mount.removeAttribute('contenteditable');mount.removeAttribute('role');mount.removeAttribute('aria-label');mount.id='plateMount';
     this.root=createRoot(mount);
     flushSync(()=>this.root.render(<HostContext.Provider value={this}><TooltipProvider><Plate editor={this.editor} onChange={()=>this.changed()}>
@@ -100,7 +103,7 @@ export class PlateMathHost implements DocumentHost {
     const model=this.models.get(element.dataset.mathId!);return model?[{element,model}]:[];
   });}
   private locate(element:HTMLElement){return [...NodeApi.nodes(this.editor)].find(([n])=>'type' in n&&isFormula(n)&&n.id===element.dataset.mathId) as [FormulaNode,number[]]|undefined;}
-  private save(){try{sessionStorage.setItem(documentStorageKey,JSON.stringify({version:1,value:this.editor.children}));}catch{document.getElementById('error')!.textContent='文档较大，浏览器草稿空间不足。请导出文档保存。';}}
+  private save(){try{draftStorage().setItem(documentStorageKey,JSON.stringify({version:1,value:this.editor.children}));}catch{document.getElementById('error')!.textContent='文档较大，浏览器草稿空间不足。请导出文档保存。';}}
   persist(){
     if(this.syncing||!this.initialized)return;this.syncing=true;
     try{
@@ -116,6 +119,23 @@ export class PlateMathHost implements DocumentHost {
     }finally{this.syncing=false;}
   }
   exportLatex(){return plateLatex(this.editor.children as Value);}
+  serializeDocument(){this.persist();return JSON.stringify({version:1,value:this.editor.children},null,2);}
+  hasUnsavedChanges(){return documentContentKey(this.serializeDocument())!==documentContentKey(this.savedDocument);}
+  markDocumentSaved(source:string){this.savedDocument=source;}
+  openDocument(source:string){
+    const value=parseDocumentFile(source);
+    this.persist();
+    draftStorage().setItem(documentStorageKey+'-before-open',this.serializeDocument());
+    this.hooks.leave();this.activeFormula=undefined;this.pendingActivation.clear();this.models.clear();
+    flushSync(()=>this.editor.tf.setValue(value));
+    for(const [raw] of NodeApi.nodes(this.editor)){
+      if(!isFormula(raw))continue;
+      const node=raw as FormulaNode;
+      if(node.snapshot&&!this.models.has(node.id)){const model=new EditorModel();model.restore(node.snapshot);this.models.set(node.id,model);}
+    }
+    this.editor.history={undos:[],redos:[]};
+    this.persist();this.savedDocument=this.serializeDocument();this.scheduleChange();
+  }
   exportMarkdown(){return this.editor.getApi(MarkdownPlugin).markdown.serialize();}
   isDisplay(element:HTMLElement){return element.dataset.display==='true';}
   isNumbered(element:HTMLElement){return element.dataset.numbered!=='false';}

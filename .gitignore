@@ -7,6 +7,9 @@ editor-ui.css
 editor-ui.css.map
 .plate-test.cjs
 dist/
+desktop-dist/
+src-tauri/target/
+src-tauri/gen/
 *.js.map
 diagnostics/font-coverage/python-lib/
 diagnostics/font-coverage/__pycache__/
