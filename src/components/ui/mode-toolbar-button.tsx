@@ -8,11 +8,10 @@ import {
   type DropdownMenuProps,
   DropdownMenuItemIndicator,
 } from '@radix-ui/react-dropdown-menu';
-import { CheckIcon, EyeIcon, PencilLineIcon, PenIcon } from 'lucide-react';
+import { CheckIcon, EyeIcon, PenIcon } from 'lucide-react';
 import {
   useEditorReadOnly,
   useEditorRef,
-  usePluginOption,
 } from 'platejs/react';
 
 import {
@@ -30,22 +29,12 @@ export function ModeToolbarButton(props: DropdownMenuProps) {
   const readOnly = useEditorReadOnly();
   const [open, setOpen] = React.useState(false);
 
-  const isSuggesting = usePluginOption(SuggestionPlugin, 'isSuggesting');
-
-  let value = 'editing';
-
-  if (readOnly) value = 'viewing';
-
-  if (isSuggesting) value = 'suggestion';
+  const value = readOnly ? 'viewing' : 'editing';
 
   const item: Record<string, { icon: React.ReactNode; label: string }> = {
     editing: {
       icon: <PenIcon />,
       label: 'Editing',
-    },
-    suggestion: {
-      icon: <PencilLineIcon />,
-      label: 'Suggestion',
     },
     viewing: {
       icon: <EyeIcon />,
@@ -65,19 +54,13 @@ export function ModeToolbarButton(props: DropdownMenuProps) {
       <DropdownMenuContent align="start" className="min-w-[180px]">
         <DropdownMenuRadioGroup
           onValueChange={(newValue) => {
+            editor.setOption(SuggestionPlugin, 'isSuggesting', false);
             if (newValue === 'viewing') {
               editor.store.setReadOnly(true);
 
               return;
             }
             editor.store.setReadOnly(false);
-
-            if (newValue === 'suggestion') {
-              editor.setOption(SuggestionPlugin, 'isSuggesting', true);
-
-              return;
-            }
-            editor.setOption(SuggestionPlugin, 'isSuggesting', false);
 
             if (newValue === 'editing') {
               editor.tf.focus();
@@ -93,7 +76,7 @@ export function ModeToolbarButton(props: DropdownMenuProps) {
           >
             <Indicator />
             {item.editing.icon}
-            {item.editing.label}
+            {t(item.editing.label)}
           </DropdownMenuRadioItem>
 
           <DropdownMenuRadioItem
@@ -102,17 +85,9 @@ export function ModeToolbarButton(props: DropdownMenuProps) {
           >
             <Indicator />
             {item.viewing.icon}
-            {item.viewing.label}
+            {t(item.viewing.label)}
           </DropdownMenuRadioItem>
 
-          <DropdownMenuRadioItem
-            className="pl-2 *:first:[span]:hidden *:[svg]:text-muted-foreground"
-            value="suggestion"
-          >
-            <Indicator />
-            {item.suggestion.icon}
-            {item.suggestion.label}
-          </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -1732,7 +1732,7 @@ dependencies = [
 
 [[package]]
 name = "math-document-editor"
-version = "0.1.5"
+version = "0.1.13"
 dependencies = [
  "tauri",
  "tauri-build",

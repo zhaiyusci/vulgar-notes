@@ -168,6 +168,10 @@ function begin(id:string, offset:number, anchor = offset) {
 }
 function finish(cancel = false) {
   if (!editing) return;
+  // A host-driven switch can hide the textarea before its native blur or
+  // compositionend arrives. Commit to the old model before activating another.
+  if (composing) { composing = false; if (!cancel) acceptInput(); }
+  inputEdit = null;
   editing = false;
   model.pendingFont=undefined;
   if (cancel && sessionStart) { model.record(); model.restore(sessionStart); }
@@ -585,11 +589,12 @@ function acceptInput() {
 }
 input.addEventListener('input', acceptInput);
 input.addEventListener('compositionstart', () => {
+  if (!editing) return;
   inputEdit = {region: model.cursor.region, start: model.range[0], end: model.range[1]};
   composing = true;
   syncCommands();
 });
-input.addEventListener('compositionend', () => { composing = false; acceptInput(); });
+input.addEventListener('compositionend', () => { if (!composing) return; composing = false; acceptInput(); });
 document.addEventListener('selectionchange', () => {
   if (!editing || composing || document.activeElement !== input || input.value !== model.projection()) return;
   const start = Array.from(input.value.slice(0, input.selectionStart)).length;
@@ -597,7 +602,7 @@ document.addEventListener('selectionchange', () => {
   const offset = input.selectionDirection === 'backward' ? start : end, anchor = input.selectionDirection === 'backward' ? end : start;
   if (offset !== model.cursor.offset || anchor !== model.cursor.anchor) { model.setCursor(model.cursor.region, offset, anchor); update(false); }
 });
-input.addEventListener('blur', event => { if(event.relatedTarget instanceof Node && elementById('mathPanel',HTMLElement).contains(event.relatedTarget))return; if (editing) { if (composing) { composing = false; acceptInput(); } finish(); } });
+input.addEventListener('blur', event => { if(event.relatedTarget instanceof Node && elementById('mathPanel',HTMLElement).contains(event.relatedTarget))return; finish(); });
 input.addEventListener('copy', event => {
   const [a,b] = model.range; if (a === b) return;
   const r = {items: model.current.items.slice(a,b)};

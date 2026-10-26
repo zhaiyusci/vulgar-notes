@@ -5,7 +5,8 @@ import * as React from 'react';
 import type { PlateElementProps } from 'platejs/react';
 
 import { type VariantProps, cva } from 'class-variance-authority';
-import { PlateElement } from 'platejs/react';
+import { PlateElement,useEditorSelector } from 'platejs/react';
+import {referenceTargets} from '@/references';
 
 const headingVariants = cva(
   'relative mb-1 data-[nav-target=true]:rounded-md data-[nav-target=true]:bg-(--color-highlight)',
@@ -27,13 +28,14 @@ export function HeadingElement({
   variant = 'h1',
   ...props
 }: PlateElementProps & VariantProps<typeof headingVariants>) {
+  const number=useEditorSelector(editor=>referenceTargets(editor.children).find(target=>target.node===props.element)?.number,[props.element]);
   return (
     <PlateElement
       as={variant!}
       className={headingVariants({ variant })}
       {...props}
     >
-      {props.children}
+      {number&&<span contentEditable={false} className="mr-2">{number}</span>}{props.children}
     </PlateElement>
   );
 }

@@ -32,6 +32,7 @@ import { LinkKit } from './plugins/link-kit';
 import { ListKit } from './plugins/list-kit';
 import { MarkdownKit } from './plugins/markdown-kit';
 import { MathKit } from './plugins/math-kit';
+import { ReferenceKit } from './plugins/reference-kit';
 import { MediaKit } from './plugins/media-kit';
 import { MentionKit } from './plugins/mention-kit';
 import { SlashKit } from './plugins/slash-kit';
@@ -56,6 +57,7 @@ export const EditorKit = [
   ...CalloutKit,
   ...ColumnKit,
   ...MathKit,
+  ...ReferenceKit,
   ...DateKit,
   ...LinkKit,
   ...MentionKit,

@@ -18,6 +18,7 @@ export function MathEquationElement(props:PlateElementProps){
     <span contentEditable={false} className="math-mount-wrapper">
       <span ref={ref} className={'inline-formula'+(display?' display-formula':'')} data-math-id={node.id}
         data-display={String(display)} data-numbered={String(node.numbered!==false)} tabIndex={0}
+        title={node.texLabel?'\\label{'+node.texLabel+'}':undefined}
         aria-label={t(display?'Editable display equation':'Editable inline equation')} />
     </span>
     {props.children}

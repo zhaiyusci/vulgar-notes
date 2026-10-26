@@ -16,6 +16,7 @@ import { KEYS } from 'platejs';
 import { useEditorReadOnly } from 'platejs/react';
 
 import { InsertMathToolbarButtons } from './insert-math-toolbar-buttons';
+import { ReferenceToolbarButton } from './reference-toolbar-button';
 import { AlignToolbarButton } from './align-toolbar-button';
 import { CommentToolbarButton } from './comment-toolbar-button';
 import { EmojiToolbarButton } from './emoji-toolbar-button';
@@ -70,6 +71,7 @@ export function FixedToolbarButtons() {
 
           <ToolbarGroup>
             <InsertMathToolbarButtons />
+            <ReferenceToolbarButton />
           </ToolbarGroup>
 
           <ToolbarGroup>

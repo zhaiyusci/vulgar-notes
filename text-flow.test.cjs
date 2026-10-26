@@ -3,10 +3,50 @@ const assert=require('node:assert/strict');
 const {buildSync}=require('esbuild');
 const vm=require('node:vm');
 const {EditorModel}=require('./editor-model.js');
-const source=buildSync({entryPoints:['src/plate-document.ts','src/tex-import.ts','src/latex-document.ts'],bundle:true,format:'cjs',write:false,outdir:'test-output',platform:'node'}).outputFiles;
+const source=buildSync({entryPoints:['src/plate-document.ts','src/tex-import.ts','src/latex-document.ts','src/references.ts'],bundle:true,format:'cjs',write:false,outdir:'test-output',platform:'node'}).outputFiles;
 function load(name,storage,desktopStorage){const module={exports:{}};vm.runInNewContext(source.find(f=>f.path.endsWith(name+'.js')).text,{module,exports:module.exports,console,crypto:globalThis.crypto,sessionStorage:storage,...(desktopStorage?{window:{__TAURI_INTERNALS__:{}},localStorage:desktopStorage}:{})});return module.exports;}
 const storage=()=>{const data=new Map();return {getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v)}};
 const model=()=>{const m=new EditorModel();m.root.items=['x'];m.index();m.setCursor(m.root.id,1);return m};
+
+test('cross-references follow equation order and ignore unnumbered and inline equations',()=>{
+ const api=load('references',storage());
+ const equation=(key,extra={})=>({type:'inline_equation',display:true,texLabel:key,children:[{text:''}],...extra});
+ const a=equation('eq:a'),b=equation('eq:b');
+ const p=children=>({type:'p',children});
+ const ref={command:'eqref',keys:['eq:a']};
+ assert.equal(api.resolveReference([p([a,b])],ref).text,'(1)');
+ assert.equal(api.resolveReference([p([b,equation('eq:skip',{numbered:false}),equation('eq:inline',{display:false}),a])],ref).text,'(2)');
+ assert.equal(api.resolveReference([p([b])],ref).invalid,true);
+ assert.equal(api.resolveReference([p([a,{...a}])],ref).text,'(??)');
+ assert.equal(api.referenceTargets([{type:'h1',children:[{text:'A'}]},{type:'h2',children:[{text:'B'}]},{type:'h1',children:[{text:'C'}]}]).map(x=>x.number).join(','),'1,1.1,2');
+});
+
+test('bibliography numbers, multiple citations and missing keys resolve independently',()=>{
+ const api=load('references',storage());
+ const a={type:'bibliography_entry',citeKey:'a',children:[{text:'A'}]},b={...a,citeKey:'b'};
+ const ref={command:'cite',keys:['b','a']};
+ assert.equal(api.resolveReference([a,b],ref).text,'[2, 1]');
+ assert.equal(api.resolveReference([b,a],ref).text,'[1, 2]');
+ assert.equal(api.resolveReference([a],ref).text,'[??, 1]');
+ assert.throws(()=>api.referenceTex({command:'eqref',keys:['a','b']}));
+ assert.throws(()=>api.referenceTex({command:'cite',keys:['a}\\input{x}']}));
+});
+
+test('labels and citations survive JSON and export as native LaTeX commands',()=>{
+ const api=load('plate-document',storage()),latex=load('latex-document',storage());
+ const ref=(command,keys)=>({type:'tex_reference',command,keys,children:[{text:''}]});
+ const value=[{type:'h1',texLabel:'sec:intro',children:[{text:'Introduction'}]},
+ {type:'p',children:[{text:'See '},ref('ref',['sec:intro']),ref('eqref',['eq:x']),ref('cite',['paper'])]},
+ {type:'p',children:[{...api.formulaNode(model(),true),texLabel:'eq:x'}]},
+ {type:'bibliography_entry',citeKey:'paper',children:[{text:'Author & Title, 2026.'}]}];
+ const restored=api.parseDocumentFile(JSON.stringify({version:1,value}));
+ assert.equal(JSON.stringify(restored),JSON.stringify(value));
+ const tex=latex.latexDocument(restored);
+ for(const command of ['\\label{sec:intro}','\\label{eq:x}','\\ref{sec:intro}','\\eqref{eq:x}','\\cite{paper}','\\bibitem{paper}'])assert.ok(tex.includes(command),command);
+ assert.match(tex,/\\begin\{thebibliography\}\{1\}/);assert.match(tex,/Author \\& Title/);
+ assert.match(tex,/\\usepackage\[hidelinks\]\{hyperref\}/);
+ value[0].texLabel='unsafe}';assert.throws(()=>api.parseDocumentFile(JSON.stringify({version:1,value})));
+});
 
 test('standalone TeX includes native fonts, packages, document boundaries and equation numbering',()=>{
  const api=load('latex-document',storage()),m=model();

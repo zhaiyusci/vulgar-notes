@@ -243,9 +243,9 @@ export function SlashInputElement(
                   <InlineComboboxItem
                     key={value}
                     value={value}
-                    onClick={() => value===KEYS.equation&&host?host.insertFormula(true):onSelect(editor, value)}
+                    onClick={() => (value===KEYS.equation||value===KEYS.inlineEquation)&&host?host.insertFormula(value===KEYS.equation):onSelect(editor, value)}
                     label={label}
-                    focusEditor={value===KEYS.equation?false:focusEditor}
+                    focusEditor={value===KEYS.equation||value===KEYS.inlineEquation?false:focusEditor}
                     group={group}
                     keywords={keywords}
                   >

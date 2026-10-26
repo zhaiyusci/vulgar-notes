@@ -1,0 +1,10 @@
+const fs=require('node:fs');
+const path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const {version}=require('../src-tauri/tauri.conf.json');
+const target=process.env.CARGO_TARGET_DIR?path.resolve(process.env.CARGO_TARGET_DIR):path.join(root,'src-tauri','target');
+const out=path.join(root,'portable');
+fs.mkdirSync(out,{recursive:true});
+const file=path.join(out,`Math Document Editor-${version}.exe`);
+fs.copyFileSync(path.join(target,'release','math-document-editor.exe'),file);
+console.log(`Portable application: ${file}`);

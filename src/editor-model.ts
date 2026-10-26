@@ -205,6 +205,8 @@ export interface FontWarning {region:string;index:number;message:string}
       catalog.push(variant);definitions.set(variant.type,variant);
     }
   }
+  // The sum-specific sideset template belongs to sum's menu, not generic scripts.
+  Object.assign(definitions.get('sideset')!,{category:'大型算符',variantOf:'sum'});
   // A named operator has one insertion path, including command completion.
   // Keep retired atoms readable for saved drafts, but do not offer duplicates.
   const operatorCommands=new Set(catalog.filter(e=>e.operator).map(e=>e.operatorCommand));
@@ -569,7 +571,7 @@ export interface FontWarning {region:string;index:number;message:string}
       if(!node || !source || !target)return false;
       if(source.font && target.font)return true;
       if(!source?.variantOf || source.variantOf!==target?.variantOf)return false;
-      if(source.operator && target.operator)return true;
+      if(source.operator && target.operator)return node.regions.every(r=>!r.items.length||!r.slot||target.scriptSlots?.includes(r.slot));
       if(source.variantOf==='sqrt')return true;
       if((source.matrixEnvironment && target.matrixEnvironment) || (source.rowEnvironment && target.rowEnvironment))return true;
       if(source.columns && target.columns){

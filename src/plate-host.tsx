@@ -16,6 +16,7 @@ import {EditorModel} from './editor-model';
 import type {DocumentHost,MathHostHooks,FormulaEntry} from './document-host';
 import {documentStorageKey,formulaNode,isFormula,newId,plateLatex,restoreDocument,parseDocumentFile,documentContentKey,type FormulaNode} from './plate-document';
 import {importMath} from './tex-import';
+import {validReferenceKey} from './references';
 
 export class PlateMathHost implements DocumentHost {
   readonly editor:PlateEditor;
@@ -137,6 +138,12 @@ export class PlateMathHost implements DocumentHost {
     this.persist();this.savedDocument=this.serializeDocument();this.scheduleChange();
   }
   exportMarkdown(){return this.editor.getApi(MarkdownPlugin).markdown.serialize();}
+  get activeFormulaId(){return this.activeFormula?.dataset.mathId;}
+  prepareTextInsertion(){
+    if(this.activeFormula?.isConnected)this.exit(this.activeFormula,1,false);
+    this.hooks.leave();this.persist();
+    if(!this.editor.selection)this.editor.tf.select(this.editor.api.end([]));
+  }
   isDisplay(element:HTMLElement){return element.dataset.display==='true';}
   isNumbered(element:HTMLElement){return element.dataset.numbered!=='false';}
   setNumbered(element:HTMLElement,numbered:boolean){const entry=this.locate(element);if(entry)this.editor.tf.withNewBatch(()=>this.editor.tf.setNodes({numbered},{at:entry[1]}));}
@@ -153,11 +160,13 @@ export class PlateMathHost implements DocumentHost {
     })));
     const elementNext=this.mounts.get(node.id);if(elementNext)this.enter(elementNext,'end');
   }
-  insertFormula(display=false):FormulaEntry{
+  insertFormula(display=false,source=''):FormulaEntry{
     if(this.readOnly)throw Error('Document is read-only');
     if(this.activeFormula?.isConnected)this.exit(this.activeFormula,1,false);
     this.hooks.leave();this.persist();
-    const model=new EditorModel();model.root.items=[];model.index();model.setCursor(model.root.id,0);
+    const parsed=source?importMath(source):null,model=parsed||new EditorModel();
+    if(!parsed){model.root.items=Array.from(source);model.index();}
+    model.setCursor(model.root.id,model.root.items.length);
     const node=formulaNode(model,display);this.models.set(node.id,model);
     flushSync(()=>this.editor.tf.withNewBatch(()=>{
       if(!this.editor.selection)this.editor.tf.select(this.editor.api.end([]));
@@ -165,11 +174,15 @@ export class PlateMathHost implements DocumentHost {
       this.editor.api.onChange();
     }));
     const element=this.mounts.get(node.id);if(!element)throw Error('Unable to mount formula');
-    this.enter(element,'start');return {element,model};
+    this.enter(element,source?'end':'start');return {element,model};
   }
   enter(element:HTMLElement,edge:'start'|'end'){
     if(this.readOnly)return;
     const entry=this.locate(element),model=this.models.get(element.dataset.mathId!);if(!entry||!model)return;
+    // Deselecting while Slate synchronizes selection can suppress its native
+    // blur handler. Explicitly release focus before activating the math input,
+    // otherwise a later Slate render clears the textarea's native caret.
+    this.editor.tf.blur();
     flushSync(()=>{this.editor.tf.deselect();this.editor.api.onChange();});this.activeFormula=element;this.hooks.activate(element,model,edge);
   }
   exit(element:HTMLElement,direction:-1|1,focus=true){
@@ -193,6 +206,25 @@ export class PlateMathHost implements DocumentHost {
     flushSync(()=>this.editor.tf.removeNodes({at:entry[1]}));this.editor.tf.focus();
   }
   private keyDown(event:React.KeyboardEvent){
+    if(event.key==='Enter'&&!event.shiftKey&&!event.nativeEvent.isComposing){
+      const bibliography=this.editor.api.above({match:n=>n.type==='bibliography_entry'});
+      if(bibliography){event.preventDefault();this.editor.tf.insertNodes({type:'p',children:[{text:''}]},{at:Path.next(bibliography[1]),select:true});return;}
+    }
+    if(event.key==='}'&&!event.nativeEvent.isComposing&&this.editor.selection&&Range.isCollapsed(this.editor.selection)){
+      const point=this.editor.selection.anchor,leaf=NodeApi.get(this.editor,point.path);
+      const match=typeof leaf?.text==='string'?leaf.text.slice(0,point.offset).match(/\\(ref|eqref|cite)\{([^{}]+)$/):null;
+      const code=this.editor.api.above({match:n=>n.type==='code_block'});
+      if(match&&!code){
+        const keys=match[2].split(',').map(key=>key.trim());
+        if(keys.every(validReferenceKey)&&(match[1]==='cite'||keys.length===1)){
+          event.preventDefault();this.editor.tf.withNewBatch(()=>{
+            this.editor.tf.select({anchor:{...point,offset:point.offset-match[0].length},focus:point});
+            this.editor.tf.insertNodes({type:'tex_reference',id:newId(),command:match[1],keys,children:[{text:''}]},{select:true});
+            this.editor.tf.move({distance:1,unit:'offset'});
+          });return;
+        }
+      }
+    }
     if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();this.insertFormula(event.shiftKey);return;}
     if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;
     const selection=this.editor.selection;if(!selection||!Range.isCollapsed(selection))return;

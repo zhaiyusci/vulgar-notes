@@ -35,6 +35,7 @@ export function latexDocument(value:Value):string {
   const body=plateLatex(value,portableMath);
   return String.raw`% !TeX program = lualatex
 % Compile with LuaLaTeX or XeLaTeX (TeX Live).
+% Run twice to resolve cross-references and citations.
 \documentclass[UTF8,fontset=fandol,scheme=plain]{ctexart}
 \usepackage{mathtools}
 \usepackage{amssymb}
@@ -45,6 +46,7 @@ ${unicodeMathPreamble}\setmathfont{NewCMMath-Regular.otf}
 \usepackage{physics}
 \usepackage[version=4]{mhchem}
 ${blackboardPreamble}
+\usepackage[hidelinks]{hyperref}
 
 \begin{document}
 ${body}

@@ -6,9 +6,9 @@ const {EditorModel}=require('./editor-model');
 test('Plate document / independent MathJax mount integration',async t=>{
  const {Window}=await import('happy-dom');const window=new Window({url:'http://localhost/'});
  window.document.write('<!doctype html><html><body></body></html>');
- for(const key of ['window','document','navigator','sessionStorage','Node','Element','HTMLElement','HTMLInputElement','HTMLTextAreaElement','Document','DocumentFragment','MutationObserver','ResizeObserver','DOMParser','Range','Event','KeyboardEvent','ClipboardEvent','DOMRect','HTMLDivElement','HTMLSpanElement','NodeFilter','ShadowRoot'])Object.defineProperty(globalThis,key,{value:key==='window'?window:window[key],configurable:true});
+ for(const key of ['innerWidth','innerHeight','window','document','navigator','sessionStorage','Node','Element','HTMLElement','HTMLInputElement','HTMLTextAreaElement','Document','DocumentFragment','MutationObserver','ResizeObserver','DOMParser','Range','Event','CustomEvent','KeyboardEvent','ClipboardEvent','DOMRect','HTMLDivElement','HTMLSpanElement','NodeFilter','ShadowRoot'])Object.defineProperty(globalThis,key,{value:key==='window'?window:window[key],configurable:true});
  globalThis.getComputedStyle=window.getComputedStyle.bind(window);globalThis.requestAnimationFrame=window.requestAnimationFrame.bind(window);globalThis.cancelAnimationFrame=window.cancelAnimationFrame.bind(window);
- await build({entryPoints:['src/plate-host.tsx'],bundle:true,platform:'node',format:'cjs',outfile:'.plate-test.cjs',loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'test-kit',setup(b){b.onLoad({filter:/components[\\/]editor[\\/]editor-kit\.tsx$/},()=>({contents:`import {ParagraphPlugin} from 'platejs/react';import {MathKit} from './plugins/math-kit';import {MarkdownKit} from './plugins/markdown-kit';export const EditorKit=[ParagraphPlugin,...MathKit,...MarkdownKit];`,loader:'tsx',resolveDir:require('node:path').resolve('src/components/editor')}))}}]});
+ await build({entryPoints:['src/plate-host.tsx'],bundle:true,platform:'node',format:'cjs',outfile:'.plate-test.cjs',loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'test-kit',setup(b){b.onLoad({filter:/components[\\/]editor[\\/]editor-kit\.tsx$/},()=>({contents:`import {ParagraphPlugin} from 'platejs/react';import {MathKit} from './plugins/math-kit';import {MarkdownKit} from './plugins/markdown-kit';import {ReferenceKit} from './plugins/reference-kit';export const EditorKit=[ParagraphPlugin,...MathKit,...ReferenceKit,...MarkdownKit];`,loader:'tsx',resolveDir:require('node:path').resolve('src/components/editor')}))}}]});
  const {PlateMathHost}=require('./.plate-test.cjs');fs.unlinkSync('.plate-test.cjs');
  const tick=()=>new Promise(resolve=>setTimeout(resolve,10));
  function setup(){sessionStorage.clear();const mount=document.createElement('div');document.body.append(mount);const activations=[];const flow=new PlateMathHost(mount,new EditorModel(),{activate:(...args)=>activations.push(args),leave(){},change(){}});return {flow,editor:flow.editor,activations};}
@@ -49,6 +49,31 @@ test('Plate document / independent MathJax mount integration',async t=>{
   assert.ok(newIndex>oldIndex);assert.equal(proseFocus,0);
   assert.equal(activations.at(-1)[0],added.element);
   assert.equal(added.model.exportLatex(),'k');flow.destroy();
+ });
+ await t.test('math activation releases Slate focus before handing off input',async()=>{
+  const {flow,editor}=setup();
+  const input=document.createElement('textarea');document.body.append(input);
+  editor.tf.focus({at:editor.api.end([])});await tick();
+  assert.equal(editor.api.isFocused(),true);
+  flow.hooks.activate=()=>{
+   assert.equal(editor.api.isFocused(),false,'Slate must release focus before the math textarea gains it');
+   input.focus();
+  };
+  const added=flow.insertFormula();added.model.replaceInput(0,0,'3');flow.persist();await tick();
+  assert.equal(editor.api.isFocused(),false);
+  assert.equal(document.activeElement,input);
+  flow.destroy();input.remove();
+ });
+ await t.test('selected text becomes editable math with the cursor at its end',async()=>{
+  const {flow,editor,activations}=setup();
+  editor.tf.setValue([{type:'p',children:[{text:'before x^2 after'}]}]);
+  editor.tf.select({anchor:{path:[0,0],offset:7},focus:{path:[0,0],offset:10}});
+  const added=flow.insertFormula(false,editor.api.string(editor.selection));await tick();
+  assert.match(added.model.exportLatex(),/\^\{2\}/);
+  assert.equal(activations.at(-1)[2],'end');
+  assert.equal(added.model.cursor.offset,added.model.root.items.length);
+  assert.equal(editor.api.string([]),'before  after');
+  flow.destroy();
  });
  await t.test('Markdown preserves equation numbering and reimports structural math',async()=>{
   const {flow,editor}=setup();const node=flow.insertFormula(true);node.model.replaceInput(0,0,'q^2');flow.persist();await tick();
@@ -99,5 +124,31 @@ test('Plate document / independent MathJax mount integration',async t=>{
   const saved=flow.serializeDocument();flow.markDocumentSaved(saved);assert.equal(flow.hasUnsavedChanges(),false);
   editor.tf.insertText('more');await tick();flow.markDocumentSaved(saved);assert.equal(flow.hasUnsavedChanges(),true);
   flow.destroy();
- }); await window.happyDOM.abort();
+ });
+ await t.test('reference nodes render, renumber on changes and survive undo and file opening',async()=>{
+  const {flow,editor}=setup();
+  const initial=editor.children[0].children.find(n=>n.type==='inline_equation');
+  const formula={...initial,display:true,numbered:true,texLabel:'eq:a'};
+  const ref={type:'tex_reference',id:'ref-a',command:'eqref',keys:['eq:a'],children:[{text:''}]};
+  const value=[{type:'p',children:[{text:''},formula,{text:' See '},ref,{text:''}]},{type:'bibliography_entry',citeKey:'paper',children:[{text:'Author. Title.'}]}];
+  flow.openDocument(JSON.stringify({version:1,value}));await tick();
+  assert.equal(flow.mount.querySelector('[role="link"]').textContent,'(1)');
+  editor.tf.insertNodes({type:'p',children:[{text:''},{...formula,id:'earlier',texLabel:'eq:b'},{text:''}]},{at:[0]});await tick();
+  assert.equal(flow.mount.querySelector('[role="link"]').textContent,'(2)');
+  editor.tf.undo();await tick();assert.equal(flow.mount.querySelector('[role="link"]').textContent,'(1)');
+  const md=flow.exportMarkdown();assert.ok(md.includes('eqref'));assert.ok(md.includes('bibitem'));assert.ok(md.includes('eq:a'));
+  const saved=flow.serializeDocument();flow.openDocument(saved);await tick();assert.equal(flow.mount.querySelector('[role="link"]').textContent,'(1)');
+  editor.tf.setNodes({numbered:false},{at:[0,1]});await tick();assert.equal(flow.mount.querySelector('[role="link"]').textContent,'(??)');
+  flow.destroy();
+ });
+ await t.test('typing a closing brace converts TeX references as one undoable operation',async()=>{
+  const {flow,editor}=setup();
+  editor.tf.setValue([{type:'p',children:[{text:'See \\cite{paper'}]}]);editor.tf.select(editor.api.end([]));
+  let prevented=false;flow.keyDown({key:'}',nativeEvent:{isComposing:false},preventDefault(){prevented=true;}});await tick();
+  assert.equal(prevented,true);assert.equal(editor.children[0].children[1].type,'tex_reference');
+  assert.deepEqual(editor.children[0].children[1].keys,['paper']);
+  editor.tf.undo();await tick();assert.equal(editor.children[0].children[0].text,'See \\cite{paper');
+  flow.destroy();
+ });
+ await window.happyDOM.abort();
 });

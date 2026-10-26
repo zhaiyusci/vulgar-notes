@@ -1,5 +1,6 @@
 export interface JSONContent { type?:string; text?:string; attrs?:Record<string,any>; marks?:{type:string;attrs?:Record<string,any>}[]; content?:JSONContent[] }
 import {EditorModel} from './editor-model';
+import {referenceTex,validReferenceKey,type ReferenceNode} from './references';
 
 export const isMath=(type?:string)=>type==='inlineMath'||type==='displayMath';
 export function mathSource(snapshot:string):string {
@@ -54,10 +55,24 @@ const escapeText=(text:string)=>text.replace(/[\\{}$%#&_~^]/g,c=>({
 
 /** LaTeX is an additional export; Markdown is serialized by Tiptap itself. */
 export function documentLatex(node:JSONContent,formatMath:(source:string)=>string=source=>source):string {
+  if(node.type==='texReference')return referenceTex(node.attrs as ReferenceNode);
+  if(node.type==='bibliographyEntry')return '';
   const body=(node.content||[]).map(child=>documentLatex(child,formatMath)).join('');
+  const label=node.attrs?.texLabel;
+  if(label!==undefined&&!validReferenceKey(label))throw Error('Invalid label');
+  const labelTex=label?'\\label{'+label+'}':'';
+  if(node.type==='doc'){
+    const entries:JSONContent[]=[];
+    const collect=(n:JSONContent)=>{if(n.type==='bibliographyEntry')entries.push(n);else n.content?.forEach(collect);};collect(node);
+    const bibliography=entries.map(entry=>{
+      if(!validReferenceKey(entry.attrs?.citeKey))throw Error('Invalid citation key');
+      return '\\bibitem{'+entry.attrs.citeKey+'} '+(entry.content||[]).map(child=>documentLatex(child,formatMath)).join('').trim();
+    }).join('\n');
+    return body+(entries.length?'\n\\begin{thebibliography}{'+String(entries.length)+'}\n'+bibliography+'\n\\end{thebibliography}\n':'');
+  }
   if(isMath(node.type)){
-    const source=formatMath(mathSource(node.attrs!.snapshot)),env=node.attrs!.numbered===false?'equation*':'equation';
-    return node.type==='displayMath'?`\n\\begin{${env}}\n${source}\n\\end{${env}}\n`:'\\('+source+'\\)';
+    const source=formatMath(node.attrs!.snapshot?mathSource(node.attrs!.snapshot):node.attrs!.texExpression||''),env=node.attrs!.numbered===false?'equation*':'equation';
+    return node.type==='displayMath'?`\n\\begin{${env}}\n${node.attrs!.numbered!==false?labelTex:''}${source}\n\\end{${env}}\n`:'\\('+source+'\\)';
   }
   if(node.type==='text')return (node.marks||[]).reduce((text,mark)=>{
     const command:Record<string,string>={bold:'textbf',italic:'emph',underline:'underline',code:'texttt',subscript:'textsubscript',superscript:'textsuperscript'};
@@ -65,7 +80,10 @@ export function documentLatex(node:JSONContent,formatMath:(source:string)=>strin
   },escapeText(node.text||''));
   if(node.type==='hardBreak')return '\\\\\n';
   if(node.type==='paragraph')return body+'\n\n';
-  if(node.type==='heading')return `\\${['section','subsection','subsubsection'][Math.min(3,node.attrs?.level||1)-1]}*{${body}}\n\n`;
+  if(node.type==='heading'){
+    const level=node.attrs?.level||1;
+    return level<=3?`\\${['section','subsection','subsubsection'][level-1]}{${body}}${labelTex}\n\n`:`\\paragraph*{${body}}\n\n`;
+  }
   if(node.type==='listItem')return '\\item '+body.trim()+'\n';
   const env:Record<string,string>={bulletList:'itemize',orderedList:'enumerate',blockquote:'quote'};
   if(env[node.type!])return `\n\\begin{${env[node.type!]}}\n${body}\\end{${env[node.type!]}}\n`;

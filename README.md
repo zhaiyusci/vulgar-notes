@@ -111,3 +111,11 @@ physics 与 mhchem 显式加载。物理输入板提供导数、偏导数、泛�
 - 浏览器入口使用 ES modules 和按需分包（`dist/`）；数学模型的独立测试仍使用根目录生成的 `editor-model.js`。
 - Excalidraw 的场景更新延迟到 Slate 渲染之后，只存持久场景数据，避免上游示例把整个临时 UI 状态写回导致节点路径失效。
 - 依赖覆盖用于统一 Jotai 和修复 DOMPurify、lodash-es、nanoid、js-yaml 已知告警。当前 `npm audit`：0 critical、0 high、5 moderate、5 low；原始记录在 `diagnostics/plate-dependency-audit.json`，未做跨主要版本的自动强制降级。
+
+## Cross-references and bibliography
+
+The References button beside formula insertion provides `\label`, `\ref`, `\eqref`, `\cite`, and `\bibitem`. Assign labels to numbered display equations or headings 1–3; these headings use section numbering. Inline and unnumbered equations are not reference targets. Clear a label to remove it. References follow document order, and missing or duplicate targets display `??` with a red underline. Click a resolved reference to jump to its target; double-click to edit its key.
+
+In prose, typing the closing brace of `\ref{key}`, `\eqref{key}`, or `\cite{key1,key2}` creates a reference node. Use the toolbar to add bibliography entries with stable citation keys; their prose remains editable in the document. Numbering follows bibliography entry order. This first implementation uses LaTeX's `thebibliography` / `\bibitem`, not BibTeX or an external bibliography database.
+
+JSON preserves labels, reference nodes and bibliography entries. TeX exports native commands, includes `hyperref`, and collects bibliography entries at the end. Run LuaLaTeX or XeLaTeX twice to resolve references. Markdown preserves reference commands as literal text, bibliography keys as `\bibitem` text, equation labels in math fences and heading labels as `{#key}`; Markdown renderers do not universally resolve these references.

@@ -236,6 +236,7 @@ export function InsertToolbarButton(props: DropdownMenuProps) {
   const editor = useEditorRef();
   const host=useContext(HostContext);
   const [open, setOpen] = React.useState(false);
+  const insertedMath=React.useRef(false);
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
@@ -246,6 +247,7 @@ export function InsertToolbarButton(props: DropdownMenuProps) {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
+        onCloseAutoFocus={event=>{if(insertedMath.current){event.preventDefault();insertedMath.current=false;}}}
         className="flex max-h-[500px] min-w-0 flex-col overflow-y-auto"
         align="start"
       >
@@ -256,7 +258,10 @@ export function InsertToolbarButton(props: DropdownMenuProps) {
                 key={value}
                 className="min-w-[180px]"
                 onSelect={() => {
-                  if(value===KEYS.equation&&host){host.insertFormula(true);return;}
+                  if((value===KEYS.equation||value===KEYS.inlineEquation)&&host){
+                    insertedMath.current=true;
+                    host.insertFormula(value===KEYS.equation,value===KEYS.inlineEquation&&editor.selection?editor.api.string(editor.selection):undefined);return;
+                  }
                   onSelect(editor, value);
                   editor.tf.focus();
                 }}

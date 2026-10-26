@@ -59,7 +59,7 @@ test('saved drafts reject malformed data without replacing the current formula',
 test('all large operators default to automatic placement and expose two explicit variants',()=>{
   const {catalog}=require('./editor-model');
   for(const entry of catalog.filter(e=>e.category==='大型算符' && e.variantOf===e.type)){
-    const variants=catalog.filter(e=>e.variantOf===entry.type);
+    const variants=catalog.filter(e=>e.variantOf===entry.type && e.type!=='sideset');
     assert.equal(variants.length,3,entry.type);
     const m=new EditorModel();m.insertStructure(entry.type);const node=m.root.items.at(-1);
     m.replaceInput(...m.range,'_a^b');const regions=[...node.regions],cursor={...m.cursor};
@@ -71,6 +71,18 @@ test('all large operators default to automatic placement and expose two explicit
     }
     const final=m.snapshot();m.undo();assert.ok(m.exportLatex().includes('\\nolimits'));m.redo();assert.equal(m.snapshot(),final);
   }
+});
+
+test('sideset is a sum variant and cannot discard populated left scripts',()=>{
+  const {catalog}=require('./editor-model');
+  const def=catalog.find(e=>e.type==='sideset');
+  assert.equal(def.category,'大型算符');assert.equal(def.variantOf,'sum');
+  const m=new EditorModel();m.insertStructure('sum');const node=m.root.items.at(-1);
+  assert.ok(m.switchVariant(node.id,'sideset'));
+  m.toggleOperatorScript(node.id,'leftUpper');m.replaceInput(...m.range,'a');
+  const before=m.exportLatex();assert.ok(before.includes('\\sideset'));
+  assert.equal(m.switchVariant(node.id,'sum'),false);assert.equal(m.exportLatex(),before);
+  m.remove(-1);assert.ok(m.switchVariant(node.id,'sum'));
 });
 
 test('command candidates open on backslash, filter prefixes and prioritize exact matches',()=>{

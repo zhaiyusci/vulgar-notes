@@ -2,6 +2,7 @@ import {draftStorage} from './platform';
 import type {TElement, Value, Descendant} from 'platejs';
 import {type JSONContent, migrateLegacy, documentLatex} from './document-format';
 import {EditorModel} from './editor-model';
+import {referenceTex,validReferenceKey,type ReferenceNode} from './references';
 
 export const documentStorageKey='math-plate-document-v1';
 export function documentContentKey(source:string):string {
@@ -18,7 +19,7 @@ export function parseDocumentFile(source:string):Value {
   return saved.value;
 }
 export const isFormula=(n:unknown):boolean=>!!n&&typeof n==='object'&&'type' in n&&(n.type==='equation'||n.type==='inline_equation');
-export type FormulaNode=TElement & {id:string; snapshot?:string;texExpression:string;numbered:boolean;display?:boolean};
+export type FormulaNode=TElement & {id:string; snapshot?:string;texExpression:string;numbered:boolean;display?:boolean;texLabel?:string};
 export const newId=()=>'math-'+crypto.randomUUID();
 export function formulaNode(model:EditorModel,display=false):FormulaNode {
   return {type:'inline_equation',display,id:newId(),snapshot:model.snapshot(),texExpression:model.exportLatex(),numbered:true,children:[{text:''}]};
@@ -28,6 +29,8 @@ export function markdownDisplayBlocks(nodes:Descendant[]):Descendant[]{
   return nodes.flatMap(node=>{
     if(!Array.isArray(node.children)||isFormula(node))return [node];
     const children=node.children as Descendant[];
+    if(/^h[1-3]$/.test(String(node.type))&&validReferenceKey(node.texLabel))
+      return [{...node,children:[...markdownDisplayBlocks(children),{text:' {#'+node.texLabel+'}'}]}];
     if(!children.some(child=>isFormula(child)&&child.display===true))
       return [{...node,children:markdownDisplayBlocks(children)}];
     const result:Descendant[]=[];let run:Descendant[]=[];
@@ -84,6 +87,9 @@ export function validate(nodes:unknown[]):void {
     const n=raw as TElement & {text?:string;snapshot?:string};
     if(typeof n.text==='string')continue;
     if(typeof n.type!=='string'||!Array.isArray(n.children))throw Error('Invalid document element');
+    if(n.texLabel!==undefined&&!validReferenceKey(n.texLabel))throw Error('Invalid label');
+    if(n.type==='tex_reference')referenceTex(n as ReferenceNode);
+    if(n.type==='bibliography_entry'&&!validReferenceKey(n.citeKey))throw Error('Invalid citation key');
     if(isFormula(n)&&n.snapshot)new EditorModel().restore(n.snapshot);
     validate(n.children);
   }
@@ -91,11 +97,12 @@ export function validate(nodes:unknown[]):void {
 /** Keep the established LaTeX prose exporter independent of the document engine. */
 export function plateLatex(value:Value,formatMath?:(source:string)=>string):string {
   const read=(n:any):JSONContent=>{
+    if(n.type==='tex_reference')return {type:'texReference',attrs:{command:n.command,keys:n.keys}};
+    if(n.type==='bibliography_entry')return {type:'bibliographyEntry',attrs:{citeKey:n.citeKey},content:n.children?.map(read)};
     if(typeof n.text==='string')return {type:'text',text:n.text,marks:Object.keys(n).filter(k=>k!=='text'&&n[k]===true).map(type=>({type:type==='strikethrough'?'strike':type}))};
-    if(isFormula(n)&&n.snapshot)return {type:n.type==='equation'||n.display?'displayMath':'inlineMath',attrs:n};
-    if(isFormula(n))return {type:'text',text:n.texExpression||''};
+    if(isFormula(n))return {type:n.type==='equation'||n.display?'displayMath':'inlineMath',attrs:n};
     const type=/^h[1-6]$/.test(n.type)?'heading':({p:'paragraph',a:'text',code_block:'codeBlock',code_line:'paragraph',hr:'horizontalRule'} as Record<string,string>)[n.type]||n.type;
-    return {type,attrs:{level:Number(n.type[1]),language:n.lang},content:n.children?.map(read)};
+    return {type,attrs:{level:Number(n.type[1]),language:n.lang,texLabel:n.texLabel},content:n.children?.map(read)};
   };
   return documentLatex({type:'doc',content:value.map(read)},formatMath).trim();
 }
