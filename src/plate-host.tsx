@@ -1,6 +1,7 @@
 import {draftStorage} from './platform';
 import {t} from './i18n';
 import React from 'react';
+import {DisplayBoundaryText} from './display-boundary-text';
 import {HostContext} from './plate-math-element';
 import {createRoot,type Root} from 'react-dom/client';
 import {flushSync} from 'react-dom';
@@ -48,7 +49,7 @@ export class PlateMathHost implements DocumentHost {
     mount.removeAttribute('contenteditable');mount.removeAttribute('role');mount.removeAttribute('aria-label');mount.id='plateMount';
     this.root=createRoot(mount);
     flushSync(()=>this.root.render(<HostContext.Provider value={this}><TooltipProvider><Plate editor={this.editor} onChange={()=>this.changed()}>
-      <EditorContainer><Editor id="textFlow" aria-label={t("Body")} placeholder={t("Type here…")}
+      <EditorContainer><Editor renderText={props=><DisplayBoundaryText {...props} />} id="textFlow" aria-label={t("Body")} placeholder={t("Type here…")}
         onPointerDown={e=>{if(!(e.target as Element).closest('.inline-formula')){this.activeFormula=undefined;this.hooks.leave();}}}
         onFocus={()=>{this.activeFormula=undefined;this.hooks.leave();}}
         onKeyDownCapture={e=>this.handleObjectDelete(e)} onKeyDown={e=>this.keyDown(e)} /></EditorContainer>

@@ -14,6 +14,15 @@
 #plateMount [role=toolbar]>div { flex-wrap:wrap; }
 .math-inline-node { display:inline; }
 .math-block-node { display:block; }
+/* Empty insertion points belong beside a display, never on an extra row. */
+.math-block-node + [data-empty-text="true"],
+[data-empty-text="true"]:has(+ .math-block-node) {
+  position:absolute;
+  width:3px;
+  height:1.2em;
+  line-height:1.2;
+  cursor:text;
+}
 .math-mount-wrapper { user-select:none; }
 /* Labels are annotations: they never add width or height to document layout. */
 .tex-label-anchor { display:inline-block; position:relative; width:0; height:0; vertical-align:baseline; overflow:visible; }

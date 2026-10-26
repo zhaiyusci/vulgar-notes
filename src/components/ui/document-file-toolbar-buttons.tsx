@@ -5,13 +5,13 @@ import {FolderOpenIcon, SaveIcon, CopyIcon} from 'lucide-react';
 import {toast} from 'sonner';
 import {HostContext} from '@/plate-math-element';
 import {parseDocumentFile} from '@/plate-document';
-import {openDocumentFile, saveDocumentFile, confirmReplaceDocument} from '@/platform';
+import {openDocumentFile, saveDocumentFile, confirmReplaceDocument, defaultDocumentName} from '@/platform';
 import {t} from '@/i18n';
 import {ToolbarButton} from './toolbar';
 
 export function DocumentFileToolbarButtons() {
   const host = React.useContext(HostContext);
-  const currentFile = React.useRef<{path?:string; name:string}>({name:'document.json'});
+  const currentFile = React.useRef<{path?:string; name:string}>({name:defaultDocumentName});
   React.useEffect(()=>{
     try {
       const saved=sessionStorage.getItem('editor.open-document');

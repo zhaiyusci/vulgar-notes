@@ -1,17 +1,37 @@
-# MathJax 原位公式编辑原型
+# Vulgar Notes
 
 编辑器使用 TypeScript（`strict: true`）、Plate / React 和 MathJax 4。桌面版使用 Tauri 2，公式编辑模块与正文引擎保持独立。
 
-## 交互原则：不要做 Markdown mania
+## 关于名称的郑重声明
 
-这是一个以鼠标直接操作为主的富文本数学编辑器。添加一个快捷语法本身不是产品收益；低频功能不应通过拦截常规输入，让每次写作都承担误触、记忆和纠错的成本。工具栏、右键菜单和直接点击往往更容易发现，也更少干扰正文。
+本项目郑重声明：**Vulgar Notes** 中的 **vulgar**，明确取现代英语中“低俗、粗俗、不雅”的含义。这个名字是有意这样取的。
+
+本名称与旧历书中的同名术语无关，也不取“通用”“常用”等古义。请勿为本项目附会高雅寓意，或将其解释为对旧历书的致敬。**此处的 vulgar，就是低俗。**
+
+取名时，一批 Markdown 编辑器已经把文雅的名字占了个遍。我们厌倦的，正是其中那种给源码套个壳、给预览换张皮，就端出一副重新发明写作的架势的产品：格式标记照打，误触照旧，公式照样在源码与预览之间来回折腾，低频格式操作照样打断思路。**该解决的写作问题没解决，抢好名字倒是比谁都快。**
+
+**我们受够了这种 Markdown mania。** 换一套界面、加一个 `/` 菜单，再让用户背几组标记，不会自动让写作变好。文雅的名字让它们占着吧；本项目选择低俗，并把“别打断用户的思路”当作正事。
+
+The word **vulgar** in **Vulgar Notes** deliberately means **crude, coarse, or in bad taste**, in the modern sense. This is the intended meaning of the name.
+
+The name is unrelated to the historical almanac term "vulgar notes" and does not invoke archaic meanings such as "common" or "ordinary." Do not reinterpret it as a learned historical allusion or an expression of refined taste. **Here, vulgar means vulgar.**
+
+When we went looking for a decent name, a crowd of Markdown editors had already helped themselves to the elegant ones. Our irritation is aimed squarely at the kind that wraps source text in another shell, reskins the preview, and acts as though it has reinvented writing. The same markup, accidental formatting, split source-and-preview math editing, and interruptions remain. **The writing problems stay unsolved; the good names get snapped up.**
+
+**We are tired of this Markdown mania.** Another coat of paint, another slash menu, and another set of formatting incantations do not make writing better. They can keep the elegant names. We chose vulgarity, and we intend to spend our effort making prose and mathematics easier to write without interrupting thought.
+
+## 交互原则：低频格式调整不要干扰思路
+
+编辑器应保护写作与数学推导中思路的连续性。评价一种交互方式，要看它是否帮助用户顺畅表达正在思考的内容，以及它是否给正常输入增加了误触、记忆和纠错的负担。键盘、鼠标和菜单都只是手段，不预先规定哪一种优先。
+
+公式输入是数学写作的核心过程，所以我们持续改进原位编辑、连续序列、光标移动和 LaTeX 命令输入，让表达尽量跟上思考。标题、列表等低频格式调整则适合在需要时显式调用，不应通过正文中的 `/` 菜单或 Markdown 自动转换随时介入输入。这正是优化公式输入、同时移除 `/` 快捷菜单的共同理由：减少对思路的打断。不要为了追随“Markdown mania”而增加并无实际收益的快捷语法。
 
 - **正文输入保持可预测。** 不提供正文的 `/` 命令菜单，不把 `# `、`- `、`1. `、`> `、`**文字**`、反引号或美元定界符自动转换为文档结构或格式。
 - **不擅自替换用户输入的符号。** 关闭箭头、分数、比较符号、智能引号等自动字符替换；例如 `->` 和 `1/2` 保留原样。
-- **功能通过明确的操作调用。** 标题、列表、文本格式、公式等通过工具栏插入或设置；结构变体和行列操作通过右键菜单提供。优先做好点击目标、选中反馈、光标和撤销，而不是堆积隐式触发器。
-- **快捷键是辅助，不是必修课。** 保留保存、撤销、复制粘贴等常规快捷键以及已有的显式格式操作。新增快捷方式需要有明确用途，且不能让普通文字意外变成命令。
+- **功能通过明确的操作调用。** 标题、列表、文本格式、公式等通过工具栏插入或设置；结构变体和行列操作通过右键菜单提供。这些入口在用户需要时提供操作，不拦截正常书写；点击定位、选中反馈、光标和撤销都应清晰可靠。
+- **快捷键是辅助，不是必修课。** 保留保存、撤销、复制粘贴等常规快捷键以及已有的显式格式操作。新增快捷方式应根据任务频率、表达效率和对思路的干扰来取舍，不能仅因上游插件提供了它就默认开启。
 - **数学区域有自己的输入语义。** 进入公式后，LaTeX 命令候选、上下标输入和结构编辑仍然可用。正文的 TeX 标签、交叉引用和文献引用入口也保留；这不意味着把正文变成 Markdown 源码编辑器。
-- **交换格式与编辑交互分开。** Markdown 是导出格式，不是必须模仿的交互模型。原生 JSON 保存完整的可编辑结构，LaTeX 用于排版导出。
+- **交换格式与编辑交互分开。** Markdown 是导出格式，不是必须模仿的交互模型。原生 `.vulgar` 文档以 JSON 保存完整的可编辑结构，LaTeX 用于排版导出。
 
 选择 Plate 的开源 Editor Kit 是为了复用成熟的富文本基础设施，不是为了开启它提供的每一项功能。后续引入或更新插件时，应检查是否重新带入了斜杠菜单、Markdown 输入规则或自动字符替换。
 
@@ -19,7 +39,7 @@
 
 - `npm run desktop:dev`：构建本地资源并启动桌面开发窗口；不占用网页预览的 8767 端口。
 - `npm run desktop:build`：生成 Windows 程序和 NSIS 安装包。
-- `npm run desktop:portable`：生成 `portable/Math Document Editor-<version>.exe`，无需安装，直接运行；测试优先使用此版本。
+- `npm run desktop:portable`：生成 `portable/Vulgar Notes-<version>.exe`，无需安装，直接运行；测试优先使用此版本。
 - 程序：`src-tauri/target/release/math-document-editor.exe`。
 - 安装包：`src-tauri/target/release/bundle/nsis/`。
 
@@ -27,11 +47,11 @@ Windows 构建需要 Rust stable MSVC、Visual Studio C++ 工具和 WebView2。�
 
 桌面版嵌入 `desktop-dist` 中的静态资源，不需要 Node.js 服务。MathJax 4.1.3、New Computer Modern、BBoldX 和 mhchem 字体随程序打包；正文和数学编辑无需联网，用户引用的网络媒体仍需要网络。原网页预览继续保留 CDN 配置。
 
-桌面草稿保存在 WebView 的持久 localStorage，关闭后重新启动会恢复。网页版仍使用各标签页独立的 sessionStorage；浏览器现有草稿不会自动转移到桌面版，可先保存为 JSON 文档，再在桌面版打开。工具栏提供打开、保存、另存为；桌面版保存会写回本次会话中打开的文件，首次保存或另存为才显示系统文件窗口。浏览器版保存以下载 JSON 实现。重启桌面应用仍会恢复草稿，但需重新打开文件才能重新取得原路径的文件权限。卸载或清理应用数据前应保存重要文档。
+桌面草稿保存在 WebView 的持久 localStorage，关闭后重新启动会恢复。网页版仍使用各标签页独立的 sessionStorage；浏览器现有草稿不会自动转移到桌面版，可先保存为 `.vulgar` 文档，再在桌面版打开。工具栏提供打开、保存、另存为；桌面版保存会写回本次会话中打开的文件，首次保存或另存为才显示系统文件窗口。浏览器版保存以下载 `.vulgar` 文件实现。重启桌面应用仍会恢复草稿，但需重新打开文件才能重新取得原路径的文件权限。卸载或清理应用数据前应保存重要文档。
 
 Tauri 配置关闭原生文件拖放拦截，让编辑器继续处理段落排序。`src/platform.ts` 集中管理桌面存储和文件导出差异，公式模型不依赖 Tauri。
 
-界面语言在右上角齿轮打开的“首选项”中设置。保存后重新加载并保留草稿；取消或 Esc 不应用修改。JSON 是原生文档的打开/保存格式；导出菜单仅提供 Markdown 和 LaTeX。
+界面语言在右上角齿轮打开的“首选项”中设置。保存后重新加载并保留草稿；取消或 Esc 不应用修改。原生文档扩展名为 `.vulgar`，内部仍使用 JSON；导出菜单仅提供 Markdown 和 LaTeX。
 
 MathJax 和编辑器会动态创建样式，因此 `dangerousDisableAssetCspModification` 仅设为 `["style-src"]`，保留已配置的 `style-src 'self' 'unsafe-inline'`。如果 Tauri 再向该指令注入 nonce/hash，浏览器会忽略 `unsafe-inline`，导致动态公式样式和行内布局失效。脚本的 nonce/hash 注入和其他 CSP 限制仍然保留。验证桌面排版时应检查打包后的策略，而不能只测试未经过 Tauri 处理的静态页面。
 
@@ -73,6 +93,7 @@ MathJax 和编辑器会动态创建样式，因此 `dangerousDisableAssetCspModi
 
 - Ctrl/⌘+Enter 插入行内公式；Ctrl/⌘+Shift+Enter 插入行间公式。
 - 正文换行、列表、选区和历史使用 Plate；公式内继续保留自己的序列、区域和撤销历史。
+- 行间公式独占一行，但不自动开始新段落。空的正文插入点显示在行间公式的左右边界，而非单独的空白行；相邻公式之间不因光标定位节点额外撑出一行；用户实际输入的文字、换行和段落保持原有含义。
 - 公式快照与 LaTeX 同步到文档节点，文档撤销同步恢复数学模型。光标移动不创建内容历史。
 - 复制公式保留结构树，并生成独立 ID。
 - 公式、交叉引用和文献引用采用两步删除：先选中并高亮，再按删除键删除；长按不会跳过选中步骤。
@@ -82,7 +103,7 @@ MathJax 和编辑器会动态创建样式，因此 `dangerousDisableAssetCspModi
 
 Markdown 使用官方 @platejs/markdown。行内使用美元定界符，行间使用双美元定界符；编号公式在 opening fence 上保留 numbered 元数据，不编号公式不加该标记（自动编号不是标准 Markdown 特性）。LaTeX 导出仍使用 equation / equation*。普通分式、根式、函数、上下标等导入可转为可编辑树；任意 TeX 宏、环境不保证可解析，不能识别的公式保留源码并显示提示，不会伪造或损坏结构。JSON 是无损往返格式。
 
-打开仅接受本工具的 JSON 文档并替换当前正文；先校验再替换，打开前保留一份恢复草稿，并清空旧文档的撤销历史。Ctrl/⌘+O 打开，Ctrl/⌘+S 保存，Ctrl/⌘+Shift+S 另存为。导出仅提供 Markdown（.md）和 LaTeX（.tex 完整文档）。TeX 文件使用 LuaLaTeX 或 XeLaTeX 编译，自带 ctexart、Fandol 中文字体、New Computer Modern 数学字体、unicode-math 与 BBoldX 原生配置，以及 mathtools、extarrows、cancel、physics、mhchem 宏包。MathJax 专用的 `\pu` 在导出时通过官方 mhchemparser 展开为 TeX，不改变保存的公式结构。无需手工补充导言区；所需宏包和字体包含在完整 TeX Live 中。
+打开仅接受本工具的 `.vulgar` 文档及旧版 `.json` 文档，内容仍按原有 JSON 结构校验。先校验再替换当前正文，打开前保留一份恢复草稿，并清空旧文档的撤销历史。新文档默认保存为 `document.vulgar`；打开旧 `.json` 后直接保存仍写回原文件，另存为会建议使用 `.vulgar`，浏览器下载也使用新扩展名。Ctrl/⌘+O 打开，Ctrl/⌘+S 保存，Ctrl/⌘+Shift+S 另存为。导出仅提供 Markdown（.md）和 LaTeX（.tex 完整文档）。TeX 文件使用 LuaLaTeX 或 XeLaTeX 编译，自带 ctexart、Fandol 中文字体、New Computer Modern 数学字体、unicode-math 与 BBoldX 原生配置，以及 mathtools、extarrows、cancel、physics、mhchem 宏包。MathJax 专用的 `\pu` 在导出时通过官方 mhchemparser 展开为 TeX，不改变保存的公式结构。无需手工补充导言区；所需宏包和字体包含在完整 TeX Live 中。
 
 服务边界：AI 后端未配置，所以没有启用 AI 菜单；附件使用本地 data URL（单文件限 2 MB）或用户提供的 URL，没有模拟上传，也没有接入 UploadThing。批注/建议是本地交互，不是多人实时协作服务。字体与部分绘图资源首次加载仍需要网络。
 

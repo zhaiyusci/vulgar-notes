@@ -98,6 +98,24 @@ test('Plate document / independent MathJax mount integration',async t=>{
   assert.equal(saved.value[0].children.find(n=>n.id===first.element.dataset.mathId).display,true);
   flow.destroy();
  });
+ await t.test('display boundaries remain editable text positions without creating paragraphs',async()=>{
+  const {flow,editor}=setup();
+  const first=flow.insertFormula(true,'x=1'),second=flow.insertFormula(true,'y=2');await tick();
+  const count=editor.children.length;
+  flow.exit(first.element,1);await tick();
+  const point=editor.selection.anchor;
+  assert.equal(editor.api.node(point.path)[0].text,'');
+  const empty=first.element.closest('.math-block-node').nextElementSibling;
+  assert.equal(empty.dataset.emptyText,'true');
+  editor.tf.insertText('explanation');await tick();
+  assert.equal(editor.api.node(point.path)[0].text,'explanation');
+  assert.equal(first.element.closest('.math-block-node').nextElementSibling.dataset.emptyText,undefined);
+  assert.equal(editor.children.length,count);
+  editor.tf.select({anchor:point,focus:{...point,offset:11}});editor.tf.delete();await tick();
+  assert.equal(first.element.closest('.math-block-node').nextElementSibling.dataset.emptyText,'true');
+  assert.equal(flow.entries().find(e=>e.element===second.element).model.exportLatex(),'y=2');
+  assert.equal(editor.children.length,count);flow.destroy();
+ });
  await t.test('opening a JSON document replaces content, retains math and clears old undo history',async()=>{
   const {flow,editor}=setup();
   const old=flow.serializeDocument();

@@ -1,10 +1,10 @@
 {
-  "name": "mathjax-inline-edit",
+  "name": "vulgar-notes",
   "private": true,
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && node build.cjs",
-    "test": "npm run build && node --test editor-model.test.cjs letter-variants.test.cjs text-flow.test.cjs plate-host.test.cjs paragraph-drag.test.cjs math-input.test.cjs",
+    "test": "npm run build && node --test editor-model.test.cjs letter-variants.test.cjs text-flow.test.cjs plate-host.test.cjs paragraph-drag.test.cjs math-input.test.cjs platform.test.cjs",
     "dev": "npm run build && node serve.cjs",
     "desktop:prepare": "npm run build && node scripts/prepare-desktop.cjs",
     "desktop:dev": "tauri dev",

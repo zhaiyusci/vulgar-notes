@@ -3,24 +3,28 @@ import {t} from './i18n';
 
 export interface OpenedDocument {text: string; name: string; path?: string}
 
+export const defaultDocumentName = 'document.vulgar';
+const documentFilePattern = /\.(vulgar|json)$/i;
+const documentName = (name: string): string => name.replace(documentFilePattern, '') + '.vulgar';
+
 export async function openDocumentFile(): Promise<OpenedDocument | null> {
   if (isTauri()) {
     const [{open}, {readTextFile}] = await Promise.all([import('@tauri-apps/plugin-dialog'), import('@tauri-apps/plugin-fs')]);
-    const path = await open({multiple:false, directory:false, filters:[{name:'JSON',extensions:['json']}]});
+    const path = await open({multiple:false, directory:false, filters:[{name:t('Vulgar Notes document'),extensions:['vulgar','json']}]});
     if (!path) return null;
-    if (!/\.json$/i.test(path)) throw Error(t('Please choose a JSON document.'));
+    if (!documentFilePattern.test(path)) throw Error(t('Please choose a Vulgar Notes document (.vulgar or legacy .json).'));
     return {path, name:path.split(/[\\/]/).pop()!, text:await readTextFile(path)};
   }
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
-    input.type = 'file'; input.accept = '.json,application/json'; input.hidden = true;
+    input.type = 'file'; input.accept = '.vulgar,.json,application/json'; input.hidden = true;
     document.body.append(input);
     input.addEventListener('cancel', () => {input.remove(); resolve(null);}, {once:true});
     input.addEventListener('change', async () => {
       const file = input.files?.[0]; input.remove();
       if (!file) {resolve(null); return;}
       try {
-        if (!/\.json$/i.test(file.name)) throw Error(t('Please choose a JSON document.'));
+        if (!documentFilePattern.test(file.name)) throw Error(t('Please choose a Vulgar Notes document (.vulgar or legacy .json).'));
         resolve({name:file.name, text:await file.text()});
       } catch (error) {reject(error);}
     }, {once:true});
@@ -38,17 +42,18 @@ export async function confirmReplaceDocument(): Promise<boolean> {
 }
 
 /** Null means cancelled; a browser download has no reusable filesystem path. */
-export async function saveDocumentFile(text: string, currentPath?: string, name = 'document.json'): Promise<{path?:string; name:string} | null> {
+export async function saveDocumentFile(text: string, currentPath?: string, name = defaultDocumentName): Promise<{path?:string; name:string} | null> {
+  const suggestedName = documentName(name);
   if (isTauri()) {
     const [{save}, {writeFile}] = await Promise.all([import('@tauri-apps/plugin-dialog'), import('@tauri-apps/plugin-fs')]);
-    let path = currentPath ?? await save({defaultPath:name, filters:[{name:'JSON',extensions:['json']}]});
+    const path = currentPath ?? await save({defaultPath:suggestedName, filters:[{name:t('Vulgar Notes document'),extensions:['vulgar']}]});
     if (!path) return null;
-    if (!/\.json$/i.test(path)) throw Error(t('Please choose a JSON document.'));
+    if (!(currentPath ? documentFilePattern : /\.vulgar$/i).test(path)) throw Error(t('Please use the .vulgar extension.'));
     await writeFile(path, new TextEncoder().encode(text));
     return {path, name:path.split(/[\\/]/).pop()!};
   }
-  await saveExport(new Blob([text], {type:'application/json;charset=utf-8'}), name);
-  return {name};
+  await saveExport(new Blob([text], {type:'application/json;charset=utf-8'}), suggestedName);
+  return {name:suggestedName};
 }
 
 /** Browser tabs remain independent; the desktop window restores its last draft. */
