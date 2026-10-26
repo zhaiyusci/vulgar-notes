@@ -11,7 +11,7 @@ test('Plate document / independent MathJax mount integration',async t=>{
  await build({entryPoints:['src/plate-host.tsx'],bundle:true,platform:'node',format:'cjs',outfile:'.plate-test.cjs',loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'test-kit',setup(b){b.onLoad({filter:/components[\\/]editor[\\/]editor-kit\.tsx$/},()=>({contents:`import {ParagraphPlugin} from 'platejs/react';import {TrailingBlockPlugin} from 'platejs';import {MathKit} from './plugins/math-kit';import {MarkdownKit} from './plugins/markdown-kit';import {ReferenceKit} from './plugins/reference-kit';import {FootnoteKit} from './plugins/footnote-kit';export const EditorKit=[ParagraphPlugin,...MathKit,...ReferenceKit,TrailingBlockPlugin,...MarkdownKit,...FootnoteKit];`,loader:'tsx',resolveDir:require('node:path').resolve('src/components/editor')}))}}]});
  const {PlateMathHost}=require('./.plate-test.cjs');fs.unlinkSync('.plate-test.cjs');
  const tick=()=>new Promise(resolve=>setTimeout(resolve,10));
- function setup(){sessionStorage.clear();const mount=document.createElement('div');document.body.append(mount);const activations=[];const flow=new PlateMathHost(mount,new EditorModel(),{activate:(...args)=>activations.push(args),leave(){},change(){}});return {flow,editor:flow.editor,activations};}
+ function setup(){sessionStorage.clear();window.localStorage.clear();const mount=document.createElement('div');document.body.append(mount);const activations=[];const flow=new PlateMathHost(mount,new EditorModel(),{activate:(...args)=>activations.push(args),leave(){},change(){}});return {flow,editor:flow.editor,activations};}
  await t.test('math edits persist and restore as editable trees',async()=>{
   const {flow,editor,activations}=setup();const entry=flow.insertFormula();entry.model.replaceInput(0,0,'z^2');flow.persist();await tick();
   assert.equal(flow.entries().length,2);assert.ok(activations.length);assert.match(flow.exportMarkdown(),/\{z\}\^\{2\}/);
@@ -143,7 +143,7 @@ test('Plate document / independent MathJax mount integration',async t=>{
   editor.tf.insertText('more');await tick();flow.markDocumentSaved(saved);assert.equal(flow.hasUnsavedChanges(),true);
   flow.destroy();
  });
- await t.test('attached BibTeX sources stay in session while native files and drafts capture only cited entries',async()=>{
+ await t.test('full BibTeX sources survive restart independently while native files and drafts capture only cited entries',async()=>{
   const {flow,editor}=setup();flow.markDocumentSaved(flow.serializeDocument());
   const library={id:'papers',name:'Papers.bib',source:'@article{cited,title={Cited title},author={Writer, One},year={2026}}\n@book{later,title={Later title}}\n@book{unused,title={UNUSED_PRIVATE_ENTRY}}'};
   flow.setBibliographyLibraries([library]);await tick();
@@ -166,7 +166,46 @@ test('Plate document / independent MathJax mount integration',async t=>{
   const mount=document.createElement('div');document.body.append(mount);
   const restored=new PlateMathHost(mount,new EditorModel(),{activate(){},leave(){},change(){}});await tick();
   assert.match(restored.getBibliographyLibraries()[0].source,/Cited title/);assert.match(restored.getBibliographyLibraries()[0].source,/Later title/);
-  assert.doesNotMatch(restored.getBibliographyLibraries()[0].source,/UNUSED_PRIVATE_ENTRY/);restored.destroy();
+  assert.match(restored.getBibliographyLibraries()[0].source,/UNUSED_PRIVATE_ENTRY/);assert.equal(restored.isCapturedBibliographyLibrary('papers'),false);restored.destroy();
+ });
+ await t.test('opening another document does not erase a full local library or embed its uncited entries',async()=>{
+  const {flow}=setup();const full={id:'catalog',name:'Catalog.bib',source:'@book{one,title={One}}\n@book{two,title={Two}}\n@book{three,title={Uncited third}}'};
+  flow.setBibliographyLibraries([full]);flow.openDocument(JSON.stringify({version:1,value:[{type:'p',children:[{text:'A new document'}]}]}));await tick();
+  assert.equal(flow.getBibliographyLibraries()[0].source,full.source);assert.equal(JSON.parse(flow.serializeDocument()).bibliographyLibraries,undefined);
+  assert.match(window.localStorage.getItem('vulgar-notes-bibliography-library-catalog-v1'),/Uncited third/);flow.destroy();
+ });
+ await t.test('a captured subset is marked honestly and adding another library never promotes it into a full catalog',async()=>{
+  const {flow}=setup();const copy={id:'captured',name:'Original.bib',source:'@book{one,title={Captured only}}'};
+  flow.openDocument(JSON.stringify({version:1,value:[{type:'p',children:[{type:'tex_reference',command:'cite',keys:['one'],children:[{text:''}]}]}],bibliographyLibraries:[copy]}));await tick();
+  assert.equal(flow.isCapturedBibliographyLibrary('captured'),true);assert.equal(window.localStorage.getItem('vulgar-notes-bibliography-library-catalog-v1'),null);
+  const added={id:'new',name:'New.bib',source:'@book{new,title={New full source}}'};flow.setBibliographyLibraries([...flow.getBibliographyLibraries(),added],['new']);
+  const cache=JSON.parse(window.localStorage.getItem('vulgar-notes-bibliography-library-catalog-v1'));assert.deepEqual(cache.libraries.map(library=>library.id),['new']);assert.equal(flow.isCapturedBibliographyLibrary('captured'),true);
+  flow.setBibliographyLibraries([{...copy,source:copy.source+'\n@book{later,title={Restored full source}}'},added],['captured']);await tick();
+  assert.equal(flow.isCapturedBibliographyLibrary('captured'),false);assert.doesNotMatch(flow.serializeDocument(),/Restored full source/);flow.destroy();
+ });
+ await t.test('an exact portable alias restores a complete library and removing it also removes its cached origin',async()=>{
+  const {flow,editor}=setup();const full={id:'catalog-id',name:'Alias.bib',source:'@book{used,title={Used}}\n@book{unused,title={Complete source}}'};
+  flow.setBibliographyLibraries([full]);editor.tf.select(editor.api.end([]));editor.tf.insertNodes({type:'tex_reference',command:'cite',keys:['used'],children:[{text:''}]});await tick();
+  const saved=JSON.parse(flow.serializeDocument());saved.bibliographyLibraries[0].id='portable-id';flow.openDocument(JSON.stringify(saved));await tick();
+  assert.equal(flow.getBibliographyLibraries()[0].id,'portable-id');assert.equal(flow.getBibliographyLibraries()[0].source,full.source);assert.equal(flow.isCapturedBibliographyLibrary('portable-id'),false);
+  flow.setBibliographyLibraries([]);assert.deepEqual(JSON.parse(window.localStorage.getItem('vulgar-notes-bibliography-library-catalog-v1')).libraries,[]);flow.destroy();
+ });
+ await t.test('independent windows preserve each other’s additions to the local library catalog',async()=>{
+  const {flow:first}=setup();const a={id:'a',name:'A.bib',source:'@book{a,title={A}}'},b={id:'b',name:'B.bib',source:'@book{b,title={B}}'},c={id:'c',name:'C.bib',source:'@book{c,title={C}}'};
+  first.setBibliographyLibraries([a]);const mount=document.createElement('div');document.body.append(mount);const second=new PlateMathHost(mount,new EditorModel(),{activate(){},leave(){},change(){}});
+  first.setBibliographyLibraries([a,b],['b']);second.setBibliographyLibraries([a,c],['c']);await tick();
+  assert.deepEqual(JSON.parse(window.localStorage.getItem('vulgar-notes-bibliography-library-catalog-v1')).libraries.map(library=>library.id).sort(),['a','b','c']);first.destroy();second.destroy();
+ });
+ await t.test('portable library identity survives an update in another window before unrelated additions and removal',async()=>{
+  const {flow:first,editor}=setup();const full={id:'catalog',name:'Shared.bib',source:'@book{used,title={Used}}\n@book{unused,title={Original full}}'};
+  first.setBibliographyLibraries([full]);editor.tf.select(editor.api.end([]));editor.tf.insertNodes({type:'tex_reference',command:'cite',keys:['used'],children:[{text:''}]});await tick();
+  const saved=JSON.parse(first.serializeDocument());saved.bibliographyLibraries[0].id='portable';first.openDocument(JSON.stringify(saved));
+  const mount=document.createElement('div');document.body.append(mount);const second=new PlateMathHost(mount,new EditorModel(),{activate(){},leave(){},change(){}});
+  second.setBibliographyLibraries([{...full,source:full.source.replace('Original full','Updated full')}],['catalog']);
+  const extra={id:'extra',name:'Extra.bib',source:'@book{extra,title={Extra}}'};first.setBibliographyLibraries([...first.getBibliographyLibraries(),extra],['extra']);
+  assert.equal(first.isCapturedBibliographyLibrary('portable'),false);
+  first.setBibliographyLibraries(first.getBibliographyLibraries().filter(library=>library.id!=='portable'));
+  assert.deepEqual(JSON.parse(window.localStorage.getItem('vulgar-notes-bibliography-library-catalog-v1')).libraries.map(library=>library.id),['extra']);first.destroy();second.destroy();
  });
  await t.test('BibTeX citation resolution, generated bibliography and source updates react without changing prose',async()=>{
   const {flow,editor}=setup();
@@ -268,6 +307,9 @@ test('Plate document / independent MathJax mount integration',async t=>{
   flow.openDocument(JSON.stringify({version:1,value}));flow.setBibliographyLibraries([{id:'lib',name:'Papers.bib',source:'@book{g1,title={Library one}}\n@book{g2,title={Library two}}'}]);await tick();
   assert.equal(flow.mount.querySelectorAll('[data-bibliography-heading]').length,1);
   assert.deepEqual([...flow.mount.querySelectorAll('[data-bibliography-key]')].map(node=>node.dataset.bibliographyKey),['g1','endnote:second','g2','endnote:first','manual']);
+  const inlineNote=flow.mount.querySelector('.endnote-reference'),inlineNoteText=inlineNote.querySelector('button');
+  assert.equal(inlineNote.tagName,'SPAN');assert.equal(inlineNote.classList.contains('tex-reference'),true);assert.equal(inlineNoteText.classList.contains('tex-reference-content'),true);assert.equal(inlineNoteText.classList.contains('text-blue-700'),true);
+  assert.equal(/text-xs|font-medium|align-super/.test(inlineNote.className+' '+inlineNoteText.className),false);
   assert.deepEqual([...flow.mount.querySelectorAll('.tex-reference-content,.endnote-reference>button,.endnote-reference button')].map(node=>node.textContent),['[1]','[2]','[3]','[4]','[5]']);
   assert.match(flow.mount.querySelector('[data-bibliography-key="endnote:second"] button[aria-label]').getAttribute('aria-label'),/ 2$/);
   assert.deepEqual(editor.children.filter(node=>node.type==='footnoteDefinition'||node.type==='bibliography_entry').map(node=>node.id),['note-second','note-first','manual']);
@@ -283,6 +325,7 @@ test('Plate document / independent MathJax mount integration',async t=>{
   const {flow,editor}=setup();editor.tf.setValue([{type:'p',children:[{text:'Before '},{type:'footnoteReference',identifier:'1',children:[{text:''}]},{text:''}]}]);await tick();
   editor.tf.focus({at:editor.api.end([])});await tick();const button=flow.mount.querySelector('.endnote-reference button');button.getBoundingClientRect=()=>({left:10,right:50,top:0,bottom:20,width:40,height:20});
   button.dispatchEvent(new window.MouseEvent('click',{bubbles:true,clientX:30,button:0}));await tick();assert.deepEqual(editor.selection.anchor.path,[0,1,0]);assert.equal(button.closest('.endnote-reference').dataset.endnoteSelected,'true');
+  assert.equal(button.closest('.endnote-reference').dataset.referenceSelected,'true');assert.equal(button.classList.contains('text-red-600'),true);
   button.dispatchEvent(new window.MouseEvent('click',{bubbles:true,clientX:49,button:0}));await tick();assert.deepEqual(editor.selection.anchor.path,[0,2]);assert.equal(button.closest('.endnote-reference').dataset.endnoteSelected,'false');
   const event={key:'Backspace',repeat:false,nativeEvent:{isComposing:false},preventDefault(){}};
   flow.keyDown(event);await tick();assert.equal(editor.children[0].children.some(node=>node.type==='footnoteReference'),true);assert.deepEqual(editor.selection,{anchor:{path:[0,0],offset:7},focus:{path:[0,2],offset:0}});

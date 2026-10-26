@@ -16,7 +16,7 @@ import { KEYS } from 'platejs';
 import { useEditorReadOnly } from 'platejs/react';
 
 import { InsertMathToolbarButtons } from './insert-math-toolbar-buttons';
-import { CrossReferenceToolbarButton,CitationToolbarButton } from './reference-toolbar-button';
+import { CrossReferenceToolbarButton,CitationReferenceEditor } from './reference-toolbar-button';
 import { InsertEndnoteToolbarButton } from './insert-endnote-toolbar-button';
 import { BibtexLibrariesButton } from './bibtex-libraries-button';
 import { AlignToolbarButton } from './align-toolbar-button';
@@ -53,6 +53,7 @@ export function FixedToolbarButtons() {
 
   return (
     <div className="flex w-full">
+      <CitationReferenceEditor />
       {!readOnly && (
         <>
           <ToolbarGroup>
@@ -80,7 +81,7 @@ export function FixedToolbarButtons() {
           </ToolbarGroup>
 
           <ToolbarGroup>
-            <InsertEndnoteToolbarButton /><CitationToolbarButton /><BibtexLibrariesButton />
+            <InsertEndnoteToolbarButton /><BibtexLibrariesButton />
           </ToolbarGroup>
 
           <ToolbarGroup>

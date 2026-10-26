@@ -31,7 +31,7 @@ export function BibtexLibrariesButton({compact=false,onChooseKey}:{compact?:bool
       if(!replace&&current.some(library=>library.name===file.name))throw Error(t('A library with this filename already exists. Use Replace library to update it.'));
       const library:BibLibrary={id:replace?.id??crypto.randomUUID(),name:file.name,source:file.text};
       const next=replace?current.map(item=>item.id===replace.id?library:item):[...current,library];
-      host.setBibliographyLibraries(next);setSelectedId(library.id);setQuery('');setRemoveId('');
+      host.setBibliographyLibraries(next,[library.id]);setSelectedId(library.id);setQuery('');setRemoveId('');
     }catch(err){setError(err instanceof Error?err.message:String(err));}
     finally{busy.current=false;setWorking(false);}
   };
@@ -66,7 +66,9 @@ export function BibtexLibrariesButton({compact=false,onChooseKey}:{compact?:bool
     <Dialog open={open} onOpenChange={value=>{if(!busy.current)setOpen(value);}}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-4xl" onCloseAutoFocus={event=>event.preventDefault()}>
         <DialogTitle>{t('BibTeX libraries')}</DialogTitle>
-        <DialogDescription>{t('Choose references from .bib libraries. Only cited entries and their required dependencies are saved with this document.')}</DialogDescription>
+        <DialogDescription>{t('Full libraries are kept on this device. Only cited entries and their required dependencies are saved with this document.')}</DialogDescription>
+        {libraries.some(library=>host?.isCapturedBibliographyLibrary(library.id))&&<p className="rounded border border-amber-200 bg-amber-50 p-3 text-sm">{t('This document contains only its cited entries. Load the original .bib file to browse the full library.')}</p>}
+        {!!host?.getBibliographyNotices().length&&<div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm">{host.getBibliographyNotices().map((notice,index)=><p key={index}>{notice}</p>)}</div>}
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" size="sm" disabled={working||!host} onClick={()=>void read()}><PlusIcon className="mr-1 size-4" />{t('Add .bib library')}</Button>
           <span className="text-sm text-muted-foreground">{t('Libraries')}: {libraries.length} · {t('Entries')}: {entries.length}</span>
@@ -76,6 +78,7 @@ export function BibtexLibrariesButton({compact=false,onChooseKey}:{compact?:bool
             <button type="button" className={'mb-1 w-full rounded px-2 py-2 text-left text-sm '+(!selectedId?'bg-muted':'hover:bg-muted')} onClick={()=>setSelectedId('')}>{t('All libraries')}</button>
             {libraries.map(library=><div key={library.id} className={'mb-1 rounded border '+(selectedId===library.id?'bg-muted':'')}>
               <button type="button" className="w-full break-all px-2 pt-2 text-left text-sm" onClick={()=>{setSelectedId(library.id);setRemoveId('');}}>{library.name}</button>
+              {host?.isCapturedBibliographyLibrary(library.id)&&<div className="px-2 text-xs text-muted-foreground">{t('Document references only')} <button type="button" className="text-blue-700 underline" disabled={working} onClick={()=>void read(library)}>{t('Load full library')}</button></div>}
               <div className="flex items-center justify-between gap-1 px-2 pb-1">
                 <span className="text-xs text-muted-foreground">{entries.filter(entry=>entry.libraryId===library.id).length} {t('Entries')}</span>
                 <span className="flex">

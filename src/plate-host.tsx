@@ -21,6 +21,7 @@ import {importMath} from './tex-import';
 import {bibliographyItems,citedReferenceKeys,validReferenceKey} from './references';
 import {citedBibLibraries,validateBibLibraries,validCitationKey,type BibLibrary} from './bibtex';
 import {bibliographyMarkdown} from './bibliography-markdown';
+import {readLibraryCache,writeLibraryCache,restoreLibraryAttachments} from './bibliography-library-store';
 
 export class PlateMathHost implements DocumentHost {
   readonly editor:PlateEditor;
@@ -34,6 +35,11 @@ export class PlateMathHost implements DocumentHost {
   private activeFormula:HTMLElement|undefined;
   private pendingActivation=new Set<string>();
   private bibliographyLibraries:readonly BibLibrary[]=Object.freeze([]);
+  private capturedLibraryIds=new Set<string>();
+  private cacheLibraryIds:Record<string,string>=Object.create(null);
+  private libraryNotices:string[]=[];
+  isCapturedBibliographyLibrary=(id:string)=>this.capturedLibraryIds.has(id);
+  getBibliographyNotices=():readonly string[]=>this.libraryNotices;
   private bibliographyListeners=new Set<()=>void>();
   getBibliographyLibraries=():readonly BibLibrary[]=>this.bibliographyLibraries;
   subscribeBibliography=(listener:()=>void)=>{this.bibliographyListeners.add(listener);return ()=>{this.bibliographyListeners.delete(listener);};};
@@ -41,11 +47,38 @@ export class PlateMathHost implements DocumentHost {
     this.bibliographyLibraries=Object.freeze(libraries.map(library=>Object.freeze({...library})));
     for(const listener of this.bibliographyListeners)listener();
   }
-  /** Attached sources remain a session view; only cited entries belong to the document. */
-  setBibliographyLibraries(libraries:readonly BibLibrary[]):void {
+  /** Full sources live on this device; only cited entries belong to the document. */
+  setBibliographyLibraries(libraries:readonly BibLibrary[],updatedLibraryIds?:readonly string[]):void {
     const next=validateBibLibraries(libraries);validateDocumentLibraries(this.editor.children,next);
-    if(JSON.stringify(next)===JSON.stringify(this.bibliographyLibraries))return;
+    if(JSON.stringify(next)===JSON.stringify(this.bibliographyLibraries)&&!updatedLibraryIds?.length)return;
+    const changed=new Set(updatedLibraryIds??next.filter(library=>!this.bibliographyLibraries.some(old=>old.id===library.id&&old.name===library.name&&old.source===library.source)).map(library=>library.id));
+    const removed=this.bibliographyLibraries.filter(old=>!next.some(library=>library.id===old.id));
+    const replaceIds=new Set([...removed.map(library=>this.cacheLibraryIds[library.id]??library.id),...next.filter(library=>changed.has(library.id)).map(library=>this.cacheLibraryIds[library.id]??library.id)]);
+    const currentCache=readLibraryCache();
+    const cached=[...currentCache.libraries.filter(library=>!replaceIds.has(library.id)),...next.filter(library=>changed.has(library.id))];
+    // Commit the independent cache before replacing a usable in-memory source.
+    writeLibraryCache(cached);
+    const origins:Record<string,string>=Object.create(null);
+    const captured=new Set<string>();
+    for(const library of next){
+      // Source identity survives another window updating the same catalog.
+      // Its current contents are separate from this view's full/captured state.
+      const cacheId=changed.has(library.id)?library.id:this.cacheLibraryIds[library.id];
+      if(cacheId)origins[library.id]=cacheId;
+      if(!changed.has(library.id)&&(!this.bibliographyLibraries.some(old=>old.id===library.id)||this.capturedLibraryIds.has(library.id)))captured.add(library.id);
+    }
+    this.capturedLibraryIds=captured;
+    this.cacheLibraryIds=origins;
+    this.libraryNotices=[];
     this.replaceBibliography(next);this.save();this.scheduleChange();
+  }
+  private restoreBibliography(captured:readonly BibLibrary[],value:Value){
+    const cache=readLibraryCache();
+    const reserved=[...NodeApi.nodes({children:value} as PlateEditor)].filter(([node])=>node.type==='bibliography_entry').map(([node])=>String(node.citeKey));
+    const restored=restoreLibraryAttachments(captured,cache.libraries,reserved);
+    this.capturedLibraryIds=new Set(restored.capturedOnlyIds);this.cacheLibraryIds=restored.cacheLibraryIds;
+    this.libraryNotices=[...(cache.error?[t('The saved library cache could not be read. The original data has been kept.')]:[]),...restored.conflicts.map(conflict=>t('A local library differs from this document. Its captured references were preserved.')+' '+conflict.name)];
+    this.replaceBibliography(restored.libraries);
   }
   private envelope(){
     const bibliographyLibraries=citedBibLibraries(this.bibliographyLibraries,citedReferenceKeys(this.editor.children));
@@ -53,7 +86,7 @@ export class PlateMathHost implements DocumentHost {
   }
   get readOnly(){return this.mount.querySelector('[data-slate-editor]')?.getAttribute('contenteditable')==='false';}
   constructor(readonly mount:HTMLElement,initial:EditorModel,private hooks:MathHostHooks){
-    const restored=restoreDocumentEnvelope(initial);this.replaceBibliography(restored.bibliographyLibraries);
+    const restored=restoreDocumentEnvelope(initial);this.restoreBibliography(restored.bibliographyLibraries,restored.value);
     this.editor=createPlateEditor({plugins:EditorKit,value:restored.value});
     this.ensureFormulas();
     const originalNormalize=this.editor.tf.normalizeNode.bind(this.editor);
@@ -178,7 +211,7 @@ export class PlateMathHost implements DocumentHost {
     draftStorage().setItem(documentStorageKey+'-before-open',this.serializeDocument());
     this.hooks.leave();this.activeFormula=undefined;this.pendingActivation.clear();this.models.clear();
     flushSync(()=>{
-      this.replaceBibliography(opened.bibliographyLibraries);this.editor.tf.setValue(opened.value);
+      this.restoreBibliography(opened.bibliographyLibraries,opened.value);this.editor.tf.setValue(opened.value);
       this.editor.tf.withoutSaving(()=>this.editor.tf.normalize({force:true}));
     });
     for(const [raw] of NodeApi.nodes(this.editor)){

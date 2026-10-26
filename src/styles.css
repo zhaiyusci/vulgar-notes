@@ -34,5 +34,7 @@
 .display-mount-wrapper > .tex-label-marker { left:auto; right:0; bottom:calc(50% + 1em); }
 .tex-reference { display:inline-block; vertical-align:baseline; }
 .tex-reference-content { padding:0 3px; border-radius:3px; cursor:text; }
+/* Endnotes use a button for their hover card; match the inline reference text. */
+.endnote-reference button.tex-reference-content { display:inline; font:inherit; line-height:inherit; letter-spacing:inherit; text-align:inherit; vertical-align:baseline; border:0; background:transparent; margin:0; padding:0 3px; appearance:none; }
 .tex-reference[data-reference-selected="true"] .tex-reference-content { background:#dbeafe; outline:1px solid #60a5fa; }
 [data-formula-selected="true"] > .math-mount-wrapper > .inline-formula { background:#dbeafe; outline:1px solid #60a5fa; border-radius:3px; }

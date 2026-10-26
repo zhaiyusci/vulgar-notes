@@ -1,5 +1,5 @@
 import {useCallback,useContext,useEffect,useRef,useState} from 'react';
-import {BookOpenIcon,Link2Icon} from 'lucide-react';
+import {Link2Icon} from 'lucide-react';
 import {NodeApi} from 'platejs';
 import {useEditorRef,useEditorSelector} from 'platejs/react';
 import type {Range} from 'slate';
@@ -16,11 +16,12 @@ import {BibtexLibrariesButton} from './bibtex-libraries-button';
 type ReferenceKind='cross-reference'|'citation';
 type CrossReferenceCommand=Exclude<ReferenceCommand,'cite'>;
 
-export function CrossReferenceToolbarButton(){return <ReferenceDialogButton kind="cross-reference" />;}
-export function CitationToolbarButton(){return <ReferenceDialogButton kind="citation" />;}
+export function CrossReferenceToolbarButton(){return <ReferenceDialog kind="cross-reference" />;}
+/** Existing citations remain editable; new citations are inserted from the library manager. */
+export function CitationReferenceEditor(){return <ReferenceDialog kind="citation" />;}
 
-/** The two entry points have independent dialogs and cannot change kinds. */
-function ReferenceDialogButton({kind}:{kind:ReferenceKind}){
+/** Cross-references and existing citations have independent editors and cannot change kinds. */
+function ReferenceDialog({kind}:{kind:ReferenceKind}){
   const editor=useEditorRef(),host=useContext(HostContext);
   const libraries=useBibliographyLibraries();
   const citation=kind==='citation';
@@ -33,12 +34,13 @@ function ReferenceDialogButton({kind}:{kind:ReferenceKind}){
   const targets=useEditorSelector(editor=>referenceTargets(editor.children,libraries),[libraries]);
   const start=useCallback((node?:ReferenceNode)=>{
     if(editor.api.isReadOnly())return;
+    if(citation&&(!node||typeof node.id!=='string'||!node.id))return;
     host?.prepareTextInsertion();
     selection.current=editor.selection?structuredClone(editor.selection):null;
     editing.current=node?.id as string|undefined;
     setCrossCommand(node?.command==='ref'?'ref':'eqref');setKey(node?.keys.join(', ')||'');setError('');setQuery('');
     setOpen(true);
-  },[editor,host]);
+  },[editor,host,citation]);
   useEffect(()=>{
     const edit=(event:Event)=>{
       if(editor.api.isReadOnly())return;
@@ -54,6 +56,7 @@ function ReferenceDialogButton({kind}:{kind:ReferenceKind}){
     if(!keys.every(citation?validCitationKey:validReferenceKey)||action!=='cite'&&keys.length!==1){setError(t(citation?'Use a citation key containing letters, digits, colon, dot, underscore, slash, plus, hyphen or apostrophe.':'Use a letter followed by letters, digits, colon, dot, underscore or hyphen.'));return;}
     try{
       const existing=editing.current?[...NodeApi.nodes(editor)].find(([n])=>n.type==='tex_reference'&&n.id===editing.current):undefined;
+      if(citation&&!existing){setError(t('This reference is no longer available.'));return;}
       if(editing.current&&(!existing||(citation?existing[0].command!=='cite':existing[0].command!=='ref'&&existing[0].command!=='eqref'))){setError(t('This reference is no longer available.'));return;}
       if(!existing&&!selection.current){setError(t('Place the cursor in the document first.'));return;}
       editor.tf.withNewBatch(()=>{
@@ -71,7 +74,7 @@ function ReferenceDialogButton({kind}:{kind:ReferenceKind}){
   const search=query.trim().toLocaleLowerCase();
   const candidates=targets.filter(x=>x.key&&(action==='cite'?x.kind==='bibliography':action==='eqref'?x.kind==='equation':x.kind!=='bibliography'&&x.kind!=='endnote')&&(!search||(x.key+' '+x.description).toLocaleLowerCase().includes(search)));
   return <>
-    <ToolbarButton tooltip={title} aria-label={title} title={title} onPointerDown={e=>e.preventDefault()} onClick={()=>start()}>{citation?<BookOpenIcon />:<Link2Icon />}</ToolbarButton>
+    {!citation&&<ToolbarButton tooltip={title} aria-label={title} title={title} onPointerDown={e=>e.preventDefault()} onClick={()=>start()}><Link2Icon /></ToolbarButton>}
     <Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto" onCloseAutoFocus={e=>e.preventDefault()}>
       <DialogTitle>{title}</DialogTitle>
       <DialogDescription>{t(citation?'Cite entries from your bibliography libraries. Citation keys stay stable when numbering changes.':'Reference a label in the document. Labels stay stable when numbering changes.')}</DialogDescription>

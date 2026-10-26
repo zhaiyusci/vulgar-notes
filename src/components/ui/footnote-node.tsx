@@ -147,17 +147,19 @@ export function FootnoteReferenceElement(
     },
     [path]
   );
+  const isReferenceSelected=focused&&(selected||isSelectionInsideAtom);
 
   return (
     <PlateElement
       {...props}
-      as="sup"
-      className="endnote-reference group/footnote-ref mx-0.5 align-super"
+      as="span"
+      className="endnote-reference tex-reference group/footnote-ref"
       attributes={{
         ...getNavigationAttributes(props.attributes, navigationHighlight),
         contentEditable: false,
         draggable: true,
-        'data-endnote-selected':(selected&&focused)||isSelectionInsideAtom?'true':'false',
+        'data-endnote-selected':isReferenceSelected?'true':'false',
+        'data-reference-selected':isReferenceSelected?'true':'false',
       }}
     >
       {props.children}
@@ -166,11 +168,8 @@ export function FootnoteReferenceElement(
           <button
             type="button"
             className={cn(
-              'cursor-pointer rounded-xs font-medium text-primary text-xs focus:ring-2 focus:ring-ring focus:ring-offset-1 group-data-[nav-target=true]/footnote-ref:bg-(--color-highlight)',
-              !number&&'text-red-600 underline decoration-wavy',
-              (selected && focused) || isSelectionInsideAtom
-                ? 'ring-2 ring-ring ring-offset-1'
-                : null
+              'tex-reference-content group-data-[nav-target=true]/footnote-ref:bg-(--color-highlight)',
+              number?'text-blue-700':'text-red-600 underline decoration-wavy'
             )}
             title={number?t('Endnote'):t('Unresolved or duplicate endnote')}
             onClick={(event) => {

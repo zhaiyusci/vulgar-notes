@@ -13,10 +13,10 @@ export function FootnoteReferenceElementStatic(
   return (
     <SlateElement
       {...props}
-      as="sup"
-      className="mx-0.5 align-super font-medium text-primary text-xs"
+      as="span"
+      className="endnote-reference tex-reference"
     >
-      {props.children}[{element.identifier ?? ''}]
+      {props.children}<span className="tex-reference-content text-blue-700">[{element.identifier ?? ''}]</span>
     </SlateElement>
   );
 }
