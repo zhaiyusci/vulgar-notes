@@ -16,6 +16,10 @@ export function documentContentKey(source:string):string {
   });
 }
 export interface DocumentEnvelope {version:1;value:Value;bibliographyLibraries:BibLibrary[];bibliographyStyle?:BibliographyStyle}
+export function isBlankDocument(value:Value,style:BibliographyStyle='simple'):boolean{
+  const node=value[0],leaf=node?.children?.[0];
+  return style==='simple'&&value.length===1&&node.type==='p'&&Object.keys(node).every(key=>['type','children','id'].includes(key))&&node.children.length===1&&leaf?.text===''&&Object.keys(leaf).every(key=>key==='text');
+}
 /** Validate both text and its attached source libraries before replacing a document. */
 export function parseDocumentEnvelope(source:string):DocumentEnvelope {
   const saved=JSON.parse(source);
@@ -99,8 +103,7 @@ export function restoreDocumentEnvelope(initial:EditorModel):DocumentEnvelope {
     for(const key of keys){const value=draftStorage().getItem(key);if(value)draftStorage().setItem(key+'-recovery',value);}
     console.warn('The original draft has been preserved for recovery.',error);
   }
-  if(sessionId)return {version:1,value:[{type:'p',children:[{text:''}]}],bibliographyLibraries:[]};
-  return {version:1,value:[{type:'p',children:[{text:'在这里输入正文。已知 '},formulaNode(initial),{text:'，可以继续输入文字，也可以在光标处插入新的公式。'}]}],bibliographyLibraries:[]};
+  return {version:1,value:[{type:'p',children:[{text:''}]}],bibliographyLibraries:[]};
 }
 export function restoreDocument(initial:EditorModel):Value {return restoreDocumentEnvelope(initial).value;}
 export function validate(nodes:unknown[]):void {

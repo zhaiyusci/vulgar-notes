@@ -1,7 +1,41 @@
 import {isTauri} from '@tauri-apps/api/core';
 import {t} from './i18n';
 
-export interface OpenedDocument {text: string; name: string; path?: string}
+export interface DocumentFile {name: string; path?: string}
+export interface OpenedDocument extends DocumentFile {text: string}
+
+/** Browser handles stay out of the document's serializable data. */
+export interface DocumentFileHandle {
+  kind:'file';
+  name:string;
+  getFile():Promise<File>;
+  createWritable?():Promise<{write(data:string):Promise<void>;close():Promise<void>;abort?():Promise<void>}>;
+  queryPermission?:(options:{mode:'read'|'readwrite'})=>Promise<PermissionState>;
+  requestPermission?:(options:{mode:'read'|'readwrite'})=>Promise<PermissionState>;
+  isSameEntry?:(other:DocumentFileHandle)=>Promise<boolean>;
+}
+type DocumentPickerWindow=Window&{
+  showOpenFilePicker?:(options:{id:string;multiple:false;excludeAcceptAllOption:true;types:{description:string;accept:Record<string,string[]>}[]})=>Promise<DocumentFileHandle[]>;
+  showSaveFilePicker?:(options:{id:string;suggestedName:string;excludeAcceptAllOption:true;types:{description:string;accept:Record<string,string[]>}[]})=>Promise<DocumentFileHandle>;
+};
+const documentHandles=new WeakMap<DocumentFile,DocumentFileHandle>();
+export function documentFileHandle(file:DocumentFile):DocumentFileHandle|undefined {return documentHandles.get(file);}
+export function documentTargetFromHandle(handle:DocumentFileHandle):DocumentFile {
+  const file:DocumentFile={name:handle.name};documentHandles.set(file,handle);return file;
+}
+export function sameDocumentPath(path:string,expected:string):boolean {
+  const normalize=(value:string)=>/^(?:[a-z]:[\\/]|\\\\)/i.test(value)?value.replace(/\//g,'\\').toLowerCase():value;
+  return normalize(path)===normalize(expected);
+}
+
+function checkDocumentName(name:string,expectedName?:string):void {
+  if(!documentFilePattern.test(name))throw Error(t('Please choose a Vulgar Notes document (.vulgar or legacy .json).'));
+  if(expectedName&&name!==expectedName)throw Error(t('Please select the original document:')+' '+expectedName);
+}
+export async function documentFromHandle(handle:DocumentFileHandle,expectedName?:string):Promise<OpenedDocument> {
+  const file=await handle.getFile();checkDocumentName(file.name,expectedName);
+  const result:OpenedDocument={name:file.name,text:await file.text()};documentHandles.set(result,handle);return result;
+}
 
 export const defaultDocumentName = 'document.vulgar';
 const documentFilePattern = /\.(vulgar|json)$/i;
@@ -77,8 +111,30 @@ async function openTextFile(extensions:string[],filterName:string,accept:string,
   });
 }
 
-export async function openDocumentFile():Promise<OpenedDocument|null>{
-  return openTextFile(['vulgar','json'],'Vulgar Notes document','.vulgar,.json,application/json','Please choose a Vulgar Notes document (.vulgar or legacy .json).');
+export async function openDocumentFile(expected?:DocumentFile):Promise<OpenedDocument|null>{
+  if(isTauri()){
+    const [{open},{readTextFile}]=await Promise.all([import('@tauri-apps/plugin-dialog'),import('@tauri-apps/plugin-fs')]);
+    const path=await open({multiple:false,directory:false,...(expected?.path?{defaultPath:expected.path}:{}),filters:[{name:t('Vulgar Notes document'),extensions:['vulgar','json']}]});
+    if(!path)return null;
+    if(expected?.path&&!sameDocumentPath(path,expected.path))throw Error(t('Please select the original document:')+' '+expected.path);
+    const name=path.split(/[\\/]/).pop()!;checkDocumentName(name,expected?.path?undefined:expected?.name);
+    return {path,name,text:await readTextFile(path)};
+  }
+  const pickerWindow=window as DocumentPickerWindow;
+  if(pickerWindow.showOpenFilePicker){
+    let handle:DocumentFileHandle|undefined;
+    try{
+      [handle]=await pickerWindow.showOpenFilePicker({id:'vulgar-document',multiple:false,excludeAcceptAllOption:true,types:[{description:t('Vulgar Notes document'),accept:{'application/json':['.vulgar','.json']}}]});
+      if(!handle)return null;
+    }catch(error){
+      const name=(error as {name?:string})?.name;
+      if(name==='AbortError')return null;
+      if(name!=='SecurityError'&&name!=='NotSupportedError')throw error;
+    }
+    if(handle)return documentFromHandle(handle,expected?.name);
+  }
+  const file=await openTextFile(['vulgar','json'],'Vulgar Notes document','.vulgar,.json,application/json','Please choose a Vulgar Notes document (.vulgar or legacy .json).');
+  if(file)checkDocumentName(file.name,expected?.name);return file;
 }
 
 /** Adding a bibliography source is separate from opening a native document. */
@@ -95,10 +151,11 @@ export async function confirmReplaceDocument(): Promise<boolean> {
   return window.confirm(message);
 }
 
-/** Null means cancelled; a browser download has no reusable filesystem path. */
-export async function saveDocumentFile(text: string, currentPath?: string, name = defaultDocumentName): Promise<{path?:string; name:string} | null> {
+/** Pass the opened/saved object to reuse a browser handle. Null means cancelled. */
+export async function saveDocumentFile(text: string, target?: string|DocumentFile, name = typeof target==='object'?target.name:defaultDocumentName): Promise<DocumentFile | null> {
   const suggestedName = documentName(name);
   if (isTauri()) {
+    const currentPath=typeof target==='string'?target:target?.path;
     const [{save}, {writeFile}] = await Promise.all([import('@tauri-apps/plugin-dialog'), import('@tauri-apps/plugin-fs')]);
     const path = currentPath ?? await save({defaultPath:suggestedName, filters:[{name:t('Vulgar Notes document'),extensions:['vulgar']}]});
     if (!path) return null;
@@ -106,13 +163,39 @@ export async function saveDocumentFile(text: string, currentPath?: string, name 
     await writeFile(path, new TextEncoder().encode(text));
     return {path, name:path.split(/[\\/]/).pop()!};
   }
+  const oldHandle=typeof target==='object'?documentHandles.get(target):undefined;
+  const pickerWindow=window as DocumentPickerWindow;
+  let handle=oldHandle;
+  if(!handle&&pickerWindow.showSaveFilePicker){
+    try{
+      handle=await pickerWindow.showSaveFilePicker({id:'vulgar-document',suggestedName,excludeAcceptAllOption:true,types:[{description:t('Vulgar Notes document'),accept:{'application/json':['.vulgar']}}]});
+      if(!handle)return null;
+    }catch(error){
+      const name=(error as {name?:string})?.name;
+      if(name==='AbortError')return null;
+      // When an embedded browser forbids the picker, retain download support.
+      if(name!=='SecurityError'&&name!=='NotSupportedError')throw error;
+    }
+  }
+  if(handle){
+    if(oldHandle){
+      const permission=await handle.queryPermission?.({mode:'readwrite'});
+      if(permission&&permission!=='granted'&&(!handle.requestPermission||await handle.requestPermission({mode:'readwrite'})!=='granted'))return null;
+    }
+    if(!(oldHandle?documentFilePattern:/\.vulgar$/i).test(handle.name))throw Error(t('Please use the .vulgar extension.'));
+    if(!handle.createWritable)throw Error(t('This browser cannot save changes to the selected file.'));
+    const stream=await handle.createWritable();
+    try{await stream.write(text);await stream.close();}catch(error){try{await stream.abort?.();}catch{/* Keep the original write failure. */}throw error;}
+    const saved:DocumentFile={name:handle.name};documentHandles.set(saved,handle);return saved;
+  }
   await saveExport(new Blob([text], {type:'application/json;charset=utf-8'}), suggestedName);
+  if(typeof target==='object'&&target.name===suggestedName)return target;
   return {name:suggestedName};
 }
 
-/** Browser tabs remain independent; the desktop window restores its last draft. */
+/** Recovery belongs to a document UUID, including after its tab/window closes. */
 export function draftStorage(): Storage {
-  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window ? localStorage : sessionStorage;
+  return localStorage;
 }
 
 export async function saveExport(blob: Blob, filename: string): Promise<void> {

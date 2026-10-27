@@ -16,7 +16,7 @@ import {TooltipProvider} from './components/ui/tooltip';
 import {Toaster} from 'sonner';
 import {EditorModel} from './editor-model';
 import type {DocumentHost,MathHostHooks,FormulaEntry} from './document-host';
-import {documentStorageKey,formulaNode,isFormula,newId,plateLatex,restoreDocumentEnvelope,parseDocumentEnvelope,validateDocumentLibraries,documentContentKey,type FormulaNode} from './plate-document';
+import {documentStorageKey,formulaNode,isFormula,newId,plateLatex,restoreDocumentEnvelope,parseDocumentEnvelope,validateDocumentLibraries,documentContentKey,isBlankDocument,type FormulaNode} from './plate-document';
 import {importMath} from './tex-import';
 import {bibliographyItems,citedReferenceKeys,validReferenceKey} from './references';
 import {citedBibLibraries,validateBibLibraries,validCitationKey,type BibLibrary} from './bibtex';
@@ -114,7 +114,9 @@ export class PlateMathHost implements DocumentHost {
     // Slate's normalization loop also calls its legacy entry point.
     assignLegacyTransforms(this.editor,{normalizeNode:this.editor.tf.normalizeNode});
     this.editor.tf.withoutSaving(()=>this.editor.tf.normalize({force:true}));
-    this.savedDocument=JSON.stringify(this.envelope(),null,2);
+    // Recovery is not a file save. The lifecycle restores a real saved baseline
+    // after construction; otherwise restored content remains unsaved.
+    this.savedDocument=isBlankDocument(this.editor.children,this.bibliographyStyle)?JSON.stringify(this.envelope(),null,2):JSON.stringify({version:1,value:[{type:'p',children:[{text:''}]}]},null,2);
     mount.removeAttribute('contenteditable');mount.removeAttribute('role');mount.removeAttribute('aria-label');mount.id='plateMount';
     this.root=createRoot(mount);
     flushSync(()=>this.root.render(<HostContext.Provider value={this}><TooltipProvider><Plate editor={this.editor} onChange={()=>this.changed()}>
@@ -197,7 +199,10 @@ export class PlateMathHost implements DocumentHost {
     const model=this.models.get(element.dataset.mathId!);return model?[{element,model}]:[];
   });}
   private locate(element:HTMLElement){return [...NodeApi.nodes(this.editor)].find(([n])=>'type' in n&&isFormula(n)&&n.id===element.dataset.mathId) as [FormulaNode,number[]]|undefined;}
-  private save(){try{draftStorage().setItem(documentStorageKey,JSON.stringify(this.envelope()));}catch{document.getElementById('error')!.textContent='文档较大，浏览器草稿空间不足。请导出文档保存。';}}
+  private save(){try{
+    const storage=draftStorage(),source=JSON.stringify(this.envelope());
+    if(storage.getItem(documentStorageKey)!==source){storage.setItem(documentStorageKey,source);storage.setItem(documentStorageKey+'-updated-at',String(Date.now()));}
+  }catch{const error=document.getElementById('error');if(error)error.textContent=t('Recovery storage is full. Please save the document to a file.');}}
   persist(){
     if(this.syncing||!this.initialized)return;this.syncing=true;
     try{

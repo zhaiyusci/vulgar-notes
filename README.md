@@ -41,7 +41,7 @@ When we went looking for a decent name, a crowd of Markdown editors had already 
 
 ## 网页版与 GitHub Pages
 
-网页版部署在 <https://zhaiyusci.github.io/vulgar-notes/>。它是静态网站，不需要运行 Node.js 服务，也没有文档上传或同步后端。浏览器通过文件选择打开 `.vulgar` 和 `.bib`，保存和导出以文件下载实现。各标签页的草稿使用独立的 sessionStorage；需要长期保留的内容请保存为 `.vulgar` 文件。
+网页版部署在 <https://zhaiyusci.github.io/vulgar-notes/>。它是静态网站，不需要运行 Node.js 服务，也没有文档上传或同步后端。浏览器通过文件选择打开 `.vulgar` 和 `.bib`。支持 File System Access 的浏览器可以保存回原文件，其他浏览器以下载方式保存；需要长期保留的内容请保存为 `.vulgar` 文件。
 
 - `npm run web:build`：检查类型、构建编辑器并生成可直接托管的 `web-dist/`。
 - `npm run web:prepare`：使用已构建的编辑器资源生成 `web-dist/`。
@@ -63,7 +63,11 @@ Windows 构建需要 Rust stable MSVC、Visual Studio C++ 工具和 WebView2。�
 
 桌面版嵌入 `desktop-dist` 中的静态资源，不需要 Node.js 服务。MathJax 4.1.3、New Computer Modern、BBoldX 和 mhchem 字体随程序打包；正文和数学编辑无需联网，用户引用的网络媒体仍需要网络。原网页预览继续保留 CDN 配置。
 
-桌面主窗口草稿保存在 WebView 的持久 localStorage，关闭后重新启动会恢复。网页版仍使用各标签页独立的 sessionStorage；浏览器现有草稿不会自动转移到桌面版，可先保存为 `.vulgar` 文档，再在桌面版打开。工具栏提供新建、打开、保存、另存为；桌面版保存会写回本次会话中打开的文件，首次保存或另存为才显示系统文件窗口。浏览器版保存以下载 `.vulgar` 文件实现。重启后主窗口草稿会恢复，但仍需重新打开文档以恢复该文件的保存目标。文件权限通过 Tauri 的 persisted-scope 插件保存，只恢复用户已选择文件的授权。卸载或清理应用数据前应保存重要文档。
+启动时显示“最近文档”，不会自动打开一份默认文档。可以新建空白文档、打开文件或重新打开最近的文件；最近记录始终读取实际文件的新内容，不把缓存快照冒充已保存的文件。文件已移动、授权失效或浏览器不支持保存文件句柄时，需要重新选择原文件。移除最近记录不会删除文件。
+
+工具栏提供返回最近文档、新建、打开、保存、另存为，并显示文件名和未保存标记。正在编辑时，新建仍打开独立桌面窗口或浏览器标签页，保留原文档；首屏新建使用当前窗口。打开另一份文档、返回首屏和关闭桌面窗口时，未保存的修改会提示“保存／不保存／取消”；保存失败或取消文件选择均不会放弃内容。浏览器关闭或刷新未保存的文档时使用浏览器自己的离开页面提示。
+
+每份文档拥有独立 UUID 和本机恢复记录，桌面版及网页版均保存在 localStorage，恢复记录不等于保存到文件。旧版本的固定草稿和标签页草稿会保留原始数据，并迁移为可在首屏选择的未保存文档；不会自动覆盖或打开。正文和公式的恢复、文件保存基线、最近文件的路径或句柄相互独立；路径和句柄不会写入 `.vulgar`。桌面文件权限通过 Tauri 的 persisted-scope 插件保存，只恢复用户已选择文件的授权。浏览器与桌面应用的本机数据不互通，卸载或清理应用／网站数据前应保存重要文档。
 
 “新建文档”（Ctrl/⌘+N）在桌面版打开独立窗口，在网页版打开独立标签页，从空白正文开始。原窗口的内容、撤销历史和保存路径保持不变。每份新文档的草稿、恢复副本和文件会话信息按独立标识隔离；重载同一个窗口或标签页会恢复它自己的草稿。配色、界面语言和完整文献库仍由本设备共享。当前不提供关闭后的文档窗口恢复列表，新建文档需保存为 `.vulgar` 文件以便再次打开。
 
@@ -134,7 +138,7 @@ MathJax 和编辑器会动态创建样式，因此 `dangerousDisableAssetCspModi
 - 公式、交叉引用和文献引用采用两步删除：先选中并高亮，再按删除键删除；长按不会跳过选中步骤。
 - 行内/行间切换保留公式和周围正文；行间公式右键切换编号，未编号公式不占计数。MathJax 根据文档顺序重新编号。
 
-草稿保存在 sessionStorage 的 math-plate-document-v1。首次打开迁移 math-tiptap-document-v1 或更早的 math-text-flow-state，旧键保持不变；损坏数据另存 recovery 键。公式 snapshot 格式不变。浏览器草稿不是永久存储，工具栏的打开/保存保留完整可编辑文档和公式快照。
+恢复数据保存在 localStorage 的 `math-plate-document-v1:<UUID>`，已保存文件的基线保存在同 UUID 的 `editor.open-document:<UUID>`。早期 `math-plate-document-v1`、`math-tiptap-document-v1`、`math-text-flow-state` 和 sessionStorage 草稿只作单向迁移，原始数据保持不变；损坏数据另存 recovery 键。公式 snapshot 格式不变。恢复数据不能代替文件备份，工具栏的打开／保存保留完整可编辑文档和公式快照。
 
 Markdown 使用官方 @platejs/markdown。行内使用美元定界符，行间使用双美元定界符；编号公式在 opening fence 上保留 numbered 元数据，不编号公式不加该标记（自动编号不是标准 Markdown 特性）。LaTeX 导出仍使用 equation / equation*。普通分式、根式、函数、上下标等导入可转为可编辑树；任意 TeX 宏、环境不保证可解析，不能识别的公式保留源码并显示提示，不会伪造或损坏结构。JSON 是无损往返格式。
 

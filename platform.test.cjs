@@ -2,9 +2,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const {build}=require('esbuild');
 
-const source=build({
- entryPoints:['src/platform.ts'],bundle:true,write:false,format:'iife',globalName:'platform',
- plugins:[{name:'platform-test-adapters',setup(b){
+const platformAdapters={name:'platform-test-adapters',setup(b){
   b.onResolve({filter:/^@tauri-apps\//},args=>({path:args.path,namespace:'platform-test'}));
   b.onResolve({filter:/^\.\/i18n$/},()=>({path:'i18n',namespace:'platform-test'}));
   b.onLoad({filter:/.*/,namespace:'platform-test'},({path})=>({contents:path==='i18n'
@@ -25,12 +23,17 @@ const source=build({
         once(name,handler){this.listeners.set(name,handler);return Promise.resolve(()=>this.listeners.delete(name));}
         emit(name,payload){this.listeners.get(name)?.({payload});}
        }`
-     :`export const readTextFile=async path=>{const s=globalThis.platformTest;s.reads.push(path);return s.files[path];};
+     :`export const readTextFile=async path=>{const s=globalThis.platformTest;s.reads.push(path);if(s.blocked?.has(path))throw Error('File access denied');if(!(path in s.files))throw Error('File not found');return s.files[path];};
        export const writeFile=async(path,data)=>{globalThis.platformTest.writes.push({path,data});};`,loader:'js'}));
- }}],
+ }};
+const source=build({
+ entryPoints:['src/platform.ts'],bundle:true,write:false,format:'iife',globalName:'platform',plugins:[platformAdapters],
+}).then(result=>result.outputFiles[0].text);
+const recentSource=build({stdin:{contents:'export * from "./src/platform";export * from "./src/recent-documents";',resolveDir:__dirname,loader:'ts'},
+ bundle:true,write:false,format:'iife',globalName:'platform',plugins:[platformAdapters],
 }).then(result=>result.outputFiles[0].text);
 
-async function harness(t,desktop=true,url='http://localhost/'){
+async function harness(t,desktop=true,url='http://localhost/',bundle=source){
  const {Window}=await import('happy-dom');
  const window=new Window({url});
  window.document.write('<!doctype html><body></body>');
@@ -47,9 +50,10 @@ async function harness(t,desktop=true,url='http://localhost/'){
    event.preventDefault();state.downloads.push({name:event.target.download,url:event.target.href});
   }
  });
- window.eval(await source+'\nwindow.platform=platform;');
+ const reload=async()=>{window.eval(await bundle+'\nwindow.platform=platform;');return window.platform;};
+ await reload();
  t.after(()=>window.happyDOM.abort());
- return {window,state,api:window.platform};
+ return {window,state,api:window.platform,reload};
 }
 
 async function browserSelection(h,file,{cancel=false,bibtex=false}={}){
@@ -259,4 +263,121 @@ test('new desktop document windows get the same local file capabilities without 
  }
  assert.equal(capability.remote,undefined);
  assert.ok(!capability.permissions.includes('core:webview:allow-create-webview'));
+});
+
+function documentHandleStorage(state){
+ state.persistedHandles=new Map();state.hasHandleStore=false;
+ return {open(){const request={};queueMicrotask(()=>{
+  request.result={objectStoreNames:{contains:()=>state.hasHandleStore},createObjectStore(){state.hasHandleStore=true;},close(){},transaction(){
+   const transaction={objectStore:()=>({get:id=>operate(()=>state.persistedHandles.get(id)),put:(handle,id)=>operate(()=>state.persistedHandles.set(id,handle)),delete:id=>operate(()=>state.persistedHandles.delete(id))})};
+   function operate(action){const operation={result:action()};queueMicrotask(()=>transaction.oncomplete?.());return operation;}
+   return transaction;
+  }};if(!state.hasHandleStore)request.onupgradeneeded?.();request.onsuccess?.();
+ });return request;}};
+}
+function enableDocumentHandles(h){
+ Object.defineProperty(h.window,'indexedDB',{value:documentHandleStorage(h.state),configurable:true});
+ h.state.openHandles=[];h.state.saveHandles=[];
+ h.window.showOpenFilePicker=async options=>{h.state.openHandles.push(options);if(h.state.pickHandle instanceof Error)throw h.state.pickHandle;return h.state.pickHandle?[h.state.pickHandle]:[];};
+ h.window.showSaveFilePicker=async options=>{h.state.saveHandles.push(options);if(h.state.saveHandle instanceof Error)throw h.state.saveHandle;return h.state.saveHandle;};
+}
+function documentHandle(h,name='original.vulgar',identity=name){
+ const state={text:'initial file contents',gets:0,checks:[],requests:[],permission:'granted',requested:'granted',writes:0,closes:0,aborts:0,writeError:null};
+ const value={kind:'file',name,identity,
+  getFile:async()=>{state.gets++;return new h.window.File([state.text],name);},
+  isSameEntry:async other=>other.identity===identity,
+  queryPermission:async options=>{state.checks.push(options.mode);return state.permission;},
+  requestPermission:async options=>{state.requests.push(options.mode);return state.requested;},
+  createWritable:async()=>{let pending;return {write:async text=>{state.writes++;if(state.writeError)throw state.writeError;pending=text;},close:async()=>{state.closes++;state.text=pending;},abort:async()=>{state.aborts++;}};},
+ };return {value,state};
+}
+async function chooseDocument(h,pending,file,{cancel=false}={}){
+ for(let i=0;i<5&&!h.window.document.querySelector('input[type="file"]');i++)await Promise.resolve();
+ const input=h.window.document.querySelector('input[type="file"]');assert.ok(input);
+ if(cancel)input.dispatchEvent(new h.window.Event('cancel'));
+ else{Object.defineProperty(input,'files',{value:file?[file]:[]});input.dispatchEvent(new h.window.Event('change'));}
+ return pending.finally(()=>assert.equal(h.window.document.querySelector('input[type="file"]'),null));
+}
+
+test('recent native documents deduplicate real paths, reread fresh bytes and never store document text',async t=>{
+ const h=await harness(t,true,'http://localhost/',recentSource),path='C:\\notes\\original.vulgar';
+ h.state.openPath=path;h.state.files[path]='first private text';
+ const opened=await h.api.openDocumentFile(),recent=await h.api.rememberRecentDocument(opened);
+ const registry=h.window.localStorage.getItem(h.api.RECENT_DOCUMENTS_KEY);assert.doesNotMatch(registry,/first private text/);
+ const second=await h.api.rememberRecentDocument({name:'ORIGINAL.vulgar',path:'c:/NOTES/ORIGINAL.vulgar'});
+ assert.equal(second.id,recent.id);assert.equal(h.api.listRecentDocuments().length,1);
+ // Re-register the spelling supplied by the original native dialog.
+ await h.api.rememberRecentDocument(opened);h.api=await h.reload();h.state.files[path]='edited outside the application';
+ const target=await h.api.getRecentDocumentTarget(recent.id);assert.equal(target.path,path);assert.equal(h.state.reads.length,1,'recovering a save target must not read the file');
+ const fresh=await h.api.openRecentDocument(recent.id);assert.equal(fresh.text,h.state.files[path]);assert.equal(h.state.opens.length,1,'a remembered native path does not show a new chooser');
+ assert.equal((await h.api.rememberRecentDocument(fresh)).id,recent.id);
+ h.state.blocked=new Set([path]);const before=h.window.localStorage.getItem(h.api.RECENT_DOCUMENTS_KEY);
+ h.state.openPath='C:\\other\\original.vulgar';h.state.files[h.state.openPath]='unrelated';
+ await assert.rejects(h.api.openRecentDocument(recent.id),/original document/);assert.ok(!h.state.reads.includes(h.state.openPath));
+ h.state.openPath=null;assert.equal(await h.api.openRecentDocument(recent.id),null);assert.equal(h.window.localStorage.getItem(h.api.RECENT_DOCUMENTS_KEY),before);
+});
+
+test('browser recent handles survive reload and restore Save targets without permission checks or stale contents',async t=>{
+ const h=await harness(t,false,'http://localhost/',recentSource);enableDocumentHandles(h);
+ const original=documentHandle(h);h.state.pickHandle=original.value;
+ const opened=await h.api.openDocumentFile(),recent=await h.api.rememberRecentDocument(opened);
+ assert.deepEqual(Object.keys(opened).sort(),['name','text']);
+ assert.doesNotMatch(h.window.localStorage.getItem(h.api.RECENT_DOCUMENTS_KEY),/initial file contents|getFile|identity/);
+ h.api=await h.reload();const target=await h.api.getRecentDocumentTarget(recent.id);
+ assert.equal(original.state.gets,1);assert.equal(original.state.checks.length,0);assert.equal(original.state.requests.length,0);
+ await h.api.saveDocumentFile('saved after page reload',target);assert.equal(original.state.text,'saved after page reload');assert.deepEqual(original.state.checks,['readwrite']);assert.equal(h.state.saveHandles.length,0);
+ original.state.text='changed externally';const fresh=await h.api.openRecentDocument(recent.id);assert.equal(fresh.text,'changed externally');assert.equal(original.state.gets,2);
+ assert.deepEqual(original.state.checks,['readwrite','read']);assert.equal(h.state.openHandles.length,1);
+ assert.equal((await h.api.rememberRecentDocument(fresh)).id,recent.id);
+ const equivalent=documentHandle(h,'original.vulgar');h.state.pickHandle=equivalent.value;
+ const same=await h.api.rememberRecentDocument(await h.api.openDocumentFile());assert.equal(same.id,recent.id);assert.equal(h.api.listRecentDocuments().length,1);
+ const distinct=documentHandle(h,'original.vulgar','a different directory');h.state.pickHandle=distinct.value;
+ const another=await h.api.rememberRecentDocument(await h.api.openDocumentFile());assert.notEqual(another.id,recent.id);assert.equal(h.api.listRecentDocuments().length,2,'same filename alone must not merge different files');
+});
+
+test('browser native Save overwrites, Save As selects a new target, and canceled or failed writes keep the original file',async t=>{
+ const h=await harness(t,false,'http://localhost/',recentSource);enableDocumentHandles(h);
+ const original=documentHandle(h),replacement=documentHandle(h,'copy.vulgar');h.state.pickHandle=original.value;
+ const opened=await h.api.openDocumentFile();h.state.saveHandle=replacement.value;
+ const saved=await h.api.saveDocumentFile('new document text',opened);assert.equal(saved.name,'original.vulgar');assert.equal(original.state.text,'new document text');assert.equal(h.state.saveHandles.length,0);
+ const copied=await h.api.saveDocumentFile('copy contents',undefined,opened.name);assert.equal(copied.name,'copy.vulgar');assert.equal(replacement.state.text,'copy contents');assert.equal(original.state.text,'new document text');
+ assert.equal(h.state.saveHandles[0].suggestedName,'original.vulgar');assert.deepEqual(Array.from(h.state.saveHandles[0].types[0].accept['application/json']),['.vulgar']);
+ const aborted=Error('picker canceled');aborted.name='AbortError';h.state.saveHandle=aborted;h.state.pickHandle=aborted;
+ assert.equal(await h.api.saveDocumentFile('must not write'),null);assert.equal(await h.api.openDocumentFile(),null);
+ original.state.permission='prompt';original.state.requested='denied';assert.equal(await h.api.saveDocumentFile('denied',saved),null);assert.equal(original.state.text,'new document text');assert.deepEqual(original.state.requests,['readwrite']);
+ original.state.permission='granted';original.state.writeError=Error('disk full');await assert.rejects(h.api.saveDocumentFile('failed',saved),/disk full/);
+ assert.equal(original.state.aborts,1);assert.equal(original.state.text,'new document text');
+ const fileFailure=Error('file access failed after choosing a target');fileFailure.name='SecurityError';replacement.state.writeError=fileFailure;h.state.saveHandle=replacement.value;
+ await assert.rejects(h.api.saveDocumentFile('must not silently download'),/file access failed/);assert.equal(h.state.downloads.length,0);
+ const readFailure=Error('file read failed after selection');readFailure.name='SecurityError';h.state.pickHandle={...replacement.value,getFile:async()=>{throw readFailure;}};
+ await assert.rejects(h.api.openDocumentFile(),/file read failed/);assert.equal(h.window.document.querySelector('input[type="file"]'),null);
+});
+
+test('recent plain-file fallback requests the original name and never reuses an immutable File snapshot',async t=>{
+ const h=await harness(t,false,'http://localhost/',recentSource);
+ const opened=await chooseDocument(h,h.api.openDocumentFile(),new h.window.File(['old text'],'original.vulgar'));
+ const recent=await h.api.rememberRecentDocument(opened),before=h.window.localStorage.getItem(h.api.RECENT_DOCUMENTS_KEY);h.api=await h.reload();
+ await assert.rejects(chooseDocument(h,h.api.openRecentDocument(recent.id),new h.window.File(['wrong text'],'other.vulgar')),/original document/);
+ assert.equal(await chooseDocument(h,h.api.openRecentDocument(recent.id),null,{cancel:true}),null);assert.equal(h.window.localStorage.getItem(h.api.RECENT_DOCUMENTS_KEY),before);
+ const fresh=await chooseDocument(h,h.api.openRecentDocument(recent.id),new h.window.File(['fresh selected text'],'original.vulgar'));
+ assert.equal(fresh.text,'fresh selected text');assert.equal((await h.api.rememberRecentDocument(fresh)).id,recent.id);
+ const restored=await h.api.getRecentDocumentTarget(recent.id),saved=await h.api.saveDocumentFile('downloaded update',restored);
+ assert.equal(saved,restored,'download fallback retains the known recent identity');assert.equal((await h.api.rememberRecentDocument(saved)).id,recent.id);
+});
+
+test('removing a recent entry deletes only its local link and sees later registry updates from another tab',async t=>{
+ const h=await harness(t,false,'http://localhost/',recentSource);enableDocumentHandles(h);
+ const first=documentHandle(h,'first.vulgar'),second=documentHandle(h,'second.vulgar');h.state.pickHandle=first.value;
+ const a=await h.api.rememberRecentDocument(await h.api.openDocumentFile());h.state.pickHandle=second.value;
+ const b=await h.api.rememberRecentDocument(await h.api.openDocumentFile());
+ await h.api.removeRecentDocument(a.id);assert.deepEqual(Array.from(h.api.listRecentDocuments(),entry=>entry.id),[b.id]);assert.equal(h.state.persistedHandles.has(a.id),false);
+ assert.equal(first.state.text,'initial file contents');assert.equal(first.state.writes,0);
+ const stored=JSON.parse(h.window.localStorage.getItem(h.api.RECENT_DOCUMENTS_KEY));stored.documents[0].name='renamed.vulgar';h.window.localStorage.setItem(h.api.RECENT_DOCUMENTS_KEY,JSON.stringify(stored));
+ assert.equal(h.api.listRecentDocuments()[0].name,'renamed.vulgar','old JavaScript maps do not override another tab\'s metadata');
+});
+
+test('recovery storage is durable and shared while document UUIDs provide isolation',async t=>{
+ const h=await harness(t,false);assert.equal(h.api.draftStorage(),h.window.localStorage);
+ h.api.draftStorage().setItem('math-plate-document-v1:first','first');h.api.draftStorage().setItem('math-plate-document-v1:second','second');
+ assert.equal(h.api.draftStorage().getItem('math-plate-document-v1:first'),'first');assert.equal(h.api.draftStorage().getItem('math-plate-document-v1:second'),'second');
 });

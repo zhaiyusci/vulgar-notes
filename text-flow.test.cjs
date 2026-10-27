@@ -4,7 +4,7 @@ const {buildSync}=require('esbuild');
 const vm=require('node:vm');
 const {EditorModel}=require('./editor-model.js');
 const source=buildSync({entryPoints:['src/plate-document.ts','src/tex-import.ts','src/latex-document.ts','src/references.ts'],bundle:true,format:'cjs',write:false,outdir:'test-output',platform:'node'}).outputFiles;
-function load(name,storage,desktopStorage,sessionId){const module={exports:{}};const window=desktopStorage||sessionId?{...(desktopStorage?{__TAURI_INTERNALS__:{}}:{}),location:{href:'https://example.test/vulgar-notes/'+(sessionId?'?document='+sessionId:'')}}:undefined;vm.runInNewContext(source.find(f=>f.path.endsWith(name+'.js')).text,{module,exports:module.exports,console,URL,crypto:globalThis.crypto,sessionStorage:storage,...(window?{window}:{}),...(desktopStorage?{localStorage:desktopStorage}:{})});return module.exports;}
+function load(name,storage,desktopStorage,sessionId){const module={exports:{}};const window=desktopStorage||sessionId?{...(desktopStorage?{__TAURI_INTERNALS__:{}}:{}),location:{href:'https://example.test/vulgar-notes/'+(sessionId?'?document='+sessionId:'')}}:undefined;vm.runInNewContext(source.find(f=>f.path.endsWith(name+'.js')).text,{module,exports:module.exports,console,URL,crypto:globalThis.crypto,sessionStorage:storage,localStorage:desktopStorage??storage,...(window?{window}:{})});return module.exports;}
 const storage=()=>{const data=new Map();return {getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v)}};
 const model=()=>{const m=new EditorModel();m.root.items=['x'];m.index();m.setCursor(m.root.id,1);return m};
 

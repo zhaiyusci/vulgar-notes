@@ -6,16 +6,47 @@ const {EditorModel}=require('./editor-model');
 test('Plate document / independent MathJax mount integration',async t=>{
  const {Window}=await import('happy-dom');const window=new Window({url:'http://localhost/'});
  window.document.write('<!doctype html><html><body></body></html>');
- for(const key of ['innerWidth','innerHeight','window','document','navigator','sessionStorage','Node','Element','HTMLElement','HTMLInputElement','HTMLTextAreaElement','Document','DocumentFragment','MutationObserver','ResizeObserver','DOMParser','Range','Event','CustomEvent','KeyboardEvent','ClipboardEvent','DOMRect','HTMLDivElement','HTMLSpanElement','NodeFilter','ShadowRoot'])Object.defineProperty(globalThis,key,{value:key==='window'?window:window[key],configurable:true});
+ for(const key of ['innerWidth','innerHeight','window','document','navigator','sessionStorage','localStorage','Node','Element','HTMLElement','HTMLInputElement','HTMLTextAreaElement','Document','DocumentFragment','MutationObserver','ResizeObserver','DOMParser','Range','Event','CustomEvent','KeyboardEvent','ClipboardEvent','DOMRect','HTMLDivElement','HTMLSpanElement','NodeFilter','ShadowRoot'])Object.defineProperty(globalThis,key,{value:key==='window'?window:window[key],configurable:true});
  globalThis.getComputedStyle=window.getComputedStyle.bind(window);globalThis.requestAnimationFrame=window.requestAnimationFrame.bind(window);globalThis.cancelAnimationFrame=window.cancelAnimationFrame.bind(window);
  await build({entryPoints:['src/plate-host.tsx'],bundle:true,platform:'node',format:'cjs',outfile:'.plate-test.cjs',loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'test-kit',setup(b){b.onLoad({filter:/components[\\/]editor[\\/]editor-kit\.tsx$/},()=>({contents:`import {ParagraphPlugin} from 'platejs/react';import {TrailingBlockPlugin} from 'platejs';import {MathKit} from './plugins/math-kit';import {MarkdownKit} from './plugins/markdown-kit';import {ReferenceKit} from './plugins/reference-kit';import {FootnoteKit} from './plugins/footnote-kit';export const EditorKit=[ParagraphPlugin,...MathKit,...ReferenceKit,TrailingBlockPlugin,...MarkdownKit,...FootnoteKit];`,loader:'tsx',resolveDir:require('node:path').resolve('src/components/editor')}))}}]});
  const {PlateMathHost}=require('./.plate-test.cjs');fs.unlinkSync('.plate-test.cjs');
  const tick=()=>new Promise(resolve=>setTimeout(resolve,10));
- function setup(){sessionStorage.clear();window.localStorage.clear();const mount=document.createElement('div');document.body.append(mount);const activations=[];const flow=new PlateMathHost(mount,new EditorModel(),{activate:(...args)=>activations.push(args),leave(){},change(){}});return {flow,editor:flow.editor,activations};}
+ // Tests that exercise an existing mixed document seed their own fixture. New
+ // production documents must remain blank, with no built-in example content.
+ function setup({blank=false}={}){
+  sessionStorage.clear();window.localStorage.clear();const initial=new EditorModel();
+  if(!blank)window.localStorage.setItem('math-plate-document-v1',JSON.stringify({version:1,value:[{type:'p',children:[
+   {text:'在这里输入正文。已知 '},
+   {type:'inline_equation',display:false,id:'math-test-initial',snapshot:initial.snapshot(),texExpression:initial.exportLatex(),numbered:true,children:[{text:''}]},
+   {text:'，可以继续输入文字，也可以在光标处插入新的公式。'}
+  ]}]}));
+  const mount=document.createElement('div');document.body.append(mount);const activations=[];
+  const flow=new PlateMathHost(mount,initial,{activate:(...args)=>activations.push(args),leave(){},change(){}});
+  return {flow,editor:flow.editor,activations};
+ }
+ const setupBlank=()=>setup({blank:true});
+ await t.test('new documents start blank and recovered edits remain unsaved until explicitly saved',async()=>{
+  const {flow,editor}=setupBlank();
+  assert.equal(editor.children.length,1);assert.equal(editor.children[0].type,'p');
+  assert.equal(editor.api.string([]),'');assert.equal(flow.entries().length,0);
+  assert.equal(flow.hasUnsavedChanges(),false,'a pristine blank document must have a clean normalized baseline: '+flow.serializeDocument());
+  editor.tf.select(editor.api.end([]));editor.tf.insertText('Recovered unsaved document');flow.persist();await tick();
+  assert.equal(flow.hasUnsavedChanges(),true);
+  const draft=window.localStorage.getItem('math-plate-document-v1');assert.match(draft,/Recovered unsaved document/);
+  assert.equal(sessionStorage.getItem('math-plate-document-v1'),null,'durable drafts must not depend on the tab session');
+  flow.destroy();sessionStorage.clear();
+  const mount=document.createElement('div');document.body.append(mount);
+  const restored=new PlateMathHost(mount,new EditorModel(),{activate(){},leave(){},change(){}});await tick();
+  assert.equal(restored.editor.api.string([]),'Recovered unsaved document');
+  assert.equal(restored.entries().length,0);
+  assert.equal(restored.hasUnsavedChanges(),true,'restoring a recovery copy must not establish a saved baseline');
+  restored.markDocumentSaved(restored.serializeDocument());assert.equal(restored.hasUnsavedChanges(),false);
+  restored.destroy();
+ });
  await t.test('math edits persist and restore as editable trees',async()=>{
   const {flow,editor,activations}=setup();const entry=flow.insertFormula();entry.model.replaceInput(0,0,'z^2');flow.persist();await tick();
   assert.equal(flow.entries().length,2);assert.ok(activations.length);assert.match(flow.exportMarkdown(),/\{z\}\^\{2\}/);
-  const saved=JSON.parse(sessionStorage.getItem('math-plate-document-v1'));assert.equal(saved.value[0].children.filter(n=>n.type==='inline_equation').length,2);
+  const saved=JSON.parse(window.localStorage.getItem('math-plate-document-v1'));assert.equal(saved.value[0].children.filter(n=>n.type==='inline_equation').length,2);
   assert.equal(editor.children[0].children.find(n=>n.id===entry.element.dataset.mathId).texExpression,'{z}^{2}');flow.destroy();
  });
  await t.test('document undo and redo restore the math model without reapplying stale edits',async()=>{
@@ -94,7 +125,7 @@ test('Plate document / independent MathJax mount integration',async t=>{
   flow.setDisplay(added.element,false);await tick();
   assert.equal(editor.children.length,before);
   assert.match(flow.exportLatex(),/在这里输入正文/);assert.match(flow.exportLatex(),/可以继续输入/);
-  const saved=JSON.parse(sessionStorage.getItem('math-plate-document-v1'));
+  const saved=JSON.parse(window.localStorage.getItem('math-plate-document-v1'));
   assert.equal(saved.value[0].children.find(n=>n.id===first.element.dataset.mathId).display,true);
   flow.destroy();
  });
@@ -125,7 +156,7 @@ test('Plate document / independent MathJax mount integration',async t=>{
   assert.equal(editor.children.length,1);assert.match(flow.exportLatex(),/Opened document/);assert.doesNotMatch(flow.exportLatex(),/在这里/);
   assert.equal(flow.entries()[0].model.exportLatex(),model.exportLatex());
   assert.equal(editor.history.undos.length,0);assert.equal(flow.hasUnsavedChanges(),false);
-  assert.equal(sessionStorage.getItem('math-plate-document-v1-before-open'),old);
+  assert.equal(window.localStorage.getItem('math-plate-document-v1-before-open'),old);
   flow.destroy();
  });
  await t.test('invalid opened documents cannot replace existing prose or formulas',async()=>{
@@ -152,7 +183,7 @@ test('Plate document / independent MathJax mount integration',async t=>{
   const ref=keys=>({type:'tex_reference',command:'cite',keys,children:[{text:''}]});
   editor.tf.select(editor.api.end([]));editor.tf.insertNodes(ref(['cited']));await tick();
   assert.equal(flow.hasUnsavedChanges(),true);
-  const saved=flow.serializeDocument(),draft=sessionStorage.getItem('math-plate-document-v1');
+  const saved=flow.serializeDocument(),draft=window.localStorage.getItem('math-plate-document-v1');
   for(const source of [saved,draft]){
    const libraries=JSON.parse(source).bibliographyLibraries;
    assert.equal(libraries.length,1);assert.match(libraries[0].source,/Cited title/);
