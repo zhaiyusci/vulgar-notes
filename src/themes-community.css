@@ -1,0 +1,177 @@
+/* Community palettes, adapted to application roles for Vulgar Notes.
+   Sources and complete upstream license notices are retained in licenses/.
+   These are screen preferences only; document formatting and print stay intact.
+
+   Nord: https://www.nordtheme.com/docs/colors-and-palettes
+   https://github.com/nordtheme/nord (MIT; Sven Greb)
+   Tokyo Night: https://github.com/enkia/tokyo-night-vscode-theme
+   (MIT; Enkia). Uses the original Night palette, not the Neovim port.
+   Dracula: https://draculatheme.com/spec
+   https://github.com/dracula/dracula-theme (MIT; Dracula Theme)
+   Solarized: https://ethanschoonover.com/solarized/
+   https://github.com/altercation/solarized (MIT; Ethan Schoonover).
+
+   Canvas, main palette colors, and focus accents come from upstream. Small UI
+   labels need more contrast than syntax comments: Nord uses Snow Storm for
+   muted text; Tokyo Night uses its Markdown text color; Dracula's muted ink
+   is a lighter adaptation of its Comment color. Nord's error ink is likewise
+   lightened. Solarized's base02/base1 provide stronger light/dark reading ink;
+   its link and status inks are contrast-adjusted, while focus edges keep its
+   original blue. These semantic mappings are application adaptations rather
+   than an assertion that upstream palettes use these exact UI assignments. */
+@media screen {
+  :root[data-color-scheme="nord"] {
+    color-scheme: dark;
+    --app-canvas: #2e3440;
+    --app-ink: #eceff4;
+    --app-sidebar: #2e3440;
+    --app-surface: #3b4252;
+    --app-soft: #3b4252;
+    --app-panel: #2e3440;
+    --app-muted: #d8dee9;
+    --app-border: #4c566a;
+    --app-hover: #434c5e;
+    --app-hover-border: #81a1c1;
+    --app-link: #88c0d0;
+    --app-selection: #434c5e;
+    --app-selection-ink: #eceff4;
+    --app-selection-edge: #88c0d0;
+    --app-math-active: rgb(136 192 208 / 10%);
+    --app-math-edge: rgb(136 192 208 / 65%);
+    --app-placeholder: #81a1c1;
+    --app-error: #f2b0b6;
+    --app-warning: #ebcb8b;
+    --app-warning-surface: #3b4252;
+    --app-warning-border: #d08770;
+    --app-action: #88c0d0;
+    --app-action-ink: #2e3440;
+    --app-primary: #88c0d0;
+    --app-primary-ink: #2e3440;
+    --app-shadow: rgb(0 0 0 / 40%);
+    --app-backdrop: rgb(0 0 0 / 55%);
+  }
+
+  :root[data-color-scheme="tokyo-night"] {
+    color-scheme: dark;
+    --app-canvas: #1a1b26;
+    --app-ink: #a9b1d6;
+    --app-sidebar: #16161e;
+    --app-surface: #202330;
+    --app-soft: #202330;
+    --app-panel: #16161e;
+    --app-muted: #9aa5ce;
+    --app-border: #414868;
+    --app-hover: #292e42;
+    --app-hover-border: #7aa2f7;
+    --app-link: #7aa2f7;
+    --app-selection: #292e42;
+    --app-selection-ink: #c0caf5;
+    --app-selection-edge: #7aa2f7;
+    --app-math-active: rgb(122 162 247 / 10%);
+    --app-math-edge: rgb(122 162 247 / 65%);
+    --app-placeholder: #9aa5ce;
+    --app-error: #f7768e;
+    --app-warning: #e0af68;
+    --app-warning-surface: #24283b;
+    --app-warning-border: #e0af68;
+    --app-action: #7aa2f7;
+    --app-action-ink: #1a1b26;
+    --app-primary: #7aa2f7;
+    --app-primary-ink: #1a1b26;
+    --app-shadow: rgb(0 0 0 / 45%);
+    --app-backdrop: rgb(0 0 0 / 60%);
+  }
+
+  :root[data-color-scheme="dracula"] {
+    color-scheme: dark;
+    --app-canvas: #282a36;
+    --app-ink: #f8f8f2;
+    --app-sidebar: #21222c;
+    --app-surface: #282a36;
+    --app-soft: #343746;
+    --app-panel: #282a36;
+    --app-muted: #b8bed6;
+    --app-border: #6272a4;
+    --app-hover: #44475a;
+    --app-hover-border: #bd93f9;
+    --app-link: #bd93f9;
+    --app-selection: #44475a;
+    --app-selection-ink: #f8f8f2;
+    --app-selection-edge: #bd93f9;
+    --app-math-active: rgb(189 147 249 / 10%);
+    --app-math-edge: rgb(189 147 249 / 65%);
+    --app-placeholder: #bd93f9;
+    --app-error: #ff5555;
+    --app-warning: #f1fa8c;
+    --app-warning-surface: #343746;
+    --app-warning-border: #ffb86c;
+    --app-action: #bd93f9;
+    --app-action-ink: #282a36;
+    --app-primary: #bd93f9;
+    --app-primary-ink: #282a36;
+    --app-shadow: rgb(0 0 0 / 40%);
+    --app-backdrop: rgb(0 0 0 / 58%);
+  }
+
+  :root[data-color-scheme="solarized-light"] {
+    color-scheme: light;
+    --app-canvas: #fdf6e3;
+    --app-ink: #073642;
+    --app-sidebar: #eee8d5;
+    --app-surface: #fdf6e3;
+    --app-soft: #eee8d5;
+    --app-panel: #fdf6e3;
+    --app-muted: #52676f;
+    --app-border: #93a1a1;
+    --app-hover: #eee8d5;
+    --app-hover-border: #657b83;
+    --app-link: #18699e;
+    --app-selection: #eee8d5;
+    --app-selection-ink: #002b36;
+    --app-selection-edge: #268bd2;
+    --app-math-active: rgb(38 139 210 / 8%);
+    --app-math-edge: rgb(38 139 210 / 60%);
+    --app-placeholder: #657b83;
+    --app-error: #a82a28;
+    --app-warning: #7b5d00;
+    --app-warning-surface: #eee8d5;
+    --app-warning-border: #b58900;
+    --app-action: #073642;
+    --app-action-ink: #fdf6e3;
+    --app-primary: #073642;
+    --app-primary-ink: #fdf6e3;
+    --app-shadow: rgb(0 43 54 / 20%);
+    --app-backdrop: rgb(0 43 54 / 38%);
+  }
+
+  :root[data-color-scheme="solarized-dark"] {
+    color-scheme: dark;
+    --app-canvas: #002b36;
+    --app-ink: #93a1a1;
+    --app-sidebar: #073642;
+    --app-surface: #073642;
+    --app-soft: #073642;
+    --app-panel: #002b36;
+    --app-muted: #93a1a1;
+    --app-border: #586e75;
+    --app-hover: #073642;
+    --app-hover-border: #839496;
+    --app-link: #63aedf;
+    --app-selection: #073642;
+    --app-selection-ink: #fdf6e3;
+    --app-selection-edge: #268bd2;
+    --app-math-active: rgb(38 139 210 / 13%);
+    --app-math-edge: rgb(38 139 210 / 75%);
+    --app-placeholder: #93a1a1;
+    --app-error: #ee8b87;
+    --app-warning: #eac56a;
+    --app-warning-surface: #073642;
+    --app-warning-border: #b58900;
+    --app-action: #93a1a1;
+    --app-action-ink: #002b36;
+    --app-primary: #93a1a1;
+    --app-primary-ink: #002b36;
+    --app-shadow: rgb(0 0 0 / 40%);
+    --app-backdrop: rgb(0 0 0 / 58%);
+  }
+}

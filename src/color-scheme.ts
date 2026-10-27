@@ -1,9 +1,28 @@
 export const COLOR_SCHEME_KEY = 'editor.colorScheme';
-export const COLOR_SCHEMES = ['light', 'paper', 'slate', 'dark'] as const;
-export type ColorScheme = typeof COLOR_SCHEMES[number];
+export const COLOR_SCHEME_MODES = {
+  light: 'light',
+  paper: 'light',
+  slate: 'light',
+  dark: 'dark',
+  'catppuccin-latte': 'light',
+  'catppuccin-frappe': 'dark',
+  'catppuccin-macchiato': 'dark',
+  'catppuccin-mocha': 'dark',
+  nord: 'dark',
+  'tokyo-night': 'dark',
+  dracula: 'dark',
+  'solarized-light': 'light',
+  'solarized-dark': 'dark',
+} as const;
+export type ColorScheme = keyof typeof COLOR_SCHEME_MODES;
+export const COLOR_SCHEMES: readonly ColorScheme[] = Object.freeze(Object.keys(COLOR_SCHEME_MODES) as ColorScheme[]);
 
 export function isColorScheme(value: unknown): value is ColorScheme {
   return typeof value === 'string' && (COLOR_SCHEMES as readonly string[]).includes(value);
+}
+
+export function isDarkColorScheme(scheme: ColorScheme): boolean {
+  return COLOR_SCHEME_MODES[scheme] === 'dark';
 }
 
 /** Appearance belongs to this device, rather than to a saved document. */
@@ -18,7 +37,7 @@ export function readColorScheme(storage?: Pick<Storage, 'getItem'>): ColorScheme
 
 export function applyColorScheme(scheme: ColorScheme, root = document.documentElement): void {
   root.dataset.colorScheme = scheme;
-  root.classList.toggle('dark', scheme === 'dark');
+  root.classList.toggle('dark', isDarkColorScheme(scheme));
 }
 
 export function currentColorScheme(root = document.documentElement): ColorScheme {

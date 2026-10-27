@@ -1,0 +1,134 @@
+/*! Catppuccin palettes, Copyright (c) 2021 Catppuccin, MIT License.
+    https://catppuccin.com/palette/
+    https://github.com/catppuccin/catppuccin/blob/main/docs/style-guide.md
+    Full license: licenses/catppuccin-MIT.txt */
+
+/* Exact official palette colors mapped to application roles. Subtext 1 is
+   used for small labels; the paler overlay colors are decorative only.
+   Latte warnings use Text because Yellow does not have enough contrast for
+   small text on light surfaces. Screen-only rules leave print colors alone. */
+@media screen {
+  :root[data-color-scheme="catppuccin-latte"] {
+    color-scheme: light;
+    --app-canvas: #eff1f5;
+    --app-ink: #4c4f69;
+    --app-sidebar: #e6e9ef;
+    --app-surface: #eff1f5;
+    --app-soft: #dce0e8;
+    --app-panel: #e6e9ef;
+    --app-muted: #5c5f77;
+    --app-border: #bcc0cc;
+    --app-hover: #dce0e8;
+    --app-hover-border: #acb0be;
+    --app-link: #8839ef;
+    --app-selection: #dce0e8;
+    --app-selection-ink: #4c4f69;
+    --app-selection-edge: #8839ef;
+    --app-math-active: rgb(136 57 239 / 6.5%);
+    --app-math-edge: rgb(136 57 239 / 45%);
+    --app-placeholder: #7c7f93;
+    --app-error: #d20f39;
+    --app-warning: #4c4f69;
+    --app-warning-surface: #eff1f5;
+    --app-warning-border: #df8e1d;
+    --app-action: #8839ef;
+    --app-action-ink: #eff1f5;
+    --app-primary: #8839ef;
+    --app-primary-ink: #eff1f5;
+    --app-shadow: rgb(76 79 105 / 20%);
+    --app-backdrop: rgb(76 79 105 / 33%);
+  }
+
+  :root[data-color-scheme="catppuccin-frappe"] {
+    color-scheme: dark;
+    --app-canvas: #303446;
+    --app-ink: #c6d0f5;
+    --app-sidebar: #292c3c;
+    --app-surface: #303446;
+    --app-soft: #414559;
+    --app-panel: #292c3c;
+    --app-muted: #b5bfe2;
+    --app-border: #51576d;
+    --app-hover: #414559;
+    --app-hover-border: #626880;
+    --app-link: #ca9ee6;
+    --app-selection: #414559;
+    --app-selection-ink: #c6d0f5;
+    --app-selection-edge: #ca9ee6;
+    --app-math-active: rgb(202 158 230 / 9%);
+    --app-math-edge: rgb(202 158 230 / 65%);
+    --app-placeholder: #949cbb;
+    --app-error: #e78284;
+    --app-warning: #e5c890;
+    --app-warning-surface: #292c3c;
+    --app-warning-border: #e5c890;
+    --app-action: #ca9ee6;
+    --app-action-ink: #232634;
+    --app-primary: #ca9ee6;
+    --app-primary-ink: #232634;
+    --app-shadow: rgb(35 38 52 / 45%);
+    --app-backdrop: rgb(35 38 52 / 58%);
+  }
+
+  :root[data-color-scheme="catppuccin-macchiato"] {
+    color-scheme: dark;
+    --app-canvas: #24273a;
+    --app-ink: #cad3f5;
+    --app-sidebar: #1e2030;
+    --app-surface: #24273a;
+    --app-soft: #363a4f;
+    --app-panel: #1e2030;
+    --app-muted: #b8c0e0;
+    --app-border: #494d64;
+    --app-hover: #363a4f;
+    --app-hover-border: #5b6078;
+    --app-link: #c6a0f6;
+    --app-selection: #363a4f;
+    --app-selection-ink: #cad3f5;
+    --app-selection-edge: #c6a0f6;
+    --app-math-active: rgb(198 160 246 / 9%);
+    --app-math-edge: rgb(198 160 246 / 65%);
+    --app-placeholder: #939ab7;
+    --app-error: #ed8796;
+    --app-warning: #eed49f;
+    --app-warning-surface: #1e2030;
+    --app-warning-border: #eed49f;
+    --app-action: #c6a0f6;
+    --app-action-ink: #181926;
+    --app-primary: #c6a0f6;
+    --app-primary-ink: #181926;
+    --app-shadow: rgb(24 25 38 / 45%);
+    --app-backdrop: rgb(24 25 38 / 58%);
+  }
+
+  :root[data-color-scheme="catppuccin-mocha"] {
+    color-scheme: dark;
+    --app-canvas: #1e1e2e;
+    --app-ink: #cdd6f4;
+    --app-sidebar: #181825;
+    --app-surface: #1e1e2e;
+    --app-soft: #313244;
+    --app-panel: #181825;
+    --app-muted: #bac2de;
+    --app-border: #45475a;
+    --app-hover: #313244;
+    --app-hover-border: #585b70;
+    --app-link: #cba6f7;
+    --app-selection: #313244;
+    --app-selection-ink: #cdd6f4;
+    --app-selection-edge: #cba6f7;
+    --app-math-active: rgb(203 166 247 / 9%);
+    --app-math-edge: rgb(203 166 247 / 65%);
+    --app-placeholder: #9399b2;
+    --app-error: #f38ba8;
+    --app-warning: #f9e2af;
+    --app-warning-surface: #181825;
+    --app-warning-border: #f9e2af;
+    --app-action: #cba6f7;
+    --app-action-ink: #11111b;
+    --app-primary: #cba6f7;
+    --app-primary-ink: #11111b;
+    --app-shadow: rgb(17 17 27 / 45%);
+    --app-backdrop: rgb(17 17 27 / 58%);
+  }
+}

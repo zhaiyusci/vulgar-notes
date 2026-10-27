@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./themes.css";
+@import "./themes-catppuccin.css";
+@import "./themes-community.css";
 @plugin "tailwind-scrollbar-hide";
 @source "./components";
 @source "./plate-host.tsx";

@@ -214,6 +214,8 @@
   "Undefined BibTeX strings are shown by name.": "未定义的 BibTeX 字符串暂以字符串名显示。",
   "Undefined BibTeX string:": "未定义的 BibTeX 字符串：",
   "Color scheme": "配色方案",
+  "Built-in": "内置",
+  "Classic themes": "经典配色",
   "Light": "浅色",
   "Paper": "纸张",
   "Slate": "青灰",

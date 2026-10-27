@@ -67,7 +67,12 @@ Windows 构建需要 Rust stable MSVC、Visual Studio C++ 工具和 WebView2。�
 
 Tauri 配置关闭原生文件拖放拦截，让编辑器继续处理段落排序。`src/platform.ts` 集中管理桌面存储和文件导出差异，公式模型不依赖 Tauri。
 
-界面语言与配色方案在右上角齿轮打开的“首选项”中设置。内置浅色、纸张、青灰和深色四套配色，选择时即时预览，保存后在本设备保留；取消或 Esc 恢复原配色。配色同时应用于正文、公式和工具界面，不改变文档内容、数学字体或导出结果。只有切换语言需要重新加载，当前草稿会保留。原生文档扩展名为 `.vulgar`，内部仍使用 JSON；导出菜单仅提供 Markdown 和 LaTeX。
+界面语言与配色方案在右上角齿轮打开的“首选项”中设置。保留浅色、纸张、青灰和深色，并提供 Catppuccin Latte / Frappé / Macchiato / Mocha、Nord、Tokyo Night、Dracula、Solarized Light / Dark，共 13 套配色，按系列分组。选择时即时预览，保存后在本设备保留；取消或 Esc 恢复原配色。配色同时应用于正文、公式和工具界面，不改变文档内容、数学字体或导出结果。只有切换语言需要重新加载，当前草稿会保留。原生文档扩展名为 `.vulgar`，内部仍使用 JSON；导出菜单仅提供 Markdown 和 LaTeX。
+
+社区配色依据官方色板映射到本编辑器的界面角色；Catppuccin 使用 Mauve 强调色。部分原始配色中的弱对比文字色不适合作为小字号界面文字，因此改用同一色板中更易读的颜色；Solarized 的部分文字与链接色额外调整了对比度，保留原始背景色。来源及完整许可证随发布包保存在 `licenses/`：
+
+- [Catppuccin 色板](https://catppuccin.com/palette/)与[样式指南](https://github.com/catppuccin/catppuccin/blob/main/docs/style-guide.md)。
+- [Nord](https://github.com/nordtheme/nord)、[Tokyo Night](https://github.com/enkia/tokyo-night-vscode-theme)、[Dracula](https://draculatheme.com/spec)、[Solarized](https://ethanschoonover.com/solarized/)。
 
 ### 外观待办
 

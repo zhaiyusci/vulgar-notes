@@ -3,6 +3,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const {build} = require('esbuild');
 
+const EXPECTED_SCHEMES = ['light', 'paper', 'slate', 'dark',
+  'catppuccin-latte', 'catppuccin-frappe', 'catppuccin-macchiato', 'catppuccin-mocha',
+  'nord', 'tokyo-night', 'dracula', 'solarized-light', 'solarized-dark'];
+const DARK_SCHEMES = new Set(['dark', 'catppuccin-frappe', 'catppuccin-macchiato',
+  'catppuccin-mocha', 'nord', 'tokyo-night', 'dracula', 'solarized-dark']);
+
 const html = fs.readFileSync('mathjax4_editor_prototype_document_typeset.html', 'utf8');
 const dialogMarkup = html.match(/<dialog id="preferencesDialog"[\s\S]*?<\/dialog>/)[0];
 const code = build({
@@ -42,19 +48,32 @@ async function harness(t, {scheme, locale = 'zh-CN', desktop = false, initialize
 }
 
 test('stored palette is validated and applied by the existing head script before editor initialization', async t => {
-  for (const scheme of ['light', 'paper', 'slate', 'dark']) {
+  for (const scheme of EXPECTED_SCHEMES) {
     const h = await harness(t, {scheme, initialize: false});
     assert.equal(h.root.hasAttribute('data-color-scheme'), false);
     h.window.eval(await headCode);
     assert.equal(h.root.dataset.colorScheme, scheme);
-    assert.equal(h.root.classList.contains('dark'), scheme === 'dark');
+    assert.equal(h.root.classList.contains('dark'), DARK_SCHEMES.has(scheme), `${scheme} uses its correct Plate utility colors`);
     assert.ok(h.window.MathJax.tex.packages['[+]'].includes('physics'), 'appearance initialization preserves the MathJax configuration');
     assert.equal(h.state.reloads.length, 0);
   }
 });
 
+test('the palette registry and preferences expose every supported community flavor once', async t => {
+  const h = await harness(t);
+  assert.deepEqual([...h.api.COLOR_SCHEMES].sort(), [...EXPECTED_SCHEMES].sort());
+  const options = [...h.select.options];
+  assert.deepEqual(options.map(option => option.value).sort(), [...EXPECTED_SCHEMES].sort());
+  assert.equal(new Set(options.map(option => option.value)).size, EXPECTED_SCHEMES.length);
+  assert.ok(options.every(option => option.textContent.trim().length > 0), 'every choice has a readable label');
+  for (const scheme of EXPECTED_SCHEMES) {
+    assert.equal(h.api.isColorScheme(scheme), true);
+    assert.equal(h.api.isDarkColorScheme(scheme), DARK_SCHEMES.has(scheme), scheme);
+  }
+});
+
 test('missing, invalid and inaccessible saved palettes use the existing light appearance', async t => {
-  for (const scheme of [undefined, 'system', 'DARK', '__proto__', '{"scheme":"dark"}']) {
+  for (const scheme of [undefined, 'system', 'DARK', '__proto__', '{"scheme":"dark"}', 'catppuccin', 'Catppuccin Mocha', 'nord-light']) {
     const h = await harness(t, {scheme});
     assert.equal(h.root.dataset.colorScheme, 'light');
     assert.equal(h.root.classList.contains('dark'), false);
@@ -72,10 +91,10 @@ test('preview immediately recolors the editor without modifying the draft or sav
   assert.equal(h.dialog.open, true);
   assert.equal(h.select.value, 'paper');
   const body = h.document.getElementById('draft'), before = body.outerHTML;
-  for (const scheme of ['slate', 'dark', 'light']) {
+  for (const scheme of EXPECTED_SCHEMES) {
     h.change(scheme);
     assert.equal(h.root.dataset.colorScheme, scheme);
-    assert.equal(h.root.classList.contains('dark'), scheme === 'dark');
+    assert.equal(h.root.classList.contains('dark'), DARK_SCHEMES.has(scheme), scheme);
     assert.equal(h.window.localStorage.getItem('editor.colorScheme'), 'paper');
     assert.equal(h.document.getElementById('draft'), body);
     assert.equal(body.outerHTML, before);
@@ -94,7 +113,26 @@ test('saving only appearance persists an English identifier and does not reload 
   assert.equal(h.state.reloads.length, 0);
   h.open(); h.change('paper'); h.submit('cancel');
   assert.equal(h.root.dataset.colorScheme, 'dark', 'a later Cancel restores the last saved palette');
-  assert.equal(h.select.options.length, 4);
+  assert.equal(h.select.options.length, EXPECTED_SCHEMES.length);
+});
+
+test('every community palette survives saving and a fresh editor session', async t => {
+  const h = await harness(t);
+  for (const scheme of EXPECTED_SCHEMES.slice(4)) {
+    h.open(); h.change(scheme); h.submit('save');
+    assert.equal(h.dialog.open, false);
+    assert.equal(h.window.localStorage.getItem(h.api.COLOR_SCHEME_KEY), scheme);
+    assert.equal(h.state.reloads.length, 0);
+    const resumed = await harness(t, {scheme: h.window.localStorage.getItem(h.api.COLOR_SCHEME_KEY)});
+    assert.equal(resumed.root.dataset.colorScheme, scheme);
+    assert.equal(resumed.root.classList.contains('dark'), DARK_SCHEMES.has(scheme), scheme);
+    resumed.open();
+    assert.equal(resumed.select.value, scheme);
+    resumed.change(DARK_SCHEMES.has(scheme) ? 'catppuccin-latte' : 'catppuccin-mocha');
+    resumed.submit('cancel');
+    assert.equal(resumed.root.dataset.colorScheme, scheme, `${scheme} is restored after canceling a later preview`);
+    assert.equal(resumed.root.classList.contains('dark'), DARK_SCHEMES.has(scheme), scheme);
+  }
 });
 
 test('Cancel and native dialog dismissal restore the appearance from when preferences opened', async t => {
@@ -114,12 +152,14 @@ test('Cancel and native dialog dismissal restore the appearance from when prefer
 
 test('saving language and appearance stores both before the existing language reload', async t => {
   const h = await harness(t, {scheme: 'light'});
-  h.open(); h.change('slate'); h.language.value = 'en'; h.submit('save');
-  assert.deepEqual(h.state.reloads, [{scheme: 'slate', locale: 'en'}]);
-  assert.equal(h.root.dataset.colorScheme, 'slate');
+  h.open(); h.change('catppuccin-macchiato'); h.language.value = 'en'; h.submit('save');
+  assert.deepEqual(h.state.reloads, [{scheme: 'catppuccin-macchiato', locale: 'en'}]);
+  assert.equal(h.root.dataset.colorScheme, 'catppuccin-macchiato');
+  assert.equal(h.root.classList.contains('dark'), true);
   assert.equal(h.window.localStorage.getItem('private-document-draft'), 'UNCHANGED_DOCUMENT');
   const resumed = await harness(t, {scheme: h.state.reloads[0].scheme, locale: 'en'});
-  assert.equal(resumed.root.dataset.colorScheme, 'slate');
+  assert.equal(resumed.root.dataset.colorScheme, 'catppuccin-macchiato');
+  assert.equal(resumed.root.classList.contains('dark'), true);
   resumed.open(); assert.equal(resumed.language.value, 'en');
 });
 

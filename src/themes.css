@@ -251,6 +251,7 @@
 }
 :root[data-color-scheme] .tex-reference-content.text-blue-700 { color: var(--app-link); }
 :root[data-color-scheme] .tex-reference-content.text-red-600 { color: var(--app-error); }
+:root[data-color-scheme] .tex-reference[data-reference-selected="true"] .tex-reference-content { color: var(--app-selection-ink); }
 :root[data-color-scheme] #error,
 :root[data-color-scheme] #fontHint {
   background: var(--app-surface);
@@ -320,6 +321,11 @@
 }
 :root[data-color-scheme] [data-slot="dialog-content"] .text-blue-700 { color: var(--app-link); }
 :root[data-color-scheme] [data-slot="dialog-content"] .text-red-600 { color: var(--app-error); }
+:root[data-color-scheme] [data-slot="button"][data-variant="destructive"] {
+  background: var(--app-error);
+  color: var(--app-canvas);
+}
+:root[data-color-scheme] [data-slot="button"][data-variant="destructive"]:hover:not(:disabled) { box-shadow: inset 0 0 0 1px currentColor; }
 :root[data-color-scheme] [data-bibliography-key^="endnote:"] :is(.text-amber-700, .hover\:text-amber-800:hover) { color: var(--app-warning); }
 :root[data-color-scheme] [data-sonner-toaster][data-sonner-theme] {
   --normal-bg: var(--app-surface);
@@ -331,8 +337,8 @@
 :root[data-color-scheme] [data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-description] { color: var(--app-muted); }
 
 @media screen {
-  :root[data-color-scheme="dark"] :is(.hljs-comment, .hljs-code, .hljs-formula) { color: #a4afbf; }
-  :root[data-color-scheme="dark"] .hljs-bullet { color: #e2c474; }
+  :root[data-color-scheme].dark :is(.hljs-comment, .hljs-code, .hljs-formula) { color: var(--app-muted); }
+  :root[data-color-scheme].dark .hljs-bullet { color: var(--app-warning); }
 }
 
 @media print {
