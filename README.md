@@ -36,6 +36,7 @@ When we went looking for a decent name, a crowd of Markdown editors had already 
 - **快捷键是辅助，不是必修课。** 保留保存、撤销、复制粘贴等常规快捷键以及已有的显式格式操作。新增快捷方式应根据任务频率、表达效率和对思路的干扰来取舍，不能仅因上游插件提供了它就默认开启。
 - **数学区域有自己的输入语义。** 进入公式后，LaTeX 命令候选、上下标输入和结构编辑仍然可用。正文的 TeX 标签、交叉引用和文献引用入口也保留；这不意味着把正文变成 Markdown 源码编辑器。
 - **交换格式与编辑交互分开。** Markdown 是导出格式，不是必须模仿的交互模型。原生 `.vulgar` 文档以 JSON 保存完整的可编辑结构，LaTeX 用于排版导出。
+- **第三方信息不打断写作。** 署名和许可说明放在用户主动打开的“关于”及随包提供的许可文件中。选择依赖时，先检查是否附带强制的界面展示要求；不为第三方组件在编辑区、参考文献表或启动流程中增加宣传文案。
 
 选择 Plate 的开源 Editor Kit 是为了复用成熟的富文本基础设施，不是为了开启它提供的每一项功能。后续引入或更新插件时，应检查是否重新带入了斜杠菜单、Markdown 输入规则或自动字符替换。
 
@@ -81,7 +82,7 @@ Tauri 配置关闭原生文件拖放拦截，让编辑器继续处理段落排�
 
 “参考文献表格式”提供简洁、IEEE、ACS、AIP、Vancouver（NLM）、APA 第 7 版、Chicago 第 18 版及 GB/T 7714—2025，并显示实际格式预览。选项保存在当前文档中，正文引用和尾注继续按首次出现顺序统一编号。切换的是参考文献表条目格式，不是完整的作者—年份引用系统。正文末尾、悬浮预览、Markdown 和 LaTeX 导出使用同一格式；尾注中的富文本与公式保留。所选 CSL 格式的 LaTeX 导出使用预排版的 `thebibliography`，无需 Biber；简洁格式保留原来的 BibLaTeX 导出。
 
-格式处理使用 citeproc-js 和固定版本的官方 CSL 样式与语言资源，均在本地打包，排版时不访问外部服务。来源、版本、许可证和处理器源码见 `licenses/citeproc/`、`licenses/csl/`。所需署名放在右侧工具栏的独立底栏，不属于正文或参考文献表，不写入文档、打印内容及导出文件。
+格式处理使用 MIT 许可的 citeproc-lua，通过本地 WebAssembly 运行时在浏览器和 Tauri 中执行，排版时不访问外部服务。继续使用固定版本的官方 CSL 样式与语言资源。处理器、运行时和 Unicode 数据的来源、版本、许可证及局部修复记录见 `vendor/csl-lua/`、`licenses/csl-lua/`、`licenses/csl/`。署名和许可入口位于“首选项 → 关于 Vulgar Notes → 第三方许可”，默认收起，不在写作界面、文档或导出内容中插入署名文案。
 
 界面语言与配色方案在右上角齿轮打开的“首选项”中设置。保留浅色、纸张、青灰和深色，并提供 Catppuccin Latte / Frappé / Macchiato / Mocha、Nord、Tokyo Night、Dracula、Solarized Light / Dark，共 13 套配色，按系列分组。选择时即时预览，保存后在本设备保留；取消或 Esc 恢复原配色。配色同时应用于正文、公式和工具界面，不改变文档内容、数学字体或导出结果。只有切换语言需要重新加载，当前草稿会保留。原生文档扩展名为 `.vulgar`，内部仍使用 JSON；导出菜单仅提供 Markdown 和 LaTeX。
 
@@ -100,7 +101,8 @@ MathJax 和编辑器会动态创建样式，因此 `dangerousDisableAssetCspModi
 
 首次安装依赖：`npm ci --legacy-peer-deps`。
 
-- `npm run typecheck`：严格类型检查，不生成文件。
+- `npm run typecheck`：准备处理器资源并运行严格类型检查。
+- `npm run csl:prepare`：校验引文处理器、Unicode 数据和运行时的固定哈希，生成构建所需的 TypeScript 资源。普通网页及桌面构建使用仓库内的预编译 WASM，不需要 C 编译器或 WASI SDK；运行时重编译方法见 `vendor/csl-lua/runtime/README.md`。
 - `npm run build`：先检查类型，再编译浏览器脚本和 source map。
 - `npm test`：构建后运行模型回归测试，测试实际生成的代码。
 - `npm run dev`：构建并在 <http://127.0.0.1:8767/> 启动预览。

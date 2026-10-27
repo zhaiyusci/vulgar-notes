@@ -1,6 +1,6 @@
-import citeproc from 'citeproc';
 import type {CSLItem} from './bibtex-csl';
 import {cslLocales,cslStyles} from './csl/assets';
+import {renderCSLBibliography} from './csl-lua/runtime';
 import {isBibliographyStyle,type BibliographyStyle,type BibliographyRun,type FormattedBibliographyEntry} from './bibliography-style';
 export {bibliographyStyles,isBibliographyStyle} from './bibliography-style';
 export type {BibliographyStyle,BibliographyRun,FormattedBibliographyEntry} from './bibliography-style';
@@ -97,17 +97,12 @@ export function formatBibliography(entries:readonly BibliographyFormatInput[],st
   const inputs=entries.filter(entry=>entry.csl);
   const outputs=new Map<string,FormattedBibliographyEntry>();
   if(style!=='simple'&&inputs.length){
-    const items=new Map(inputs.map(entry=>[entry.key,JSON.parse(JSON.stringify({...entry.csl,id:entry.key})) as CSLItem]));
+    const items=inputs.map(entry=>({...entry.csl,id:entry.key}));
     const xml=style==='gbt7714-2025'?cslStyles.gbt7714:cslStyles[style];
-    const processor=new citeproc.Engine({
-      retrieveLocale:language=>cslLocales[language as keyof typeof cslLocales]||(language==='en'?cslLocales['en-US']:language==='zh'?cslLocales['zh-CN']:false),
-      retrieveItem:key=>items.get(key)!,
-    },xml,style==='gbt7714-2025'?'zh-CN':'en-US');
-    processor.setOutputFormat('html');processor.updateItems([...items.keys()]);
-    const bibliography=processor.makeBibliography();
-    if(bibliography)bibliography[1].forEach((html,index)=>{
+    const bibliography=renderCSLBibliography(items,xml,style==='gbt7714-2025'?'zh-CN':'en-US',cslLocales);
+    bibliography.html.forEach((html,index)=>{
       const entry=formatted(runsFromProcessorHTML(html,style==='aip'));
-      for(const key of bibliography[0].entry_ids[index]||[])outputs.set(String(key),entry);
+      outputs.set(bibliography.ids[index],entry);
     });
   }
   for(const entry of entries){

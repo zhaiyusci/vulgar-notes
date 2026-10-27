@@ -53,8 +53,17 @@ body[data-document-view="home"] .editor-workspace { display:none; }
 body[data-document-view="editor"] #documentHome { display:none; }
 #documentHome { display:flex; flex-direction:column; height:100dvh; overflow:hidden; }
 #documentHome > .document-home { flex:1; min-height:0; }
-#documentHome > #appAttribution { flex:none; padding:8px 16px; }
-#documentHome > #appAttribution span { display:inline; margin-left:8px; }
+.preference-about { margin:0 0 24px; padding-top:16px; border-top:1px solid var(--app-border,#e2e8f0); color:var(--app-ink,#202124); }
+.preference-about summary { width:fit-content; cursor:pointer; font-weight:500; }
+.preference-about summary::marker { color:var(--app-muted,#64748b); }
+.preference-about-content { padding-left:14px; font-size:12px; color:var(--app-muted,#64748b); }
+.preference-about-content p { margin:10px 0; }
+.preference-about a { color:var(--app-link,#2563eb); text-decoration:underline; text-underline-offset:2px; }
+.preference-about :is(a,summary):focus-visible { outline:2px solid var(--app-link,#2563eb); outline-offset:3px; border-radius:2px; }
+.preference-licenses { margin-top:12px; }
+.preference-licenses summary { color:var(--app-ink,#202124); }
+.preference-licenses ul { list-style:disc; padding-left:18px; margin:10px 0; }
+.preference-licenses li + li { margin-top:4px; }
 .document-home { box-sizing:border-box; min-height:100%; overflow:auto; padding:clamp(28px,6vh,72px) clamp(20px,6vw,80px); background:var(--app-canvas,#fff); color:var(--app-ink,#202124); font:14px/1.5 system-ui,sans-serif; }
 .document-home *, .document-home *::before, .document-home *::after { box-sizing:border-box; }
 .document-home-inner { width:100%; max-width:760px; margin:0 auto; }

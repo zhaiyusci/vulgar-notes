@@ -1,0 +1,2 @@
+# Preserve exact vendored bytes across Windows/Linux clones and hash checks.
+* -text

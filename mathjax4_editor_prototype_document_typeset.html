@@ -119,11 +119,6 @@ body>h2,body>details{display:none}
 #uiLocale{font:12px system-ui;border:1px solid #d8dfe8;border-radius:4px;padding:3px;background:white}
 #editorSidebar{grid-column:2;grid-row:1;display:flex;flex-direction:column;height:100%;min-width:0;overflow:hidden;border-left:1px solid #e2e8f0;background:#fafbfd}
 #editorSidebarContent{flex:1;min-height:0;overflow:auto}
-#appAttribution{flex:none;padding:8px 10px;border-top:1px solid var(--app-border,#e2e8f0);color:var(--app-muted,#64748b);font:12px/1.4 system-ui,sans-serif}
-#appAttribution a{color:inherit;text-decoration:underline;text-underline-offset:2px}
-#appAttribution a:focus-visible{outline:2px solid var(--app-link,#2563eb);outline-offset:2px}
-#appAttribution span{display:block}
-@media print{#appAttribution{display:none}}
 #documentToolsSection{padding:10px;border-bottom:1px solid #e2e8f0}
 #documentToolsSection h3{font-size:13px;font-weight:600;margin:0 0 8px}
 #documentTools [role=toolbar]{position:static;border:0;border-radius:6px;overflow:visible;background:transparent;padding:0}
@@ -171,7 +166,6 @@ body>h2,body>details{display:none}
 
 </section>
 </div>
-<footer id="appAttribution" aria-label="Third-party attribution"><a href="https://citationstyles.org/" target="_blank" rel="noopener noreferrer">citeproc-js implements the Citation Style Language</a><span>(c) Frank Bennett</span></footer>
 </aside>
 
 <div id="preview"><div id="textFlow" contenteditable="true" role="textbox" aria-multiline="true" aria-label="正文" spellcheck="false"><span id="formula" class="inline-formula" contenteditable="false" tabindex="0" aria-label="可编辑行内公式">正在加载 MathJax…</span></div><textarea id="mathInput" hidden autocomplete="off" spellcheck="false" aria-label="编辑公式"></textarea></div>
@@ -196,6 +190,23 @@ body>h2,body>details{display:none}
 <p class="preference-hint" data-i18n="Changing the language reloads the editor. Your draft is kept.">切换语言会重新加载编辑器，当前草稿会保留。</p>
 <p id="preferencesError" class="preference-error" role="status" hidden></p>
 <section id="desktopDownloads" class="preference-downloads" hidden><div class="preference-row"><span data-i18n="Desktop app">桌面应用</span><a href="https://github.com/zhaiyusci/vulgar-notes/releases/latest" target="_blank" rel="noopener noreferrer"><span data-i18n="Download for Windows">下载 Windows 版</span> <span aria-hidden="true">↗</span></a></div></section>
+<details id="applicationAbout" class="preference-about">
+<summary data-i18n="About Vulgar Notes">关于 Vulgar Notes</summary>
+<div class="preference-about-content">
+<p><a href="https://github.com/zhaiyusci/vulgar-notes" target="_blank" rel="noopener noreferrer" data-i18n="Project repository">项目仓库</a></p>
+<details id="thirdPartyLicenses" class="preference-licenses">
+<summary data-i18n="Third-party licenses">第三方许可</summary>
+<ul>
+<li><a href="https://github.com/zepinglee/citeproc-lua" target="_blank" rel="noopener noreferrer">citeproc-lua</a> — Zeping Lee · MIT</li>
+<li>Lua · LPeg · luautf8 · LuaXML · Lua-UCA · dkjson — MIT</li>
+<li>lua-uni-algos — LPPL-1.3c-or-later</li>
+<li data-i18n="Unicode data: see the included license notices.">Unicode 数据：参见随附许可声明。</li>
+</ul>
+<p><a href="licenses/csl-lua/NOTICE.txt" target="_blank" rel="noopener noreferrer" data-i18n="Citation processor and runtime licenses">引文处理器与运行环境许可</a></p>
+<p><a href="licenses/csl/NOTICE.md" target="_blank" rel="noopener noreferrer" data-i18n="Citation Style Language assets">Citation Style Language 资源许可</a></p>
+</details>
+</div>
+</details>
 <div class="preference-actions"><button type="submit" value="cancel" data-i18n="Cancel">取消</button><button type="submit" value="save" class="preference-save" data-i18n="Save">保存</button></div>
 </form>
 </dialog>

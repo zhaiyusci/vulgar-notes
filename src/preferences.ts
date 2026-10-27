@@ -22,6 +22,7 @@ export function initPreferences() {
     colorScheme.value = originalColorScheme;
     committed = false;
     error.hidden = true;
+    dialog.querySelectorAll<HTMLDetailsElement>('#applicationAbout, #thirdPartyLicenses').forEach(section => {section.open = false;});
     dialog.showModal();
   });
   colorScheme.addEventListener('change', () => {

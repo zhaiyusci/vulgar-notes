@@ -43,7 +43,6 @@ function showDocumentFailure(){
     onNew:()=>runDocumentCommand('new'),onOpen:()=>runDocumentCommand('open'),
     onRecent:id=>openRecentDocumentCommand(id),onPreferences:()=>document.getElementById('openPreferences')!.click(),
   },{recentDocuments:listRecentDocuments(),error:t('The document could not be displayed. Its recovery data has been kept. You can open another file or create a new document.')});
-  const attribution=document.getElementById('appAttribution');if(attribution)container.append(attribution);
 }
 window.addEventListener('vulgar-document-render-error',()=>{void recordRuntimeEvent('frontend-render-error');showDocumentFailure();});
 
@@ -69,7 +68,6 @@ async function start(){
     home.refresh({recentDocuments:listRecentDocuments(),recoveries:listRecoverableDocuments(),...(recoveryError?{error:recoveryError}:{})});
   }
   refreshHome();
-  const attribution=document.getElementById('appAttribution');if(attribution)homeContainer.append(attribution);
   window.addEventListener('storage',refreshHome);
   window.addEventListener('focus',refreshHome);
 }

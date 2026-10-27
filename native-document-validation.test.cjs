@@ -4,7 +4,7 @@ const {buildSync}=require('esbuild');
 const vm=require('node:vm');
 const compiled=buildSync({entryPoints:['src/plate-document.ts'],bundle:true,platform:'node',format:'cjs',write:false}).outputFiles[0].text;
 const moduleApi={exports:{}};
-vm.runInNewContext(compiled,{module:moduleApi,exports:moduleApi.exports,console,crypto:globalThis.crypto,URL,localStorage:{getItem:()=>null},sessionStorage:{getItem:()=>null}});
+vm.runInNewContext(compiled,{module:moduleApi,exports:moduleApi.exports,console,crypto:globalThis.crypto,URL,TextEncoder,TextDecoder,localStorage:{getItem:()=>null},sessionStorage:{getItem:()=>null}});
 const api=moduleApi.exports;
 const envelope=value=>JSON.stringify({version:1,value});
 const text=text=>({text});

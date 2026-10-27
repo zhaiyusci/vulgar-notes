@@ -9,7 +9,7 @@ const compiled=build({entryPoints:['src/document-recovery.ts'],bundle:true,write
 }}]}).then(result=>result.outputFiles[0].text);
 function storage(){const entries=new Map();return {get length(){return entries.size},key:i=>[...entries.keys()][i]??null,getItem:key=>entries.get(key)??null,setItem:(key,value)=>entries.set(key,String(value)),removeItem:key=>entries.delete(key)};}
 async function load(localStorage=storage(),sessionStorage=storage(),activeId=null){
- const module={exports:{}};vm.runInNewContext(await compiled,{module,exports:module.exports,console,crypto,TextEncoder,localStorage,sessionStorage,activeId});return {api:module.exports,localStorage,sessionStorage};
+ const module={exports:{}};vm.runInNewContext(await compiled,{module,exports:module.exports,console,crypto,TextEncoder,TextDecoder,localStorage,sessionStorage,activeId});return {api:module.exports,localStorage,sessionStorage};
 }
 const doc=(text,extra={})=>JSON.stringify({version:1,value:[{type:'p',children:[{text}],...extra}]});
 const id='11111111-1111-4111-8111-111111111111',key='math-plate-document-v1:'+id;

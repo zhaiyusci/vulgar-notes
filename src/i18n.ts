@@ -20,7 +20,7 @@ export function mathLabel(entry:{label:string;command?:string;type:string}):stri
 }
 export function initLocale(){
   document.documentElement.lang=locale;
-  for(const [id,key] of [['mathPanel','Math input'],['formulaLayout','Current formula'],['insertToolbar','Insert'],['textFlow','Body'],['appAttribution','Third-party attribution']])document.getElementById(id)?.setAttribute('aria-label',t(key));
+  for(const [id,key] of [['mathPanel','Math input'],['formulaLayout','Current formula'],['insertToolbar','Insert'],['textFlow','Body']])document.getElementById(id)?.setAttribute('aria-label',t(key));
   document.title='Vulgar Notes';
   document.querySelectorAll<HTMLElement>('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n!);});
   document.querySelectorAll<HTMLOptGroupElement>('optgroup[data-i18n-label]').forEach(el=>{el.label=t(el.dataset.i18nLabel!);});

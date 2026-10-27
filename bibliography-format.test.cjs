@@ -3,9 +3,9 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const crypto=require('node:crypto');
 const {buildSync}=require('esbuild');
-const bundled=buildSync({stdin:{contents:"export * from './src/bibliography-format';export * from './src/bibtex-csl';export {cslStyles,cslLocales} from './src/csl/assets';export {parse} from '@retorquere/bibtex-parser';",resolveDir:__dirname},bundle:true,write:false,platform:'browser',format:'cjs',target:'es2022'}).outputFiles[0].text;
+const bundled=buildSync({stdin:{contents:"export * from './src/bibliography-format';export * from './src/bibtex-csl';export {renderCSLBibliography} from './src/csl-lua/runtime';export {cslStyles,cslLocales} from './src/csl/assets';export {parse} from '@retorquere/bibtex-parser';",resolveDir:__dirname},bundle:true,write:false,platform:'browser',format:'cjs',target:'es2022'}).outputFiles[0].text;
 const compiled={exports:{}};new Function('module','exports',bundled)(compiled,compiled.exports);
-const {bibEntryToCSL,formatBibliography,bibliographyStyles,isBibliographyStyle,parse,cslStyles,cslLocales}=compiled.exports;
+const {bibEntryToCSL,formatBibliography,bibliographyStyles,isBibliographyStyle,parse,cslStyles,cslLocales,renderCSLBibliography}=compiled.exports;
 const sample={key:'smith',description:'Jane Smith. A useful discovery. 2024.',csl:{id:'smith',type:'article-journal',title:'A useful discovery',author:[{given:'Jane',family:'Smith'},{given:'John',family:'Doe'}],issued:{'date-parts':[[2024]]},'container-title':'Journal of Testing',volume:'12',issue:'3',page:'123–130',DOI:'10.1000/example'}};
 
 test('BibTeX projection keeps structured names, corporate authors, dates and publication metadata',()=>{
@@ -84,7 +84,7 @@ test('formatter preserves host order and keys despite CSL sorting and memoizes u
  const original=JSON.stringify([z,a]),result=formatBibliography([z,a],'apa');
  assert.deepEqual([...result.keys()],['z','a']);assert.match(result.get('z').text,/^Zebra/);assert.match(result.get('a').text,/^Alpha/);
  assert.equal(formatBibliography(JSON.parse(original),'apa'),result,'equivalent views share cached processor output');
- assert.equal(JSON.stringify([z,a]),original,'citeproc mutations cannot change parsed metadata');
+ assert.equal(JSON.stringify([z,a]),original,'processor mutations cannot change parsed metadata');
  const edited={...a,csl:{...a.csl,title:'An updated finding'}};
  assert.match(formatBibliography([z,edited],'apa').get('a').text,/An updated finding/);
  assert.equal(formatBibliography([],'ieee').size,0);
@@ -101,15 +101,93 @@ test('CSL output is reduced to safe marked text and never propagates source HTML
  assert.equal(result.text,result.runs.map(run=>run.text).join(''));
 });
 
+test('the Lua processor retains structured Chinese names and baseline punctuation after scripts',()=>{
+ const chinese={...sample,key:'chinese-name',csl:{...sample.csl,id:'chinese-name',author:[{family:'张',given:'三'},{literal:'示例机构'}],language:'zh-CN'}};
+ for(const {id} of bibliographyStyles.filter(style=>style.id!=='simple')){
+  const result=formatBibliography([chinese],id).get(chinese.key);
+  assert.match(result.text,/张三/,id);
+  assert.doesNotMatch(result.text,/张\./,id);
+ }
+ for(const style of ['aip','ieee'])for(const tag of ['sup','sub']){
+  const entry={...sample,key:style+tag,csl:{...sample.csl,id:style+tag,title:`An expression x<${tag}>2</${tag}>`}};
+  const result=formatBibliography([entry],style).get(entry.key);
+  assert.match(result.html,new RegExp(`<${tag}>2</${tag}>,`),style+' '+tag);
+  assert.ok(result.runs.some(run=>run.text==='2'&&run[tag==='sup'?'superscript':'subscript']));
+ }
+});
+
+test('metadata crosses the Lua bridge as JSON data and cannot become a Lua program',()=>{
+ const name=']]; error(54321); -- [=[ ]=] α 中文';
+ const entry={...sample,key:'lua-boundary',csl:{...sample.csl,id:'lua-boundary',author:[{literal:name}]}};
+ const result=formatBibliography([entry],'apa').get(entry.key);
+ assert.ok(result.text.includes(name),result.text);
+ assert.match(formatBibliography([sample],'aip').get(sample.key).text,/A useful discovery/,'the interpreter remains usable');
+});
+
+test('books, chapters and access dates retain names, role labels and localized separators',()=>{
+ const book={key:'edited-book',csl:{id:'edited-book',type:'book',title:'Collected Theory',editor:[{family:'Doe',given:'John'},{family:'Roe',given:'Jane'}],translator:[{family:'Li',given:'Alex'}],issued:{'date-parts':[[2021]]},publisher:'University Press','publisher-place':'London',edition:'2',volume:'3'}};
+ const chapter={key:'chapter',csl:{id:'chapter',type:'chapter',title:'A chapter',author:[{family:'Beethoven',given:'Ludwig','non-dropping-particle':'van'},{literal:'World Health Organization'}],editor:[{family:'Doe',given:'Jane'}],'container-title':'Collected Research',issued:{'date-parts':[[2020]]},page:'14-19',publisher:'Academic Publisher','publisher-place':'Oxford'}};
+ const web={key:'web',csl:{id:'web',type:'webpage',title:'A changing world',author:[{literal:'Research Organization'}],URL:'https://example.test/article',accessed:{'date-parts':[[2026,10,27]]},issued:{'date-parts':[[2024,9,2]]}}};
+ const vancouver=formatBibliography([book,chapter,web],'vancouver');
+ assert.equal(vancouver.get(book.key).text,'Doe J, Roe J, editors, Li A, translator. Collected Theory. 2nd ed. Vol. 3. London: University Press; 2021.');
+ assert.match(vancouver.get(chapter.key).text,/In: Doe J, editor\. Collected Research\./);
+ assert.match(vancouver.get(web.key).text,/\[cited 2026 Oct 27\]/);
+ const chicago=formatBibliography([book],'chicago').get(book.key);
+ assert.equal(chicago.text,'Doe, John, and Jane Roe, eds. Collected Theory. 2nd ed. Vol. 3, translated by Alex Li. University Press, 2021.');
+ assert.match(chicago.html,/<i>Collected Theory<\/i>/);
+});
+
+test('title capitalization preserves script bases through nested italic and bold wrappers',()=>{
+ for(const title of ['A <i>value x<sup>2</sup></i>','A <b><i>value x</i></b><sub>n</sub>']){
+  const entry={...sample,key:title,csl:{...sample.csl,id:title,title}};
+  for(const style of ['acs','chicago']){
+   const result=formatBibliography([entry],style).get(entry.key);
+   assert.match(result.text,/Value x[2n]/,style+' '+result.html);
+   assert.doesNotMatch(result.text,/Value X[2n]/);
+   assert.ok(result.runs.some(run=>run.italic));
+   assert.ok(result.runs.some(run=>run.superscript||run.subscript));
+  }
+ }
+});
+
+const ruleStyle=(body,extra='')=>`<style xmlns="http://purl.org/net/xbiblio/csl" version="1.0" class="in-text"><info><title>Rule fixture</title><id>https://example.test/csl-rules</id><updated>2026-10-27T00:00:00Z</updated></info>${extra}<citation><layout><text variable="title"/></layout></citation><bibliography><layout>${body}</layout></bibliography></style>`;
+const contributorItem={id:'contributors',type:'book',title:'Theory',editor:[{family:'Editor',given:'Eve'}],translator:[{family:'Translator',given:'Tom'}]};
+function renderRule(body,extra=''){
+ return renderCSLBibliography([contributorItem],ruleStyle(body,extra),'en-US',cslLocales).html[0].replace(/<[^>]*>/g,'').trim();
+}
+test('implicit contributor labels follow names while explicit label order remains respected',()=>{
+ assert.equal(renderRule('<names variable="editor"><label prefix=", "/></names>'),'Eve Editor, editor');
+ assert.equal(renderRule('<names variable="editor"><label form="verb" suffix=" "/><name/></names>'),'edited by Eve Editor');
+ assert.equal(renderRule('<names variable="editor"><name/><label prefix=", "/></names>'),'Eve Editor, editor');
+});
+test('conditional name substitutes select one candidate but preserve explicit groups',()=>{
+ const names='<names variable="editor"/><names variable="translator"/>';
+ const substitute=children=>'<names variable="author"><substitute><choose><if type="book">'+children+'</if></choose></substitute></names>';
+ assert.equal(renderRule(substitute(names)+'<text value="; "/><names variable="translator"/>'),'Eve Editor; Tom Translator');
+ assert.equal(renderRule(substitute('<group delimiter=" + ">'+names+'</group>')),'Eve Editor + Tom Translator');
+ assert.equal(renderRule(substitute('<text macro="contributors"/>'),'<macro name="contributors"><group delimiter=" + ">'+names+'</group></macro>'),'Eve Editor + Tom Translator');
+});
+test('a rejected Lua formatting request does not damage subsequent reference formatting',()=>{
+ assert.throws(()=>renderCSLBibliography([sample.csl],'<invalid>','en-US',cslLocales),/reference formatter/);
+ const result=renderCSLBibliography([sample.csl],cslStyles.aip,'en-US',cslLocales);
+ assert.deepEqual(result.ids,[sample.csl.id]);assert.match(result.html[0],/A useful discovery/);
+});
+
 test('vendored CSL assets are exact pinned upstream strings with recorded licenses',()=>{
  const manifest=JSON.parse(fs.readFileSync('src/csl/manifest.json','utf8'));
  for(const [group,assets] of [['styles',cslStyles],['locales',cslLocales]])for(const [key,xml] of Object.entries(assets)){
   assert.equal(crypto.createHash('sha256').update(xml).digest('hex'),manifest[group][key].sha256);
   assert.equal(Buffer.byteLength(xml),manifest[group][key].bytes);assert.equal(manifest[group][key].license,'CC-BY-SA-3.0');
  }
- const processor=JSON.parse(fs.readFileSync('licenses/citeproc/manifest.json','utf8'));
- assert.equal(crypto.createHash('sha256').update(fs.readFileSync('licenses/citeproc/citeproc_commonjs.js')).digest('hex'),processor.sha256);
- assert.match(fs.readFileSync('licenses/citeproc/CPAL.txt','utf8'),/citeproc-js implements the Citation Style Language/);
+ const processor=JSON.parse(fs.readFileSync('vendor/csl-lua/files.json','utf8'));
+ for(const [file,record] of Object.entries(processor.files)){
+  const bytes=fs.readFileSync('vendor/csl-lua/'+file);
+  assert.equal(bytes.length,record.bytes,file);
+  assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),record.sha256,file);
+ }
+ assert.match(fs.readFileSync('licenses/csl-lua/citeproc-lua-MIT.txt','utf8'),/Copyright.*Zeping Lee/);
+ assert.equal(fs.existsSync('licenses/citeproc/citeproc_commonjs.js'),false,'the removed processor is not distributed');
+ assert.equal(JSON.parse(fs.readFileSync('package.json','utf8')).dependencies.citeproc,undefined);
  assert.equal(fs.readFileSync('licenses/csl/manifest.json','utf8'),fs.readFileSync('src/csl/manifest.json','utf8'));
  assert.ok(bibliographyStyles.every(style=>isBibliographyStyle(style.id)));
  for(const invalid of [null,'',false,'nature','APA'])assert.equal(isBibliographyStyle(invalid),false);

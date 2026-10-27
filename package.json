@@ -2,9 +2,10 @@
   "name": "vulgar-notes",
   "private": true,
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "csl:prepare": "node scripts/prepare-csl-lua.cjs && node scripts/prepare-csl-runtime.cjs",
+    "typecheck": "npm run csl:prepare && tsc --noEmit",
     "build": "npm run typecheck && node build.cjs",
-    "test": "npm run build && node --test editor-model.test.cjs letter-variants.test.cjs text-flow.test.cjs plate-host.test.cjs plate-render-recovery.test.cjs paragraph-drag.test.cjs math-input.test.cjs platform.test.cjs new-document-toolbar.test.cjs document-lifecycle.test.cjs document-home.test.cjs document-recovery.test.cjs native-document-validation.test.cjs color-scheme.test.cjs community-palettes.test.cjs bibtex.test.cjs bibtex-latex.test.cjs bibliography-markdown.test.cjs bibliography-library-store.test.cjs bibliography-format.test.cjs bibliography-source.test.cjs bibtex-libraries.test.cjs references-endnotes.test.cjs endnote-toolbar.test.cjs reference-toolbar.test.cjs web-package.test.cjs",
+    "test": "npm run build && node --test editor-model.test.cjs letter-variants.test.cjs text-flow.test.cjs plate-host.test.cjs plate-render-recovery.test.cjs paragraph-drag.test.cjs math-input.test.cjs platform.test.cjs new-document-toolbar.test.cjs document-lifecycle.test.cjs document-home.test.cjs document-recovery.test.cjs native-document-validation.test.cjs color-scheme.test.cjs community-palettes.test.cjs preferences-about.test.cjs bibtex.test.cjs bibtex-latex.test.cjs bibliography-markdown.test.cjs bibliography-library-store.test.cjs bibliography-format.test.cjs bibliography-source.test.cjs bibtex-libraries.test.cjs references-endnotes.test.cjs endnote-toolbar.test.cjs reference-toolbar.test.cjs web-package.test.cjs",
     "dev": "npm run build && node serve.cjs",
     "web:prepare": "node scripts/prepare-web.cjs",
     "web:build": "npm run build && npm run web:prepare",
@@ -25,6 +26,7 @@
   "dependencies": {
     "@ai-sdk/react": "^4.0.157",
     "@ariakit/react": "^0.4.42",
+    "@bjorn3/browser_wasi_shim": "0.4.2",
     "@emoji-mart/data": "^1.2.1",
     "@excalidraw/excalidraw": "^0.18.1",
     "@faker-js/faker": "^10.6.0",
@@ -75,7 +77,6 @@
     "@udecode/cn": "^52.3.4",
     "ai": "^7.0.153",
     "buffer": "^6.0.3",
-    "citeproc": "2.4.63",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

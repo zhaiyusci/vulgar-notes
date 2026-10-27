@@ -1741,7 +1741,7 @@ dependencies = [
 
 [[package]]
 name = "math-document-editor"
-version = "0.1.36"
+version = "0.1.37"
 dependencies = [
  "tauri",
  "tauri-build",
