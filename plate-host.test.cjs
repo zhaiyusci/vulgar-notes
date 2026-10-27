@@ -331,6 +331,45 @@ test('Plate document / independent MathJax mount integration',async t=>{
   flow.keyDown(event);await tick();assert.equal(editor.children[0].children.some(node=>node.type==='footnoteReference'),true);assert.deepEqual(editor.selection,{anchor:{path:[0,0],offset:7},focus:{path:[0,2],offset:0}});
   flow.keyDown(event);await tick();assert.equal(editor.children[0].children.some(node=>node.type==='footnoteReference'),false);editor.tf.undo();await tick();assert.equal(editor.children[0].children.some(node=>node.type==='footnoteReference'),true);flow.destroy();
  });
+ await t.test('citation and endnote hover previews share presentation and show current numbered contents',async()=>{
+  const {flow,editor}=setup();
+  const value=[{type:'p',children:[{text:'Read '},{type:'tex_reference',command:'cite',keys:['a','missing','b'],children:[{text:''}]},{text:' and '},{type:'footnoteReference',identifier:'note',children:[{text:''}]},{text:'.'}]},{type:'footnoteDefinition',identifier:'note',children:[{type:'p',children:[{text:'Original endnote contents'}]}]}];
+  flow.openDocument(JSON.stringify({version:1,value}));
+  flow.setBibliographyLibraries([{id:'papers',name:'Papers.bib',source:'@book{a,title={Alpha publication}}\n@book{b,title={Beta publication}}'}]);await tick();
+  const citation=flow.mount.querySelector('[role="link"]'),endnote=flow.mount.querySelector('.endnote-reference button');
+  for(const trigger of [citation,endnote]){
+   assert.equal(trigger.hasAttribute('title'),false,'reference previews must not compete with native title tooltips');
+   assert.ok(trigger.getAttribute('aria-description'));
+  }
+  const hover=async trigger=>{
+   trigger.dispatchEvent(new window.PointerEvent('pointerover',{bubbles:true,pointerType:'mouse',relatedTarget:null}));
+   await new Promise(resolve=>setTimeout(resolve,550));
+   const card=document.querySelector('.reference-preview[data-state="open"]');assert.ok(card,'hovering the reference opens its preview');return card;
+  };
+  const leave=async trigger=>{trigger.dispatchEvent(new window.PointerEvent('pointerout',{bubbles:true,pointerType:'mouse',relatedTarget:document.body}));await tick();};
+  try{
+   const citationCard=await hover(citation),presentation=citationCard.className;
+   assert.equal(citationCard.dataset.referencePreview,'true');
+   assert.equal(citationCard.children.length,3,'every citation key gets its own preview row');
+   assert.match(citationCard.children[0].textContent,/\[1\].*Alpha publication/);
+   assert.match(citationCard.children[1].textContent,/\[\?\?\].*missing/);
+   assert.match(citationCard.children[2].textContent,/\[2\].*Beta publication/);
+   citation.dispatchEvent(new window.PointerEvent('pointerout',{bubbles:true,pointerType:'mouse',relatedTarget:citationCard}));
+   citationCard.dispatchEvent(new window.PointerEvent('pointerover',{bubbles:true,pointerType:'mouse',relatedTarget:citation}));
+   await new Promise(resolve=>setTimeout(resolve,180));
+   assert.ok(citationCard.isConnected,'the preview stays open when the pointer enters its contents');
+   await leave(citationCard);
+   const noteCard=await hover(endnote);
+   assert.equal(noteCard.className,presentation,'notes and citations use the same visual presentation');
+   assert.equal(noteCard.dataset.referencePreview,'true');
+   assert.equal(noteCard.children.length,1,'a resolved note has no empty-preview fallback');
+   assert.match(noteCard.textContent,/\[3\].*Original endnote contents/);
+   const noteIndex=editor.children.findIndex(node=>node.type==='footnoteDefinition'&&node.identifier==='note');
+   editor.tf.select(editor.api.end([noteIndex,0]));editor.tf.insertText(' updated');await tick();
+   assert.match(noteCard.textContent,/Original endnote contents updated/,'an open preview follows edits to its definition');
+   await leave(endnote);
+  }finally{flow.destroy();}
+ });
  await t.test('notes alone create one final section and Markdown-style note triggers remain literal',async()=>{
   const {flow,editor}=setup();assert.equal(flow.mount.querySelectorAll('[data-bibliography-heading]').length,0);
   flow.openDocument(JSON.stringify({version:1,value:[{type:'p',children:[{text:''},{type:'footnoteReference',identifier:'one',children:[{text:''}]},{text:''}]},{type:'footnoteDefinition',identifier:'one',children:[{type:'p',children:[{text:'Editable note'}]}]}]}));await tick();

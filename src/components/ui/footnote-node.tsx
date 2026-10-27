@@ -17,11 +17,7 @@ import {
   useSelected,
 } from 'platejs/react';
 
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from '@/components/ui/hover-card';
+import {ReferencePreview} from '@/components/ui/reference-preview';
 import {
   Popover,
   PopoverAnchor,
@@ -163,15 +159,34 @@ export function FootnoteReferenceElement(
       }}
     >
       {props.children}
-      <HoverCard open={hoverOpen} onOpenChange={setHoverOpen} openDelay={150}>
-        <HoverCardTrigger asChild>
+      <ReferencePreview
+        open={hoverOpen}
+        onOpenChange={setHoverOpen}
+        entries={previewText?[{key:identifier,number,description:previewText}]:undefined}
+        fallback={!previewText&&identifier?(isResolved?t('No preview available.'):
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-6 rounded-xs px-2 text-[11px]"
+            onMouseDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              footnoteTransforms.createDefinition({ identifier });
+              setHoverOpen(false);
+            }}
+          >
+            {t('Create endnote')}
+          </Button>
+        ):undefined}
+      >
           <button
             type="button"
             className={cn(
               'tex-reference-content group-data-[nav-target=true]/footnote-ref:bg-(--color-highlight)',
               number?'text-blue-700':'text-red-600 underline decoration-wavy'
             )}
-            title={number?t('Endnote'):t('Unresolved or duplicate endnote')}
+            aria-description={number?t('Endnote'):t('Unresolved or duplicate endnote')}
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
@@ -193,42 +208,7 @@ export function FootnoteReferenceElement(
           >
             [{number||'??'}]
           </button>
-        </HoverCardTrigger>
-        {previewText ? (
-          <HoverCardContent className="w-80">
-            <div className="space-y-1">
-              <div className="text-muted-foreground text-sm leading-relaxed">
-                {previewText}
-              </div>
-            </div>
-          </HoverCardContent>
-        ) : identifier ? (
-          <HoverCardContent className="w-80">
-            <div className="space-y-2">
-              {isResolved ? (
-                <div className="text-sm leading-relaxed">
-                  No preview available.
-                </div>
-              ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-6 rounded-xs px-2 text-[11px]"
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    footnoteTransforms.createDefinition({ identifier });
-                    setHoverOpen(false);
-                  }}
-                >
-                  {t('Create endnote')}
-                </Button>
-              )}
-            </div>
-          </HoverCardContent>
-        ) : null}
-      </HoverCard>
+      </ReferencePreview>
     </PlateElement>
   );
 }
