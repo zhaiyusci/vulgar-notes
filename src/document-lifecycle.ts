@@ -3,6 +3,7 @@ import {parseDocumentFile,documentContentKey} from './plate-document';
 import {defaultDocumentName,documentSessionId,draftStorage,newDocumentWindow,openDocumentFile,saveDocumentFile,type DocumentFile,type OpenedDocument} from './platform';
 import {getRecentDocumentTarget,openRecentDocument,rememberRecentDocument} from './recent-documents';
 import {t} from './i18n';
+import {recordRuntimeEvent} from './runtime-diagnostics';
 
 /** The controller does not depend on the rich-text editor or its UI framework. */
 export interface DocumentLifecycleHost {
@@ -81,7 +82,7 @@ export function attachDocumentHost(next:DocumentLifecycleHost):()=>void {
 }
 function reportError(action:DocumentCommand|'close',error:unknown){
   const message=t(action==='new'?'Unable to create document':action==='open'?'Unable to open document':action==='close'?'Unable to close document':'Unable to save document');
-  window.dispatchEvent(new CustomEvent('vulgar-document-error',{detail:{message,error:String(error)}}));
+  window.dispatchEvent(new CustomEvent('vulgar-document-error',{detail:{action,message,error:String(error)}}));
 }
 function askToSave():Promise<'save'|'discard'|'cancel'> {
   return new Promise(resolve=>{
@@ -150,6 +151,7 @@ async function startOpenedDocument(file:OpenedDocument,discard:boolean,authoriza
   }
   // Do not discard the current recovery until the next document is ready.
   if(discard)discardRecovery();
+  void recordRuntimeEvent('document-open-complete');
   navigate('vulgar-document-start',{documentId:id,opened:file});
 }
 /** Home's New command starts one blank document in this window. */
@@ -160,12 +162,13 @@ async function exclusive(action:DocumentCommand|'close',operation:()=>Promise<vo
 /** Home, toolbar and keyboard shortcuts share the same save/discard rules. */
 export async function runDocumentCommand(action:DocumentCommand):Promise<void> {
   await exclusive(action,async()=>{
+    if(action==='open')await recordRuntimeEvent('document-open-start');
     if(action==='new'){if(host){host.persist();await newDocumentWindow();}else startNewDocument();}
     else if(action==='save'||action==='saveAs')await saveCurrent(action==='saveAs');
     else{
       const decision=await mayLeave();if(decision==='cancel')return;
       if(action==='home'){if(decision==='discard')discardRecovery();navigate('vulgar-document-home');}
-      else{const authorization=leaveAuthorization();const file=await openDocumentFile();if(!file)return;parseDocumentFile(file.text);await startOpenedDocument(file,decision==='discard',authorization);}
+      else{const authorization=leaveAuthorization();const file=await openDocumentFile();if(!file)return;await recordRuntimeEvent('document-parse-start');parseDocumentFile(file.text);await recordRuntimeEvent('document-parse-complete');await startOpenedDocument(file,decision==='discard',authorization);}
     }
   });
 }

@@ -29,6 +29,7 @@ export class PlateMathHost implements DocumentHost {
   readonly models=new Map<string,EditorModel>();
   readonly mounts=new Map<string,HTMLElement>();
   readonly root:Root;
+  private renderFailure:unknown;
   private syncing=false;
   private initialized=false;
   private pending=false;
@@ -118,13 +119,18 @@ export class PlateMathHost implements DocumentHost {
     // after construction; otherwise restored content remains unsaved.
     this.savedDocument=isBlankDocument(this.editor.children,this.bibliographyStyle)?JSON.stringify(this.envelope(),null,2):JSON.stringify({version:1,value:[{type:'p',children:[{text:''}]}]},null,2);
     mount.removeAttribute('contenteditable');mount.removeAttribute('role');mount.removeAttribute('aria-label');mount.id='plateMount';
-    this.root=createRoot(mount);
+    this.root=createRoot(mount,{onUncaughtError:error=>{
+      this.renderFailure=error;this.initialized=false;
+      try{draftStorage().setItem(documentStorageKey+'-render-recovery',JSON.stringify(this.envelope()));}catch{}
+      queueMicrotask(()=>window.dispatchEvent(new CustomEvent('vulgar-document-render-error',{detail:{error:String(error)}})));
+    }});
     flushSync(()=>this.root.render(<HostContext.Provider value={this}><TooltipProvider><Plate editor={this.editor} onChange={()=>this.changed()}>
       <EditorContainer><Editor autoFocus={documentSessionId()!==null} renderText={props=><DisplayBoundaryText {...props} />} id="textFlow" aria-label={t("Body")} placeholder={t("Type here…")}
         onPointerDown={e=>{if(!(e.target as Element).closest('.inline-formula')){this.activeFormula=undefined;this.hooks.leave();}}}
         onFocus={()=>{this.activeFormula=undefined;this.hooks.leave();}}
         onKeyDownCapture={e=>this.handleObjectDelete(e)} onKeyDown={e=>this.keyDown(e)} /><BibtexBibliography /></EditorContainer>
     </Plate><Toaster /></TooltipProvider></HostContext.Provider>));
+    if(this.renderFailure!==undefined){this.root.unmount();throw this.renderFailure;}
     this.initialized=true;this.persist();
   }
   /** Editable references and endnotes form one tail in their shared number order. */

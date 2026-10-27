@@ -1748,6 +1748,8 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-fs",
  "tauri-plugin-persisted-scope",
+ "webview2-com",
+ "windows",
 ]
 
 [[package]]

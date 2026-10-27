@@ -1,5 +1,6 @@
 import {isTauri} from '@tauri-apps/api/core';
 import {t} from './i18n';
+import {recordRuntimeEvent} from './runtime-diagnostics';
 
 export interface DocumentFile {name: string; path?: string}
 export interface OpenedDocument extends DocumentFile {text: string}
@@ -113,12 +114,16 @@ async function openTextFile(extensions:string[],filterName:string,accept:string,
 
 export async function openDocumentFile(expected?:DocumentFile):Promise<OpenedDocument|null>{
   if(isTauri()){
+    await recordRuntimeEvent('document-picker-start');
     const [{open},{readTextFile}]=await Promise.all([import('@tauri-apps/plugin-dialog'),import('@tauri-apps/plugin-fs')]);
     const path=await open({multiple:false,directory:false,...(expected?.path?{defaultPath:expected.path}:{}),filters:[{name:t('Vulgar Notes document'),extensions:['vulgar','json']}]});
+    await recordRuntimeEvent('document-picker-complete');
     if(!path)return null;
     if(expected?.path&&!sameDocumentPath(path,expected.path))throw Error(t('Please select the original document:')+' '+expected.path);
     const name=path.split(/[\\/]/).pop()!;checkDocumentName(name,expected?.path?undefined:expected?.name);
-    return {path,name,text:await readTextFile(path)};
+    await recordRuntimeEvent('document-read-start');
+    const text=await readTextFile(path);await recordRuntimeEvent('document-read-complete');
+    return {path,name,text};
   }
   const pickerWindow=window as DocumentPickerWindow;
   if(pickerWindow.showOpenFilePicker){

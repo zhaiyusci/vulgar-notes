@@ -253,5 +253,7 @@
   "Please select the original document:": "请选择原来的文档：",
   "Recovery storage is full. Please save the document to a file.": "恢复存储空间不足，请将文档保存为文件。",
   "Local recovery storage could not be read. Existing data has been kept.": "无法读取本机恢复数据，原有内容已保留。",
-  "The document changed while another file was opening. Your changes have been kept. Please try again.": "打开另一份文件期间，当前文档有了新修改。内容已保留，请重新操作。"
+  "The document changed while another file was opening. Your changes have been kept. Please try again.": "打开另一份文件期间，当前文档有了新修改。内容已保留，请重新操作。",
+  "This file is not a valid Vulgar Notes document.": "这个文件不是有效的 Vulgar Notes 文档。",
+  "The document could not be displayed. Its recovery data has been kept. You can open another file or create a new document.": "无法显示这份文档，恢复数据已保留。你可以打开其他文件或新建文档。"
 }

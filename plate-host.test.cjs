@@ -379,7 +379,7 @@ test('Plate document / independent MathJax mount integration',async t=>{
   assert.match(flow.mount.querySelector('[data-bibliography-key="paper"]').textContent,/Refreshed title/);
   assert.deepEqual([...flow.mount.querySelectorAll('.tex-reference-content')].map(node=>node.textContent),['[1]','[2]']);
   flow.openDocument(snapshot);await tick();assert.equal(flow.getBibliographyStyle(),'apa');
-  assert.throws(()=>flow.openDocument(JSON.stringify({version:1,value,bibliographyStyle:'unrecognized'})),/Invalid bibliography style/);
+  assert.throws(()=>flow.openDocument(JSON.stringify({version:1,value,bibliographyStyle:'unrecognized'})),error=>error.name==='DocumentFormatError'&&error.code==='invalid-document');
   assert.equal(flow.getBibliographyStyle(),'apa');
   flow.openDocument(JSON.stringify({version:1,value}));await tick();assert.equal(flow.getBibliographyStyle(),'simple');
   assert.equal(JSON.parse(flow.serializeDocument()).bibliographyStyle,undefined);flow.destroy();

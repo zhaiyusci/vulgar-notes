@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const {build}=require('esbuild');
 const source=build({entryPoints:['src/document-lifecycle.ts'],bundle:true,write:false,format:'iife',globalName:'lifecycle',plugins:[{name:'lifecycle-adapters',setup(b){
  const stubs={
-  '@tauri-apps/api/core':'export const isTauri=()=>globalThis.lifecycleTest.desktop;',
+  '@tauri-apps/api/core':'export const isTauri=()=>globalThis.lifecycleTest.desktop;export const invoke=async()=>{};',
   '@tauri-apps/api/window':`export const getCurrentWindow=()=>({setTitle:async title=>globalThis.lifecycleTest.titles.push(title),onCloseRequested:async handler=>{globalThis.lifecycleTest.closeHandler=handler;return()=>{globalThis.lifecycleTest.closeHandler=null;};},destroy:async()=>{const s=globalThis.lifecycleTest;if(s.beforeUnloadOnDestroy)window.dispatchEvent(new Event('beforeunload',{cancelable:true}));if(s.destroyError)throw Error(s.destroyError);s.destroyed++;}});`,
   './i18n':'export const t=value=>value;',
   './plate-document':`export const parseDocumentFile=source=>{const data=JSON.parse(source);if(data.version!==1||!Array.isArray(data.value)||!data.value.length)throw Error('Invalid document format');return data.value;};export const documentContentKey=source=>JSON.stringify(JSON.parse(source),(key,value)=>key==='snapshot'&&typeof value==='string'?JSON.parse(value).root:value);`,

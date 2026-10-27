@@ -8,6 +8,7 @@ import {listRecentDocuments,removeRecentDocument} from './recent-documents';
 import {prepareDocumentRecovery,listRecoverableDocuments} from './document-recovery';
 import {attachDocumentHost,initDocumentLifecycle,refreshDocumentState,runDocumentCommand,openRecentDocumentCommand} from './document-lifecycle';
 import {t} from './i18n';
+import {recordRuntimeEvent} from './runtime-diagnostics';
 initLocale();
 initPreferences();
 initDocumentLifecycle();
@@ -20,15 +21,31 @@ function navigate(documentId?:string){
 window.addEventListener('vulgar-document-start',event=>navigate((event as CustomEvent<{documentId:string}>).detail.documentId));
 window.addEventListener('vulgar-document-home',()=>navigate());
 window.addEventListener('vulgar-document-error',event=>{
-  const {message,error}=(event as CustomEvent<{message:string;error:string}>).detail;
+  const {action,message,error}=(event as CustomEvent<{action?:string;message:string;error:string}>).detail;
+  if(action==='open')void recordRuntimeEvent('document-open-error');
+  if(action==='save'||action==='saveAs')void recordRuntimeEvent('document-save-error');
   const dialog=document.createElement('dialog');dialog.className='document-unsaved-dialog';
   const title=document.createElement('h2');title.textContent=message;
   const description=document.createElement('p');description.textContent=error;
   const actions=document.createElement('div');actions.className='document-unsaved-actions';
   const close=document.createElement('button');close.type='button';close.textContent=t('Close');
   close.addEventListener('click',()=>dialog.close());actions.append(close);dialog.append(title,description,actions);
-  dialog.addEventListener('close',()=>dialog.remove(),{once:true});document.body.append(dialog);dialog.showModal();
+  dialog.addEventListener('close',()=>{void recordRuntimeEvent('document-error-dialog-close');dialog.remove();},{once:true});
+  document.body.append(dialog);void recordRuntimeEvent('document-error-dialog-start');dialog.showModal();void recordRuntimeEvent('document-error-dialog-visible');
 });
+let detachActiveHost:(()=>void)|undefined;
+let failureShown=false;
+function showDocumentFailure(){
+  if(failureShown)return;failureShown=true;detachActiveHost?.();detachActiveHost=undefined;
+  document.body.dataset.documentView='home';
+  const container=document.getElementById('documentHome')!;container.hidden=false;container.replaceChildren();
+  mountDocumentHome(container,{
+    onNew:()=>runDocumentCommand('new'),onOpen:()=>runDocumentCommand('open'),
+    onRecent:id=>openRecentDocumentCommand(id),onPreferences:()=>document.getElementById('openPreferences')!.click(),
+  },{recentDocuments:listRecentDocuments(),error:t('The document could not be displayed. Its recovery data has been kept. You can open another file or create a new document.')});
+  const attribution=document.getElementById('appAttribution');if(attribution)container.append(attribution);
+}
+window.addEventListener('vulgar-document-render-error',()=>{void recordRuntimeEvent('frontend-render-error');showDocumentFailure();});
 
 async function start(){
   let recoveryError='';
@@ -38,7 +55,7 @@ async function start(){
     document.body.dataset.documentView='editor';homeContainer.hidden=true;
     mountMathEditor((mount,initial,hooks)=>{
       const host=new PlateMathHost(mount,initial,{...hooks,change:()=>{hooks.change();refreshDocumentState();}});
-      attachDocumentHost(host);return host;
+      detachActiveHost=attachDocumentHost(host);return host;
     });
     return;
   }
@@ -56,4 +73,4 @@ async function start(){
   window.addEventListener('storage',refreshHome);
   window.addEventListener('focus',refreshHome);
 }
-void start();
+void start().then(()=>recordRuntimeEvent('frontend-ready')).catch(()=>{void recordRuntimeEvent('frontend-start-error');showDocumentFailure();});

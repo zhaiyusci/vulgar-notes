@@ -5,6 +5,7 @@ import {EditorModel} from './editor-model';
 import {referenceTex,validReferenceKey,type ReferenceNode} from './references';
 import {parseBibLibraries,validateBibLibraries,validCitationKey,type BibLibrary} from './bibtex';
 import {isBibliographyStyle,type BibliographyStyle} from './bibliography-style';
+import {t} from './i18n';
 
 const sessionId=documentSessionId();
 /** A newly opened document owns its draft, even when the browser copies opener storage. */
@@ -16,21 +17,32 @@ export function documentContentKey(source:string):string {
   });
 }
 export interface DocumentEnvelope {version:1;value:Value;bibliographyLibraries:BibLibrary[];bibliographyStyle?:BibliographyStyle}
+export class DocumentFormatError extends Error {
+  readonly name='DocumentFormatError';
+  constructor(readonly code:'invalid-json'|'invalid-document'){
+    // JSON parser and library errors can contain parts of the selected file.
+    // Keep those details out of the public error and application diagnostics.
+    super(t('This file is not a valid Vulgar Notes document.'));
+  }
+}
 export function isBlankDocument(value:Value,style:BibliographyStyle='simple'):boolean{
   const node=value[0],leaf=node?.children?.[0];
   return style==='simple'&&value.length===1&&node.type==='p'&&Object.keys(node).every(key=>['type','children','id'].includes(key))&&node.children.length===1&&leaf?.text===''&&Object.keys(leaf).every(key=>key==='text');
 }
 /** Validate both text and its attached source libraries before replacing a document. */
 export function parseDocumentEnvelope(source:string):DocumentEnvelope {
-  const saved=JSON.parse(source);
-  if(saved?.version!==1||!Array.isArray(saved.value)||!saved.value.length)throw Error('Invalid document format');
-  validate(saved.value);
-  if(saved.value.some((node:any)=>typeof node.type!=='string'||!Array.isArray(node.children)))throw Error('Invalid document root');
-  const bibliographyLibraries=validateBibLibraries(saved.bibliographyLibraries);
-  if(saved.bibliographyStyle!==undefined&&!isBibliographyStyle(saved.bibliographyStyle))throw Error('Invalid bibliography style');
-  // A paste can introduce a manual key already present in a source library.
-  // Preserve both on reopen; reference resolution flags that ambiguity.
-  return {version:1,value:saved.value,bibliographyLibraries,...(saved.bibliographyStyle?{bibliographyStyle:saved.bibliographyStyle}:{})};
+  let saved:any;
+  try{saved=JSON.parse(source);}catch{throw new DocumentFormatError('invalid-json');}
+  try{
+    if(saved?.version!==1||!Array.isArray(saved.value)||!saved.value.length)throw Error('Invalid document format');
+    validate(saved.value);
+    if(saved.value.some((node:any)=>typeof node.type!=='string'||!Array.isArray(node.children)))throw Error('Invalid document root');
+    const bibliographyLibraries=validateBibLibraries(saved.bibliographyLibraries);
+    if(saved.bibliographyStyle!==undefined&&!isBibliographyStyle(saved.bibliographyStyle))throw Error('Invalid bibliography style');
+    // A paste can introduce a manual key already present in a source library.
+    // Preserve both on reopen; reference resolution flags that ambiguity.
+    return {version:1,value:saved.value,bibliographyLibraries,...(saved.bibliographyStyle?{bibliographyStyle:saved.bibliographyStyle}:{})};
+  }catch{throw new DocumentFormatError('invalid-document');}
 }
 export function parseDocumentFile(source:string):Value {return parseDocumentEnvelope(source).value;}
 /** Libraries share a citation namespace with existing hand-written bibliography entries. */
@@ -108,16 +120,95 @@ export function restoreDocumentEnvelope(initial:EditorModel):DocumentEnvelope {
 export function restoreDocument(initial:EditorModel):Value {return restoreDocumentEnvelope(initial).value;}
 export function validate(nodes:unknown[]):void {
   for(const raw of nodes){
-    if(!raw||typeof raw!=='object')throw Error('Invalid document node');
+    if(!raw||typeof raw!=='object'||Array.isArray(raw))throw Error('Invalid document node');
     const n=raw as TElement & {text?:string;snapshot?:string};
-    if(typeof n.text==='string')continue;
-    if(typeof n.type!=='string'||!Array.isArray(n.children))throw Error('Invalid document element');
+    validateNodeFields(n);
+    if('text' in n){
+      if(typeof n.text!=='string'||'type' in n||'children' in n)throw Error('Invalid document text');
+      continue;
+    }
+    if(typeof n.type!=='string'||!n.type||!Array.isArray(n.children)||!n.children.length)throw Error('Invalid document element');
     if(n.texLabel!==undefined&&!validReferenceKey(n.texLabel))throw Error('Invalid label');
     if(n.type==='tex_label'&&!validReferenceKey(n.texLabel))throw Error('Invalid label');
     if(n.type==='tex_reference')referenceTex(n as ReferenceNode);
     if(n.type==='bibliography_entry'&&!validCitationKey(n.citeKey))throw Error('Invalid citation key');
     if(isFormula(n)&&n.snapshot)new EditorModel().restore(n.snapshot);
     validate(n.children);
+  }
+}
+/** Check fields consumed by the installed renderer, leaving other metadata intact. */
+function validateNodeFields(n:Record<string,unknown>):void {
+  const field=(name:string,check:(value:unknown)=>boolean,required=false)=>{
+    if((required||n[name]!==undefined)&&!check(n[name]))throw Error('Invalid document field');
+  };
+  const string=(value:unknown)=>typeof value==='string';
+  const number=(value:unknown)=>typeof value==='number'&&Number.isFinite(value);
+  const boolean=(value:unknown)=>typeof value==='boolean';
+  const cssSize=(value:unknown)=>string(value)||number(value);
+  const object=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
+  field('id',string);
+  // The editor is extensible. An unknown node's metadata is not necessarily a
+  // built-in mark, even when it happens to share a field name such as `code`.
+  const knownElement=typeof n.type==='string'&&['p','h1','h2','h3','h4','h5','h6','blockquote','hr','a','date','mention','mention_input','tag','code_block','code_line','code_drawing','callout','img','audio','video','file','media_embed','placeholder','column','column_group','table','tr','td','th','toggle','toc','excalidraw','footnoteReference','footnoteDefinition','footnoteInput','equation','inline_equation','tex_label','tex_reference','bibliography_entry','ul','ol','li','lic'].includes(n.type);
+  if(typeof n.text==='string'||knownElement){
+    for(const name of ['color','backgroundColor','fontFamily','className','align','textAlign','listStyleType'])field(name,string);
+    for(const name of ['fontSize','fontWeight','lineHeight','textIndent'])field(name,cssSize);
+  }
+  if(typeof n.text==='string')for(const name of ['bold','italic','underline','strikethrough','code','subscript','superscript','highlight','kbd'])field(name,boolean);
+  if(knownElement){
+    field('checked',boolean);
+    for(const name of ['indent','listStart','listRestart','listRestartPolite'])field(name,number);
+  }
+  if(n.type==='a'){field('url',string,true);field('target',string);}
+  if(n.type==='date'){field('date',string);field('rawDate',string);}
+  if(n.type==='mention'||n.type==='tag')field('value',string,true);
+  if(n.type==='code_block')field('lang',string);
+  if(n.type==='callout'){field('icon',string);field('variant',string);}
+  if(['img','audio','video','file','media_embed'].includes(String(n.type))){
+    field('url',string,true);
+    for(const name of ['name','provider','sourceUrl','placeholderId'])field(name,string);
+    for(const name of ['width','height','initialWidth','initialHeight'])field(name,cssSize);
+    field('isUpload',boolean);
+    if(n.caption!==undefined){if(!Array.isArray(n.caption))throw Error('Invalid media caption');validate(n.caption);}
+  }
+  if(n.type==='placeholder')field('mediaType',value=>typeof value==='string'&&['img','audio','video','file'].includes(value),true);
+  if(n.type==='column')field('width',cssSize);
+  if(n.type==='column_group')field('layout',value=>Array.isArray(value)&&value.every(number));
+  if(n.type==='table'){
+    field('colSizes',value=>Array.isArray(value)&&value.every(number));field('marginLeft',number);
+  }
+  if(n.type==='tr'||n.type==='td'||n.type==='th'){
+    field('size',number);
+    for(const name of ['colSpan','rowSpan'])field(name,value=>number(value)&&Number.isInteger(value)&&Number(value)>=1);
+    field('background',string);
+    if(n.borders!==undefined){
+      if(!object(n.borders))throw Error('Invalid table borders');
+      for(const side of ['top','bottom','left','right']){
+        const border=n.borders[side];if(border===undefined)continue;
+        if(!object(border)||border.color!==undefined&&!string(border.color)||border.style!==undefined&&!string(border.style)||border.size!==undefined&&!number(border.size))throw Error('Invalid table border');
+      }
+    }
+    if(n.attributes!==undefined){
+      if(!object(n.attributes))throw Error('Invalid table attributes');
+      for(const name of ['colspan','rowspan'])if(n.attributes[name]!==undefined&&!string(n.attributes[name]))throw Error('Invalid table span');
+    }
+  }
+  if(n.type==='footnoteReference'||n.type==='footnoteDefinition')field('identifier',string);
+  if(n.type==='equation'||n.type==='inline_equation'){
+    // Snapshot-only formulas from older versions are still readable.
+    field('texExpression',string);field('snapshot',string);field('display',boolean);field('numbered',boolean);
+  }
+  if(n.type==='code_drawing'||n.type==='excalidraw'){
+    if(n.data!==undefined&&!object(n.data))throw Error('Invalid drawing data');
+    const data=n.data as Record<string,unknown>|undefined;
+    if(n.type==='code_drawing'){
+      for(const name of ['code','drawingType','drawingMode'])if(data?.[name]!==undefined&&!string(data[name]))throw Error('Invalid drawing field');
+    }else if(data){
+      if(data.elements!==undefined&&(!Array.isArray(data.elements)||!data.elements.every(object)))throw Error('Invalid drawing elements');
+      if(data.state!==undefined&&!object(data.state))throw Error('Invalid drawing state');
+      const state=data.state as Record<string,unknown>|undefined;
+      if(state?.viewBackgroundColor!==undefined&&!string(state.viewBackgroundColor))throw Error('Invalid drawing background');
+    }
   }
 }
 /** Keep the established LaTeX prose exporter independent of the document engine. */

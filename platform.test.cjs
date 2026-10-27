@@ -8,7 +8,7 @@ const platformAdapters={name:'platform-test-adapters',setup(b){
   b.onLoad({filter:/.*/,namespace:'platform-test'},({path})=>({contents:path==='i18n'
    ?'export const t=value=>value;'
    :path.endsWith('/core')
-    ?'export const isTauri=()=>globalThis.platformTest.desktop;'
+    ?'export const isTauri=()=>globalThis.platformTest.desktop;export const invoke=async()=>{};'
     :path.endsWith('/plugin-dialog')
      ?`export const open=async options=>{const s=globalThis.platformTest;s.opens.push(options);return s.openPath;};
        export const save=async options=>{const s=globalThis.platformTest;s.saves.push(options);return s.savePath;};
