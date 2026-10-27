@@ -4,6 +4,7 @@ import {type JSONContent, migrateLegacy, documentLatex} from './document-format'
 import {EditorModel} from './editor-model';
 import {referenceTex,validReferenceKey,type ReferenceNode} from './references';
 import {parseBibLibraries,validateBibLibraries,validCitationKey,type BibLibrary} from './bibtex';
+import {isBibliographyStyle,type BibliographyStyle} from './bibliography-style';
 
 const sessionId=documentSessionId();
 /** A newly opened document owns its draft, even when the browser copies opener storage. */
@@ -14,7 +15,7 @@ export function documentContentKey(source:string):string {
     return value;
   });
 }
-export interface DocumentEnvelope {version:1;value:Value;bibliographyLibraries:BibLibrary[]}
+export interface DocumentEnvelope {version:1;value:Value;bibliographyLibraries:BibLibrary[];bibliographyStyle?:BibliographyStyle}
 /** Validate both text and its attached source libraries before replacing a document. */
 export function parseDocumentEnvelope(source:string):DocumentEnvelope {
   const saved=JSON.parse(source);
@@ -22,9 +23,10 @@ export function parseDocumentEnvelope(source:string):DocumentEnvelope {
   validate(saved.value);
   if(saved.value.some((node:any)=>typeof node.type!=='string'||!Array.isArray(node.children)))throw Error('Invalid document root');
   const bibliographyLibraries=validateBibLibraries(saved.bibliographyLibraries);
+  if(saved.bibliographyStyle!==undefined&&!isBibliographyStyle(saved.bibliographyStyle))throw Error('Invalid bibliography style');
   // A paste can introduce a manual key already present in a source library.
   // Preserve both on reopen; reference resolution flags that ambiguity.
-  return {version:1,value:saved.value,bibliographyLibraries};
+  return {version:1,value:saved.value,bibliographyLibraries,...(saved.bibliographyStyle?{bibliographyStyle:saved.bibliographyStyle}:{})};
 }
 export function parseDocumentFile(source:string):Value {return parseDocumentEnvelope(source).value;}
 /** Libraries share a citation namespace with existing hand-written bibliography entries. */

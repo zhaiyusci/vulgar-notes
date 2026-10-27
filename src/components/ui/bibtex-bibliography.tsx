@@ -1,14 +1,16 @@
 import {useEditorSelector} from 'platejs/react';
 import type {TElement} from 'platejs';
 import {bibliographyItems} from '@/references';
-import {useBibliographyLibraries} from '@/use-bibliography';
+import {useBibliographyLibraries,useBibliographyStyle} from '@/use-bibliography';
 import {t} from '@/i18n';
+import {BibliographyText} from './bibliography-text';
+import {CSLAttribution} from './csl-attribution';
 
 /** Generated references are read-only views; their source stays outside prose. */
 export function BibtexBibliography({beforeNode,afterNode}:{beforeNode?:TElement;afterNode?:TElement}){
-  const libraries=useBibliographyLibraries();
+  const libraries=useBibliographyLibraries(),style=useBibliographyStyle();
   const {entries,heading,standalone}=useEditorSelector(editor=>{
-    const items=bibliographyItems(editor.children,libraries),editable=items.filter(item=>!item.libraryId);
+    const items=bibliographyItems(editor.children,libraries,style),editable=items.filter(item=>!item.libraryId);
     if(beforeNode){
       const index=items.findIndex(item=>item.node===beforeNode);let previous=index-1;
       while(previous>=0&&items[previous].libraryId)previous--;
@@ -19,14 +21,14 @@ export function BibtexBibliography({beforeNode,afterNode}:{beforeNode?:TElement;
       return {entries:editable.at(-1)?.node===afterNode?items.slice(index+1).filter(item=>item.libraryId):[],heading:false,standalone:false};
     }
     return {entries:editable.length?[]:items.filter(item=>item.libraryId),heading:!editable.length,standalone:true};
-  },[libraries,beforeNode,afterNode]);
+  },[libraries,style,beforeNode,afterNode]);
   if(!entries.length&&!heading||standalone&&!entries.length)return null;
   const rows=<ol className="space-y-3">
       {entries.map(entry=><li key={entry.key} id={'bibtex-'+encodeURIComponent(entry.key)} data-bibliography-key={entry.key} className="flex gap-2">
-        <span className="shrink-0 text-muted-foreground">[{entry.number||'??'}]</span><span>{entry.description}</span>
+        <span className="shrink-0 text-muted-foreground">[{entry.number||'??'}]</span><span><BibliographyText description={entry.description} runs={entry.runs} /></span>
       </li>)}
     </ol>;
-  const title=heading?<h2 className="mb-3 font-semibold" data-bibliography-heading="true">{t('Notes and references')}</h2>:null;
+  const title=heading?<><h2 className="mb-3 font-semibold" data-bibliography-heading="true">{t('Notes and references')}</h2>{style!=='simple'&&<CSLAttribution />}</>:null;
   if(!standalone)return <div className={'bibtex-bibliography '+(beforeNode?'mb-3':'mt-3')} contentEditable={false}>{title}{entries.length?rows:null}</div>;
   return <section className="bibtex-bibliography mx-8 my-8 border-t pt-5" contentEditable={false} aria-label={t('Notes and references')}>
     {title}

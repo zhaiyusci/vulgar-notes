@@ -1,0 +1,36 @@
+citeproc-js implements the Citation Style Language
+(c) Frank Bennett
+https://citationstyles.org/
+
+Vulgar Notes uses the unmodified citeproc npm package version 2.4.63 by
+Frank Bennett and its contributors, under the Common Public Attribution
+License Version 1.0 (CPAL-1.0). The module is also offered upstream under
+AGPLv3; the upstream dual-license notices and both full licenses are included.
+The npm package metadata's AGPL-1.0 identifier differs from the actual upstream
+license notice, which specifies AGPL version 3 or later. The CPAL option is
+used here.
+
+The original, unmodified processor source is supplied as citeproc_commonjs.js
+beside this notice. Its SHA-256, exact npm version and source revision are in
+manifest.json. The source is also available from the official repository:
+https://github.com/Juris-M/citeproc-js/tree/73bc1b44bc7d54d0bfec4e070fd27f5efe024ff9
+
+The application-specific BibTeX adapter and marked-text renderer are separate
+code; no modifications have been made to the upstream processor.
+
+The exact Attribution Information in CPAL Exhibit B is:
+
+    Attribution Copyright Notice: (c) Frank Bennett
+
+    Attribution Phrase (not exceeding 10 words): citeproc-js implements the Citation Style Language
+
+    Attribution URL: https://citationstyles.org/
+
+    Graphic Image as provided in the Covered Code, if any.
+
+    Display of Attribution Information is required in Larger Works which are defined in the CPAL as a work which combines Covered Code or portions thereof with code not governed by the terms of the CPAL.
+
+See CPAL.txt for the complete license, including section 14's attribution
+terms. NPM-LICENSE.txt preserves the exact notice distributed in the package;
+LICENSE.txt, CPAL.txt and AGPLv3.txt preserve the upstream files at the npm
+package's recorded source revision.

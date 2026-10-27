@@ -1,4 +1,5 @@
 import {parse, parseVerbatim, type Creator, type Entry, type VerbatimEntry, type VerbatimLibrary} from '@retorquere/bibtex-parser';
+import {bibEntryToCSL,type CSLItem} from './bibtex-csl';
 
 /** The original BibTeX is the document data; parsed fields are only a view. */
 export interface BibLibrary {id:string;name:string;source:string}
@@ -9,6 +10,7 @@ export interface BibEntry {
   author:string;
   year:string;
   description:string;
+  csl?:CSLItem;
   libraryId:string;
   libraryName:string;
   doi?:string;
@@ -69,7 +71,7 @@ function displayEntry(entry:Entry,library:BibLibrary):BibEntry {
     ||(Array.isArray(fields.publisher)?fields.publisher.map(plain).join('; '):plain(fields.publisher));
   return {
     key:entry.key,type:entry.type,title,author,year,
-    description:[author,title,publication,year].filter(Boolean).join('. '),
+    description:[author,title,publication,year].filter(Boolean).join('. '),csl:bibEntryToCSL(entry),
     libraryId:library.id,libraryName:library.name,
     ...(fields.doi?{doi:plain(fields.doi)}:{}),
     ...(fields.url?{url:plain(fields.url)}:{}),

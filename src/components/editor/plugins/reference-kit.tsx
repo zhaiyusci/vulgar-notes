@@ -4,15 +4,15 @@ import {LabelMarker} from '@/components/ui/label-marker';
 import {createPlatePlugin,PlateElement,useEditorSelector,useSelected,useFocused,type PlateElementProps} from 'platejs/react';
 import {bibliographyItems,resolveReference,type ReferenceNode} from '@/references';
 import {t} from '@/i18n';
-import {useBibliographyLibraries} from '@/use-bibliography';
+import {useBibliographyLibraries,useBibliographyStyle} from '@/use-bibliography';
 import {BibtexBibliography} from '@/components/ui/bibtex-bibliography';
 import {ReferencePreview} from '@/components/ui/reference-preview';
 
 function ReferenceElement(props:PlateElementProps){
   const node=props.element as ReferenceNode;
-  const libraries=useBibliographyLibraries();
+  const libraries=useBibliographyLibraries(),style=useBibliographyStyle();
   const selected=useSelected(),focused=useFocused();
-  const result=useEditorSelector(editor=>resolveReference(editor.children,node,libraries),[node,libraries]);
+  const result=useEditorSelector(editor=>resolveReference(editor.children,node,libraries,style),[node,libraries,style]);
   const jump=()=>{const target=result.targets[0];if(target)(target.libraryId?document.getElementById('bibtex-'+encodeURIComponent(target.key)):props.editor.api.toDOMNode(target.node))?.scrollIntoView({block:'center',behavior:'smooth'});};
   const description='\\'+node.command+'{'+node.keys.join(',')+'}'+(result.invalid?' — '+t('Unresolved, unnumbered or duplicate reference'):'')+' — '+t('Click to select; Ctrl/Cmd-click to follow; double-click to edit.');
   const trigger=<span contentEditable={false} role="link"
@@ -39,7 +39,7 @@ function ReferenceElement(props:PlateElementProps){
     >{result.text}</span>;
   const entries=node.keys.map((key,index)=>{
     const target=result.targets.find(item=>item.key===key);
-    return {key:key+':'+index,number:target?.number,description:target?.description||key+' — '+t('Unresolved, unnumbered or duplicate reference')};
+    return {key:key+':'+index,number:target?.number,description:target?.description||key+' — '+t('Unresolved, unnumbered or duplicate reference'),runs:target?.runs};
   });
   return <PlateElement {...props} as="span" className="tex-reference" attributes={{...props.attributes,'data-reference-selected':selected&&focused?'true':'false'}}>
     {node.command==='cite'?<ReferencePreview entries={entries}>{trigger}</ReferencePreview>:trigger}{props.children}

@@ -4,6 +4,8 @@ import {unicodeMathPreamble,blackboardPreamble} from './letter-preamble';
 import {mhchemParser} from 'mhchemparser';
 import {citedBibLibraries,parseBibLibraries,validateBibLibraries,validCitationKey,type BibLibrary} from './bibtex';
 import {bibliographyItems} from './references';
+import {documentLatex} from './document-format';
+import type {BibliographyRun,BibliographyStyle} from './bibliography-style';
 
 /** MathJax's physical-unit shorthand is not a LaTeX mhchem command. */
 export function portableMath(source:string):string {
@@ -42,7 +44,17 @@ function embeddedBibliography(filename:string,source:string):string {
     (/[\r\n]$/.test(source)?'':'\n')+'\\end{filecontents*}\n';
 }
 
-function referenceDocument(value:Value,libraries:readonly BibLibrary[]):{resources:string;setup:string;body:string;biblatex:boolean} {
+/** Processor text is data, never TeX source; retain only its supported marks. */
+function formattedBibliographyTex(runs:readonly BibliographyRun[]):string {
+  const commands=[['italic','textit'],['bold','textbf'],['superscript','textsuperscript'],['subscript','textsubscript'],['smallCaps','textsc']] as const;
+  return runs.map(run=>{
+    let text=documentLatex({type:'text',text:run.text});
+    for(const [mark,command] of commands)if(run[mark])text='\\'+command+'{'+text+'}';
+    return text;
+  }).join('');
+}
+
+function referenceDocument(value:Value,libraries:readonly BibLibrary[],style:BibliographyStyle):{resources:string;setup:string;body:string;biblatex:boolean} {
   const checked=validateBibLibraries(libraries),keys=new Set(parseBibLibraries(checked).map(entry=>entry.key));
   const identifiers=new Set<string>();
   const validate=(nodes:any[])=>nodes.forEach(node=>{
@@ -73,10 +85,23 @@ function referenceDocument(value:Value,libraries:readonly BibLibrary[]):{resourc
     if(node.type==='footnoteReference')return [{type:'tex_reference',command:'cite',keys:[noteKey(String(node.identifier??''))],children:[{text:''}]}];
     return [Array.isArray(node.children)?{...node,children:transform(node.children)}:node];
   });
-  const rows=bibliographyItems(value,checked).map(item=>({
+  const rows=bibliographyItems(value,checked,style).map(item=>({
     ...item,key:item.kind==='endnote'?noteKey(item.identifier!):item.key,
   }));
-  const bodyNodes=transform(value),retained=citedBibLibraries(checked,rows.filter(row=>row.libraryId).map(row=>row.key));
+  const bodyNodes=transform(value);
+  if(style!=='simple'){
+    // The editor owns the shared note/citation order and numbers. Preformatted
+    // CSL bodies preserve the chosen format exactly, without re-sorting or
+    // reformatting entries through a different BibLaTeX implementation.
+    const bibliography=rows.map(row=>{
+      const body=row.libraryId&&row.runs?formattedBibliographyTex(row.runs):
+        plateLatex(transform(row.node.children) as Value,portableMath);
+      return '\\bibitem{'+row.key+'} '+body;
+    }).join('\n');
+    return {resources:'',setup:rows.length?'\\renewcommand{\\refname}{Notes and references}\n':'',
+      body:plateLatex(bodyNodes,portableMath)+(rows.length?'\n\n\\begin{thebibliography}{'+rows.length+'}\n'+bibliography+'\n\\end{thebibliography}':''),biblatex:false};
+  }
+  const retained=citedBibLibraries(checked,rows.filter(row=>row.libraryId).map(row=>row.key));
   if(!retained.length){
     const definitions=rows.map(row=>({type:'bibliography_entry',citeKey:row.key,children:transform(row.node.children)}));
     return {resources:'',setup:rows.length?'\\renewcommand{\\refname}{Notes and references}\n':'',
@@ -105,8 +130,8 @@ function referenceDocument(value:Value,libraries:readonly BibLibrary[]):{resourc
   };
 }
 
-export function latexDocument(value:Value,libraries:readonly BibLibrary[]=[]):string {
-  const bibliography=referenceDocument(value,libraries),body=bibliography.body;
+export function latexDocument(value:Value,libraries:readonly BibLibrary[]=[],style:BibliographyStyle='simple'):string {
+  const bibliography=referenceDocument(value,libraries,style),body=bibliography.body;
   const instructions=bibliography.biblatex?
     '% Compile: LuaLaTeX, Biber, LuaLaTeX, LuaLaTeX (TeX Live).\n% Run Biber on the document basename, without the .tex extension.\n':
     '% Compile with LuaLaTeX or XeLaTeX (TeX Live).\n% Run twice to resolve cross-references and citations.\n';

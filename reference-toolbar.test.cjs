@@ -13,7 +13,7 @@ const code=build({
    'platejs':`export const KEYS=new Proxy({},{get:(_,key)=>key});export const NodeApi={nodes:function*(editor){function* walk(nodes,parent=[]){for(let i=0;i<nodes.length;i++){const node=nodes[i],path=[...parent,i];yield[node,path];if(node.children)yield*walk(node.children,path);}}yield*walk(editor.children);}};`,
    'platejs/react':`export const useEditorRef=()=>globalThis.referenceToolbarTest.editor;export const useEditorSelector=selector=>selector(globalThis.referenceToolbarTest.editor);export const useEditorReadOnly=()=>globalThis.referenceToolbarTest.editor.api.isReadOnly();`,
    '@/plate-math-element':`import{createContext}from'react';export const HostContext=createContext(null);`,
-   '@/use-bibliography':`export const useBibliographyLibraries=()=>globalThis.referenceToolbarTest.libraries;`,
+   '@/use-bibliography':`export const useBibliographyLibraries=()=>globalThis.referenceToolbarTest.libraries;export const useBibliographyStyle=()=> 'simple';`,
    '@/i18n':`export const t=value=>value;`,
    './toolbar':`export const ToolbarButton=({tooltip,...props})=><button type="button" {...props}/>;export const ToolbarGroup=({children})=><div data-toolbar-group>{children}</div>;`,
    './button':`export const Button=({variant,...props})=><button type="button" {...props}/>;`,

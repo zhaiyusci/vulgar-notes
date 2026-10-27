@@ -331,6 +331,27 @@ test('Plate document / independent MathJax mount integration',async t=>{
   flow.keyDown(event);await tick();assert.equal(editor.children[0].children.some(node=>node.type==='footnoteReference'),true);assert.deepEqual(editor.selection,{anchor:{path:[0,0],offset:7},focus:{path:[0,2],offset:0}});
   flow.keyDown(event);await tick();assert.equal(editor.children[0].children.some(node=>node.type==='footnoteReference'),false);editor.tf.undo();await tick();assert.equal(editor.children[0].children.some(node=>node.type==='footnoteReference'),true);flow.destroy();
  });
+ await t.test('reference-list formats persist per document and refresh formatted entries without renumbering notes',async()=>{
+  const {flow,editor}=setup();
+  const value=[{type:'p',children:[{text:'Source '},{type:'tex_reference',command:'cite',keys:['paper'],children:[{text:''}]},{text:' and note '},{type:'footnoteReference',identifier:'note',children:[{text:''}]},{text:'.'}]},{type:'footnoteDefinition',identifier:'note',children:[{type:'p',children:[{text:'Rich note',bold:true}]}]}];
+  const library={id:'papers',name:'papers.bib',source:'@article{paper,author={Doe, Jane},title={Original title},journal={Example Journal},year={2026},volume={7},pages={10--20}}'};
+  flow.openDocument(JSON.stringify({version:1,value}));flow.setBibliographyLibraries([library]);
+  flow.markDocumentSaved(flow.serializeDocument());flow.setBibliographyStyle('apa');await tick();
+  assert.equal(flow.hasUnsavedChanges(),true);
+  assert.deepEqual([...flow.mount.querySelectorAll('.tex-reference-content')].map(node=>node.textContent),['[1]','[2]']);
+  const row=flow.mount.querySelector('[data-bibliography-key="paper"]');assert.match(row.textContent,/Doe.*2026.*Original title/);assert.ok(row.querySelector('i'));
+  const snapshot=flow.serializeDocument();assert.equal(JSON.parse(snapshot).bibliographyStyle,'apa');
+  assert.doesNotMatch(snapshot,/"csl"|fileHandle|bibliography-sources|"path"/);
+  flow.markDocumentSaved(snapshot);assert.equal(flow.hasUnsavedChanges(),false);
+  flow.setBibliographyLibraries([{...library,source:library.source.replace('Original title','Refreshed title')}],[library.id]);await tick();
+  assert.match(flow.mount.querySelector('[data-bibliography-key="paper"]').textContent,/Refreshed title/);
+  assert.deepEqual([...flow.mount.querySelectorAll('.tex-reference-content')].map(node=>node.textContent),['[1]','[2]']);
+  flow.openDocument(snapshot);await tick();assert.equal(flow.getBibliographyStyle(),'apa');
+  assert.throws(()=>flow.openDocument(JSON.stringify({version:1,value,bibliographyStyle:'unrecognized'})),/Invalid bibliography style/);
+  assert.equal(flow.getBibliographyStyle(),'apa');
+  flow.openDocument(JSON.stringify({version:1,value}));await tick();assert.equal(flow.getBibliographyStyle(),'simple');
+  assert.equal(JSON.parse(flow.serializeDocument()).bibliographyStyle,undefined);flow.destroy();
+ });
  await t.test('citation and endnote hover previews share presentation and show current numbered contents',async()=>{
   const {flow,editor}=setup();
   const value=[{type:'p',children:[{text:'Read '},{type:'tex_reference',command:'cite',keys:['a','missing','b'],children:[{text:''}]},{text:' and '},{type:'footnoteReference',identifier:'note',children:[{text:''}]},{text:'.'}]},{type:'footnoteDefinition',identifier:'note',children:[{type:'p',children:[{text:'Original endnote contents'}]}]}];

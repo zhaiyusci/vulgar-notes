@@ -1,11 +1,13 @@
 import type {KEYS,TElement,Value} from 'platejs';
 import {parseBibLibraries,validCitationKey,type BibLibrary} from './bibtex';
+import {formatBibliography} from './bibliography-format';
+import type {BibliographyStyle,BibliographyRun} from './bibliography-style';
 
 export const referenceKeyPattern=/^[A-Za-z][A-Za-z0-9:._-]*$/;
 export const validReferenceKey=(key:unknown):key is string=>typeof key==='string'&&referenceKeyPattern.test(key);
 export type ReferenceCommand='ref'|'eqref'|'cite';
 export type ReferenceNode=TElement & {command:ReferenceCommand;keys:string[]};
-export interface ReferenceTarget {node:TElement;path:number[];kind:'equation'|'heading'|'bibliography'|'anchor'|'endnote';key:string;number:string;description:string;libraryId?:string;identifier?:string}
+export interface ReferenceTarget {node:TElement;path:number[];kind:'equation'|'heading'|'bibliography'|'anchor'|'endnote';key:string;number:string;description:string;runs?:BibliographyRun[];libraryId?:string;identifier?:string}
 export type BibliographyItem=ReferenceTarget&{kind:'bibliography'|'endnote'};
 const textOf=(node:any):string=>typeof node.text==='string'?node.text:(node.children||[]).map(textOf).join('');
 // Keep this pure document query free of Plate runtime/browser side effects,
@@ -22,7 +24,7 @@ export function citedReferenceKeys(value:Value):string[]{
   }};walk(value);return [...keys];
 }
 
-function referenceIndex(value:Value,libraries:readonly BibLibrary[]){
+function referenceIndex(value:Value,libraries:readonly BibLibrary[],style:BibliographyStyle='simple'){
   let equations=0,currentHeading='';
   const headings=[0,0,0,0,0,0],result:ReferenceTarget[]=[],editable:BibliographyItem[]=[];
   const citations=new Map<string,BibliographyItem[]>(),notes=new Map<string,BibliographyItem[]>();
@@ -90,20 +92,30 @@ function referenceIndex(value:Value,libraries:readonly BibLibrary[]){
   // Older documents may have editable rows with no remaining reference.
   // Retain every row (including duplicates), preserving their relative order.
   for(const target of editable){append(target);expand(target);}
+  if(style!=='simple'){
+    const metadata=new Map(parseBibLibraries(libraries).map(entry=>[entry.key,entry]));
+    const formatted=formatBibliography(ordered.filter(item=>item.libraryId&&item.number).flatMap(item=>{
+      const entry=metadata.get(item.key);return entry?.csl?[{key:item.key,csl:entry.csl}]:[];
+    }),style);
+    for(const target of result){
+      const entry=target.libraryId?formatted.get(target.key):undefined;
+      if(entry){target.description=entry.text;target.runs=entry.runs;}
+    }
+  }
   return {targets:result,items:ordered};
 }
 
 /** Shared endnote/citation numbering follows first occurrence in body prose. */
-export function bibliographyItems(value:Value,libraries:readonly BibLibrary[]=[]):BibliographyItem[]{
-  return referenceIndex(value,libraries).items;
+export function bibliographyItems(value:Value,libraries:readonly BibLibrary[]=[],style:BibliographyStyle='simple'):BibliographyItem[]{
+  return referenceIndex(value,libraries,style).items;
 }
 
 /** Recompute from document order; numbers are presentation, keys are identity. */
 export function referenceTargets(value:Value,libraries:readonly BibLibrary[]=[]):ReferenceTarget[]{
   return referenceIndex(value,libraries).targets;
 }
-export function resolveReference(value:Value,reference:ReferenceNode,libraries:readonly BibLibrary[]=[]){
-  const targets=referenceTargets(value,libraries),citation=reference.command==='cite';
+export function resolveReference(value:Value,reference:ReferenceNode,libraries:readonly BibLibrary[]=[],style:BibliographyStyle='simple'){
+  const targets=referenceIndex(value,libraries,reference.command==='cite'?style:'simple').targets,citation=reference.command==='cite';
   const matches=reference.keys.map(key=>targets.filter(target=>target.key===key&&(citation?target.kind==='bibliography':reference.command==='eqref'?target.kind==='equation':target.kind!=='bibliography'&&target.kind!=='endnote')));
   const invalid=matches.some(items=>items.length!==1||!items[0].number)||!matches.length;
   const numbers=matches.map(items=>items.length===1&&items[0].number?items[0].number:'??');

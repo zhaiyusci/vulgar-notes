@@ -1,10 +1,11 @@
 import type {Descendant,Value} from 'platejs';
 import type {BibLibrary} from './bibtex';
 import {bibliographyItems} from './references';
+import type {BibliographyStyle} from './bibliography-style';
 
 /** Export endnotes and references in the document's shared numbering order. */
-export function bibliographyMarkdown(value:Value,libraries:readonly BibLibrary[],serialize:(value:Value)=>string):string {
-  const entries=bibliographyItems(value,libraries);
+export function bibliographyMarkdown(value:Value,libraries:readonly BibLibrary[],serialize:(value:Value)=>string,style:BibliographyStyle='simple'):string {
+  const entries=bibliographyItems(value,libraries,style);
   const noteNumbers=new Map(entries.filter(entry=>entry.kind==='endnote').map(entry=>[entry.identifier,entry.number||'??']));
   const withoutEntries=(nodes:Descendant[]):Descendant[]=>nodes.flatMap(node=>{
     if(node.type==='bibliography_entry'||node.type==='footnoteDefinition')return [];
@@ -17,7 +18,7 @@ export function bibliographyMarkdown(value:Value,libraries:readonly BibLibrary[]
     // Use the same rich-text and math serializer as the prose. The legacy
     // bibliography_entry rule flattened children to plain text, losing marks
     // and formulas; a paragraph preserves their native Markdown handling.
-    const children=withoutEntries(entry.node.children as Descendant[]);
+    const children=entry.runs?entry.runs.map(run=>({text:run.text,...(run.bold?{bold:true}:{}),...(run.italic?{italic:true}:{}),...(run.superscript?{superscript:true}:{}),...(run.subscript?{subscript:true}:{})})):withoutEntries(entry.node.children as Descendant[]);
     const content=serialize(entry.kind==='endnote'?children as Value:[{...entry.node,type:'p',children}]).trim();
     return '['+(entry.number||'??')+']'+(entry.kind==='bibliography'?' \\bibitem{'+entry.key+'}':'')+(content?' '+content:'');
   });

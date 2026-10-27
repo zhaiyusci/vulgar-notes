@@ -1,0 +1,112 @@
+{
+  "project": "Citation Style Language",
+  "homepage": "https://citationstyles.org/",
+  "license": "CC-BY-SA-3.0",
+  "format": "Exact upstream UTF-8 XML, embedded as TypeScript string literals without XML modifications",
+  "styles": {
+    "ieee": {
+      "repository": "https://github.com/citation-style-language/styles",
+      "revision": "3684ae0ae6e93246d02858658e55009508428f5d",
+      "file": "ieee.csl",
+      "source": "https://github.com/citation-style-language/styles/blob/3684ae0ae6e93246d02858658e55009508428f5d/ieee.csl",
+      "download": "https://raw.githubusercontent.com/citation-style-language/styles/3684ae0ae6e93246d02858658e55009508428f5d/ieee.csl",
+      "sha256": "6dee2b87ce90a7ab86f232d78a9216f47adc6193f13b6307b4a83c65594e721a",
+      "bytes": 17587,
+      "license": "CC-BY-SA-3.0",
+      "title": "IEEE Reference Guide version 11.29.2023"
+    },
+    "vancouver": {
+      "repository": "https://github.com/citation-style-language/styles",
+      "revision": "3684ae0ae6e93246d02858658e55009508428f5d",
+      "file": "nlm-citation-sequence.csl",
+      "source": "https://github.com/citation-style-language/styles/blob/3684ae0ae6e93246d02858658e55009508428f5d/nlm-citation-sequence.csl",
+      "download": "https://raw.githubusercontent.com/citation-style-language/styles/3684ae0ae6e93246d02858658e55009508428f5d/nlm-citation-sequence.csl",
+      "sha256": "42759650b00306c02aa5786db843c8ed67128a86b2ec0a1825a1f4e6387d51cc",
+      "bytes": 18126,
+      "license": "CC-BY-SA-3.0",
+      "title": "NLM/Vancouver: Citing Medicine 2nd edition (citation-sequence)"
+    },
+    "apa": {
+      "repository": "https://github.com/citation-style-language/styles",
+      "revision": "3684ae0ae6e93246d02858658e55009508428f5d",
+      "file": "apa.csl",
+      "source": "https://github.com/citation-style-language/styles/blob/3684ae0ae6e93246d02858658e55009508428f5d/apa.csl",
+      "download": "https://raw.githubusercontent.com/citation-style-language/styles/3684ae0ae6e93246d02858658e55009508428f5d/apa.csl",
+      "sha256": "41b4f3c9c61b58b7428ab21d653891995db7b4648d2f0a906eabcb8b2742e7ae",
+      "bytes": 85817,
+      "license": "CC-BY-SA-3.0",
+      "title": "APA Style 7th edition"
+    },
+    "chicago": {
+      "repository": "https://github.com/citation-style-language/styles",
+      "revision": "3684ae0ae6e93246d02858658e55009508428f5d",
+      "file": "chicago-notes-bibliography.csl",
+      "source": "https://github.com/citation-style-language/styles/blob/3684ae0ae6e93246d02858658e55009508428f5d/chicago-notes-bibliography.csl",
+      "download": "https://raw.githubusercontent.com/citation-style-language/styles/3684ae0ae6e93246d02858658e55009508428f5d/chicago-notes-bibliography.csl",
+      "sha256": "8384dc38aedc14a98745aa91752d14263065cb04ae566f39c2708c53dac2a299",
+      "bytes": 242663,
+      "license": "CC-BY-SA-3.0",
+      "title": "Chicago Manual of Style 18th edition (notes and bibliography)"
+    },
+    "gbt7714": {
+      "repository": "https://github.com/citation-style-language/styles",
+      "revision": "3684ae0ae6e93246d02858658e55009508428f5d",
+      "file": "china-national-standard-gb-t-7714-2025-numeric.csl",
+      "source": "https://github.com/citation-style-language/styles/blob/3684ae0ae6e93246d02858658e55009508428f5d/china-national-standard-gb-t-7714-2025-numeric.csl",
+      "download": "https://raw.githubusercontent.com/citation-style-language/styles/3684ae0ae6e93246d02858658e55009508428f5d/china-national-standard-gb-t-7714-2025-numeric.csl",
+      "sha256": "303921f484c3375a0c5c6f982c321f1b76176ec732a0525c90db3c10255f172d",
+      "bytes": 17228,
+      "license": "CC-BY-SA-3.0",
+      "title": "China National Standard GB/T 7714-2025 (numeric, 中文)"
+    }
+  },
+  "locales": {
+    "en-US": {
+      "repository": "https://github.com/citation-style-language/locales",
+      "revision": "6b70fe79264543aa538f8927fcc98d5b72425a94",
+      "file": "locales-en-US.xml",
+      "source": "https://github.com/citation-style-language/locales/blob/6b70fe79264543aa538f8927fcc98d5b72425a94/locales-en-US.xml",
+      "download": "https://raw.githubusercontent.com/citation-style-language/locales/6b70fe79264543aa538f8927fcc98d5b72425a94/locales-en-US.xml",
+      "sha256": "6f2cd3d1d5527ff07a2981f7ec237753e3b6787568d053c08485802cc3d04ac0",
+      "bytes": 32649,
+      "license": "CC-BY-SA-3.0"
+    },
+    "zh-CN": {
+      "repository": "https://github.com/citation-style-language/locales",
+      "revision": "6b70fe79264543aa538f8927fcc98d5b72425a94",
+      "file": "locales-zh-CN.xml",
+      "source": "https://github.com/citation-style-language/locales/blob/6b70fe79264543aa538f8927fcc98d5b72425a94/locales-zh-CN.xml",
+      "download": "https://raw.githubusercontent.com/citation-style-language/locales/6b70fe79264543aa538f8927fcc98d5b72425a94/locales-zh-CN.xml",
+      "sha256": "f63dd0134ccd95523b3bd5216c4f43e6542595a1fcef0390678aaf6a9df5e2ef",
+      "bytes": 18641,
+      "license": "CC-BY-SA-3.0"
+    }
+  },
+  "attributionSources": {
+    "styles": {
+      "repository": "https://github.com/citation-style-language/styles",
+      "revision": "3684ae0ae6e93246d02858658e55009508428f5d",
+      "file": "README.md",
+      "source": "https://github.com/citation-style-language/styles/blob/3684ae0ae6e93246d02858658e55009508428f5d/README.md",
+      "download": "https://raw.githubusercontent.com/citation-style-language/styles/3684ae0ae6e93246d02858658e55009508428f5d/README.md",
+      "sha256": "eeda35e6ab1c71ef74ba98e8d63f3f5c07e1b1c458b92d54cdd7515afcb1b04e",
+      "bytes": 6573,
+      "license": "CC-BY-SA-3.0"
+    },
+    "locales": {
+      "repository": "https://github.com/citation-style-language/locales",
+      "revision": "6b70fe79264543aa538f8927fcc98d5b72425a94",
+      "file": "README.md",
+      "source": "https://github.com/citation-style-language/locales/blob/6b70fe79264543aa538f8927fcc98d5b72425a94/README.md",
+      "download": "https://raw.githubusercontent.com/citation-style-language/locales/6b70fe79264543aa538f8927fcc98d5b72425a94/README.md",
+      "sha256": "f8e1b34d3e1b66f101b45bc45e5fca0397aa923fe4abeab6f98139c8f731c320",
+      "bytes": 1777,
+      "license": "CC-BY-SA-3.0"
+    }
+  },
+  "licenseText": {
+    "source": "https://creativecommons.org/licenses/by-sa/3.0/legalcode.txt",
+    "sha256": "3f941b3b89cf7b8370ceb83cc76d2120d471b58735d8ca60238a751a48d7f72f",
+    "bytes": 22240
+  }
+}

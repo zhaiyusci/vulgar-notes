@@ -147,3 +147,61 @@ test('generated endnote keys are stable and avoid actual bibliography key collis
   assert.equal(key,colliding+'-1');assert.ok(reordered.includes('@misc{'+key+','));
   assert.ok(first.includes('@book{'+colliding+','));assert.ok(first.includes('\\cite{'+colliding+'}'));
 });
+
+test('selected CSL reference formats export their exact entry bodies without a second formatter',()=>{
+  const libraries=[library('refs','@article{paper,author={Doe, Jane and Smith, Alex},title={A Test of Methods},journal={Example Journal},year={2025},volume={12},number={3},pages={10--18},doi={10.1000/example}}')];
+  const value=[paragraph(cite('paper'))],before=JSON.stringify({value,libraries});
+  const expected={
+    ieee:String.raw`J. Doe and A. Smith, “A Test of Methods,” \textit{Example Journal}, vol. 12, no. 3, pp. 10–18, 2025, doi: 10.1000/example.`,
+    vancouver:'Doe J, Smith A. A Test of Methods. Example Journal. 2025;12(3):10–8. doi:10.1000/example',
+    apa:String.raw`Doe, J., \& Smith, A. (2025). A Test of Methods. \textit{Example Journal}, \textit{12}(3), 10–18. https://doi.org/10.1000/example`,
+    chicago:String.raw`Doe, Jane, and Alex Smith. “A Test of Methods.” \textit{Example Journal} 12, no. 3 (2025): 10–18. https://doi.org/10.1000/example.`,
+    'gbt7714-2025':'Doe J，Smith A. A Test of Methods[J/OL]. Example Journal，2025，12（3）：10-18. DOI:10.1000/example.',
+  };
+  for(const [style,body] of Object.entries(expected)){
+    const tex=latexDocument(value,libraries,style);
+    assert.ok(tex.includes('\\bibitem{paper} '+body+'\n'),style+' keeps its CSL body and text marks');
+    assert.match(tex,/\\begin\{thebibliography\}\{1\}/);
+    assert.match(tex,/\\cite\{paper\}/);
+    assert.doesNotMatch(tex,/biblatex|filecontents|Biber|\\printbibliography/);
+    assert.match(tex,/% Run twice to resolve cross-references and citations\./);
+  }
+  assert.equal(latexDocument(value,libraries,'simple'),latexDocument(value,libraries),'the default BibLaTeX path stays unchanged');
+  assert.equal(JSON.stringify({value,libraries}),before);
+});
+
+test('CSL TeX bodies escape special characters instead of interpreting metadata as TeX',()=>{
+  const source=String.raw`@article{safe,title={A \& B: 50\% of \{data\} \#1 \_file\_ \textbackslash{}end\{document\}},author={Doe, Jane},journal={Journal},year={2025}}`;
+  const tex=latexDocument([paragraph(cite('safe'))],[library('refs',source)],'apa');
+  assert.ok(tex.includes(String.raw`A \& B: 50\% of \{data\} \#1 \_file\_ \textbackslash{}end\{document\}`));
+  assert.equal((tex.match(/\\end\{document\}/g)||[]).length,1);
+  assert.doesNotMatch(tex,/<i>|<\/i>|<span|@article/);
+});
+
+test('selected formats preserve shared note and citation order, nested citations, and rich note math',()=>{
+  const value=[paragraph(noteRef('n1'),{text:' then '},cite('second'),{text:' and repeat '},noteRef('n1'),{text:' unresolved '},cite('missing')),
+    note('n1',paragraph({text:'A rich note ',bold:true},{type:'inline_equation',texExpression:'E=mc^2',children:[{text:''}]},{text:' cites '},cite('first'))),
+    manual('manual',[{text:'Manual & source.',italic:true}]),note('orphan',paragraph({text:'Retained note.'}))];
+  const libraries=[library('refs','@book{first,title={First},author={Zulu, Zed},year={2024}}\n@book{second,title={Second},author={Alpha, Amy},year={2025}}\n@book{unused,title={UNUSED_ENTRY_MARKER}}')];
+  const before=JSON.stringify({value,libraries}),tex=latexDocument(value,libraries,'apa');
+  const keys=[...tex.matchAll(/\\bibitem\{([^}]+)\}/g)].map(match=>match[1]);
+  assert.equal(keys.length,5);assert.ok(keys[0].startsWith('vulgar-note-'));
+  assert.deepEqual(keys.slice(1,4),['first','second','manual'],'APA alphabetical ordering must not change shared document numbering');
+  assert.ok(keys[4].startsWith('vulgar-note-'));
+  assert.equal((tex.match(new RegExp('\\\\cite\\{'+keys[0]+'\\}','g'))||[]).length,2);
+  assert.match(tex,/\\textbf\{A rich note \}\\\(E=mc\^2\\\) cites \\cite\{first\}/);
+  assert.match(tex,/\\emph\{Manual \\& source\.\}/);
+  assert.match(tex,/\\cite\{missing\}/);
+  assert.equal((tex.match(/\\begin\{thebibliography\}/g)||[]).length,1);
+  assert.doesNotMatch(tex,/biblatex|Biber|\\footnote|\\printendnotes|UNUSED_ENTRY_MARKER/);
+  assert.equal(JSON.stringify({value,libraries}),before);
+});
+
+test('selected formats omit unused dependencies and keep author names when CSL entries are reordered',()=>{
+  const libraries=[library('refs','@proceedings{parent,title={Shared proceedings},year={2026}}\n@inproceedings{later,title={Z result},author={Doe, Jane},crossref={parent}}\n@inproceedings{earlier,title={A result},author={Doe, Jane},crossref={parent}}')];
+  const tex=latexDocument([paragraph(cite('later','earlier'))],libraries,'chicago');
+  const lines=[...tex.matchAll(/\\bibitem\{([^}]+)\} ([^\n]*)/g)];
+  assert.deepEqual(lines.map(line=>line[1]),['later','earlier']);
+  assert.ok(lines.every(line=>line[2].startsWith('Doe, Jane.')),'each entry retains a complete author instead of a sorting-dependent em dash');
+  assert.doesNotMatch(tex,/\\bibitem\{parent\}|@proceedings|filecontents|biblatex/);
+});

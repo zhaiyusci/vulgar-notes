@@ -13,7 +13,7 @@ import {MarkdownKit} from './src/components/editor/plugins/markdown-kit';
 import {bibliographyMarkdown} from './src/bibliography-markdown';
 const editor=createPlateEditor({plugins:[ParagraphPlugin,BoldPlugin,ItalicPlugin,EquationPlugin,InlineEquationPlugin,...MarkdownKit]});
 export const serialize=(value)=>editor.getApi(MarkdownPlugin).markdown.serialize({value});
-export const exportMarkdown=(value,libraries=[])=>bibliographyMarkdown(value,libraries,serialize);
+export const exportMarkdown=(value,libraries=[],style='simple')=>bibliographyMarkdown(value,libraries,serialize,style);
 `,loader:'ts',resolveDir:path.resolve('.')},bundle:true,format:'cjs',write:false,platform:'node',loader:{'.css':'empty'}}).outputFiles[0].text;
 const compiled={exports:{}};
 // Dispose scheduled work belonging to this unmounted test editor after use.
@@ -29,6 +29,17 @@ const formula=(tex,extra={})=>({type:'inline_equation',texExpression:tex,childre
 const noteRef=identifier=>({type:'footnoteReference',identifier,children:[{text:''}]});
 const note=(identifier,...children)=>({type:'footnoteDefinition',identifier,children});
 const libraries=[{id:'papers',name:'papers.bib',source:'@book{first,title={First library title}}\n@book{second,title={Second library title}}\n@book{unused,title={UNUSED_ENTRY_MARKER}}'}];
+
+test('selected reference-list formats reach Markdown while rich notes and shared numbers remain intact',()=>{
+  const value=[paragraph({text:'Read '},cite('paper'),{text:' and '},noteRef('n')),note('n',paragraph({text:'Keep bold',bold:true},formula('x^2')))];
+  const libs=[{id:'lib',name:'paper.bib',source:'@article{paper,author={Doe, Jane},title={A formatted paper},journal={Example Journal},year={2026},volume={7},pages={10--20}}'}];
+  const apa=exportMarkdown(value,libs,'apa'),ieee=exportMarkdown(value,libs,'ieee');
+  assert.notEqual(apa,ieee);assert.match(apa,/Doe, J\./);assert.match(ieee,/J\. Doe/);
+  for(const output of [apa,ieee]){
+    assert.match(output,/\[1\] \\bibitem\{paper\}/);assert.match(output,/\[2\] \*\*Keep bold\*\*/);
+    assert.ok(output.includes('$x^2$'));assert.match(output,/_Example Journal/);
+  }
+});
 
 test('manual and cited library entries share one final Markdown bibliography in reference-number order',()=>{
   const value=[paragraph({text:'Opening prose '},cite('second','first')),

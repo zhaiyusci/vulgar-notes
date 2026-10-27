@@ -22,6 +22,7 @@ import {bibliographyItems,citedReferenceKeys,validReferenceKey} from './referenc
 import {citedBibLibraries,validateBibLibraries,validCitationKey,type BibLibrary} from './bibtex';
 import {bibliographyMarkdown} from './bibliography-markdown';
 import {readLibraryCache,writeLibraryCache,restoreLibraryAttachments} from './bibliography-library-store';
+import {isBibliographyStyle,type BibliographyStyle} from './bibliography-style';
 
 export class PlateMathHost implements DocumentHost {
   readonly editor:PlateEditor;
@@ -35,6 +36,15 @@ export class PlateMathHost implements DocumentHost {
   private activeFormula:HTMLElement|undefined;
   private pendingActivation=new Set<string>();
   private bibliographyLibraries:readonly BibLibrary[]=Object.freeze([]);
+  private bibliographyStyle:BibliographyStyle='simple';
+  getBibliographyStyle=():BibliographyStyle=>this.bibliographyStyle;
+  setBibliographyStyle(style:BibliographyStyle):void {
+    if(!isBibliographyStyle(style))throw Error('Invalid bibliography style');
+    if(style===this.bibliographyStyle)return;
+    this.bibliographyStyle=style;
+    for(const listener of this.bibliographyListeners)listener();
+    this.save();this.scheduleChange();
+  }
   private capturedLibraryIds=new Set<string>();
   private cacheLibraryIds:Record<string,string>=Object.create(null);
   private libraryNotices:string[]=[];
@@ -42,6 +52,7 @@ export class PlateMathHost implements DocumentHost {
   getBibliographyNotices=():readonly string[]=>this.libraryNotices;
   private bibliographyListeners=new Set<()=>void>();
   getBibliographyLibraries=():readonly BibLibrary[]=>this.bibliographyLibraries;
+  getBibliographySourceId=(id:string):string=>this.cacheLibraryIds[id]??id;
   subscribeBibliography=(listener:()=>void)=>{this.bibliographyListeners.add(listener);return ()=>{this.bibliographyListeners.delete(listener);};};
   private replaceBibliography(libraries:readonly BibLibrary[]){
     this.bibliographyLibraries=Object.freeze(libraries.map(library=>Object.freeze({...library})));
@@ -82,11 +93,11 @@ export class PlateMathHost implements DocumentHost {
   }
   private envelope(){
     const bibliographyLibraries=citedBibLibraries(this.bibliographyLibraries,citedReferenceKeys(this.editor.children));
-    return {version:1,value:this.editor.children,...(bibliographyLibraries.length?{bibliographyLibraries}:{})};
+    return {version:1,value:this.editor.children,...(bibliographyLibraries.length?{bibliographyLibraries}:{}),...(this.bibliographyStyle!=='simple'?{bibliographyStyle:this.bibliographyStyle}:{})};
   }
   get readOnly(){return this.mount.querySelector('[data-slate-editor]')?.getAttribute('contenteditable')==='false';}
   constructor(readonly mount:HTMLElement,initial:EditorModel,private hooks:MathHostHooks){
-    const restored=restoreDocumentEnvelope(initial);this.restoreBibliography(restored.bibliographyLibraries,restored.value);
+    const restored=restoreDocumentEnvelope(initial);this.bibliographyStyle=restored.bibliographyStyle??'simple';this.restoreBibliography(restored.bibliographyLibraries,restored.value);
     this.editor=createPlateEditor({plugins:EditorKit,value:restored.value});
     this.ensureFormulas();
     const originalNormalize=this.editor.tf.normalizeNode.bind(this.editor);
@@ -211,7 +222,7 @@ export class PlateMathHost implements DocumentHost {
     draftStorage().setItem(documentStorageKey+'-before-open',this.serializeDocument());
     this.hooks.leave();this.activeFormula=undefined;this.pendingActivation.clear();this.models.clear();
     flushSync(()=>{
-      this.restoreBibliography(opened.bibliographyLibraries,opened.value);this.editor.tf.setValue(opened.value);
+      this.bibliographyStyle=opened.bibliographyStyle??'simple';this.restoreBibliography(opened.bibliographyLibraries,opened.value);this.editor.tf.setValue(opened.value);
       this.editor.tf.withoutSaving(()=>this.editor.tf.normalize({force:true}));
     });
     for(const [raw] of NodeApi.nodes(this.editor)){
@@ -223,7 +234,7 @@ export class PlateMathHost implements DocumentHost {
     this.persist();this.savedDocument=this.serializeDocument();this.scheduleChange();
   }
   exportMarkdown(){
-    return bibliographyMarkdown(this.editor.children,this.bibliographyLibraries,value=>this.editor.getApi(MarkdownPlugin).markdown.serialize({value}));
+    return bibliographyMarkdown(this.editor.children,this.bibliographyLibraries,value=>this.editor.getApi(MarkdownPlugin).markdown.serialize({value}),this.bibliographyStyle);
   }
   get activeFormulaId(){return this.activeFormula?.dataset.mathId;}
   prepareTextInsertion(){
