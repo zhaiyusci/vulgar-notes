@@ -154,6 +154,8 @@ test('selected CSL reference formats export their exact entry bodies without a s
   const expected={
     ieee:String.raw`J. Doe and A. Smith, “A Test of Methods,” \textit{Example Journal}, vol. 12, no. 3, pp. 10–18, 2025, doi: 10.1000/example.`,
     vancouver:'Doe J, Smith A. A Test of Methods. Example Journal. 2025;12(3):10–8. doi:10.1000/example',
+    acs:String.raw`Doe, J.; Smith, A. A Test of Methods. \textit{Example Journal} \textbf{2025}, \textit{12} (3), 10–18. https://doi.org/10.1000/example`,
+    aip:String.raw`J. Doe, and A. Smith, “A Test of Methods,” Example Journal \textbf{12}(3), 10–18 (2025).`,
     apa:String.raw`Doe, J., \& Smith, A. (2025). A Test of Methods. \textit{Example Journal}, \textit{12}(3), 10–18. https://doi.org/10.1000/example`,
     chicago:String.raw`Doe, Jane, and Alex Smith. “A Test of Methods.” \textit{Example Journal} 12, no. 3 (2025): 10–18. https://doi.org/10.1000/example.`,
     'gbt7714-2025':'Doe J，Smith A. A Test of Methods[J/OL]. Example Journal，2025，12（3）：10-18. DOI:10.1000/example.',

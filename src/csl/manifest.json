@@ -58,6 +58,28 @@
       "bytes": 17228,
       "license": "CC-BY-SA-3.0",
       "title": "China National Standard GB/T 7714-2025 (numeric, 中文)"
+    },
+    "acs": {
+      "repository": "https://github.com/citation-style-language/styles",
+      "revision": "3684ae0ae6e93246d02858658e55009508428f5d",
+      "file": "american-chemical-society.csl",
+      "source": "https://github.com/citation-style-language/styles/blob/3684ae0ae6e93246d02858658e55009508428f5d/american-chemical-society.csl",
+      "download": "https://raw.githubusercontent.com/citation-style-language/styles/3684ae0ae6e93246d02858658e55009508428f5d/american-chemical-society.csl",
+      "sha256": "d5ba91b1cca03d21ab76b26944a06aa912b0d8e80050c3f68bcb70b73136b9ac",
+      "bytes": 10783,
+      "license": "CC-BY-SA-3.0",
+      "title": "ACS Guide 2026 revision"
+    },
+    "aip": {
+      "repository": "https://github.com/citation-style-language/styles",
+      "revision": "3684ae0ae6e93246d02858658e55009508428f5d",
+      "file": "american-institute-of-physics.csl",
+      "source": "https://github.com/citation-style-language/styles/blob/3684ae0ae6e93246d02858658e55009508428f5d/american-institute-of-physics.csl",
+      "download": "https://raw.githubusercontent.com/citation-style-language/styles/3684ae0ae6e93246d02858658e55009508428f5d/american-institute-of-physics.csl",
+      "sha256": "f1ba286fed50765cec35d6d8272e36952e71281ca24c95520cdb85201b1a80c5",
+      "bytes": 5788,
+      "license": "CC-BY-SA-3.0",
+      "title": "AIP Style Manual 4th edition"
     }
   },
   "locales": {

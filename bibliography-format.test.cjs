@@ -41,6 +41,8 @@ test('real CSL styles produce distinct complete publication fields, punctuation 
  const results=new Map(bibliographyStyles.map(style=>[style.id,formatBibliography([sample],style.id).get('smith')]));
  assert.equal(results.get('simple').text,sample.description);
  assert.match(results.get('ieee').text,/J\. Smith and J\. Doe, “A useful discovery,” Journal of Testing, vol\. 12, no\. 3, pp\. 123–130, 2024, doi: 10\.1000\/example\./);
+ assert.match(results.get('acs').text,/Smith, J\.; Doe, J\. A Useful Discovery\. Journal of Testing 2024, 12 \(3\), 123–130\. https:\/\/doi\.org\/10\.1000\/example/);
+ assert.match(results.get('aip').text,/^J\. Smith, and J\. Doe, “A useful discovery,” Journal of Testing 12\(3\), 123–130 \(2024\)\.$/);
  assert.match(results.get('vancouver').text,/Smith J, Doe J\. A useful discovery\. Journal of Testing\. 2024;12\(3\):123–30\. doi:10\.1000\/example/);
  assert.match(results.get('apa').text,/Smith, J\., & Doe, J\. \(2024\)\. A useful discovery\. Journal of Testing, 12\(3\), 123–130\. https:\/\/doi\.org\/10\.1000\/example/);
  assert.match(results.get('chicago').text,/Smith, Jane, and John Doe\. “A Useful Discovery\.” Journal of Testing 12, no\. 3 \(2024\): 123–30\./);
@@ -51,6 +53,29 @@ test('real CSL styles produce distinct complete publication fields, punctuation 
  }
  assert.ok(results.get('apa').runs.some(run=>run.italic&&run.text==='12'));
  assert.match(results.get('ieee').html,/<i>Journal of Testing<\/i>/);
+});
+
+test('ACS uses its official 2026 reference body with abbreviated journals and bold year',()=>{
+ const entry={...sample,csl:{...sample.csl,'container-title-short':'J. Test.'}};
+ const result=formatBibliography([entry],'acs').get('smith');
+ assert.equal(result.text,'Smith, J.; Doe, J. A Useful Discovery. J. Test. 2024, 12 (3), 123–130. https://doi.org/10.1000/example');
+ assert.ok(result.runs.some(run=>run.text==='J. Test.'&&run.italic));
+ assert.ok(result.runs.some(run=>run.text==='2024'&&run.bold));
+ assert.ok(result.runs.some(run=>run.text==='12'&&run.italic));
+ assert.doesNotMatch(result.text,/^\(\d+\)/,'the host supplies the shared bibliography number');
+ assert.equal(JSON.parse(fs.readFileSync('src/csl/manifest.json','utf8')).styles.acs.title,'ACS Guide 2026 revision');
+});
+
+test('AIP uses its official fourth-edition body without duplicate superscript labels',()=>{
+ const entries=Array.from({length:12},(_,index)=>({...sample,key:'physics'+index,csl:{...sample.csl,id:'physics'+index,'container-title-short':'J. Test.',title:'H<sub>2</sub>O and x<sup>2</sup>'}}));
+ const result=formatBibliography(entries,'aip').get('physics11');
+ assert.equal(result.text,'J. Smith, and J. Doe, “H2O and x2,” J. Test. 12(3), 123–130 (2024).');
+ assert.ok(result.runs.some(run=>run.text==='12'&&run.bold));
+ assert.equal(result.runs.filter(run=>run.superscript).length,1,'only the superscript in the actual title remains');
+ assert.ok(result.runs.some(run=>run.text==='2'&&run.superscript));
+ assert.ok(result.runs.some(run=>run.text==='2'&&run.subscript));
+ assert.doesNotMatch(result.html,/^<sup>\d+<\/sup>/);
+ assert.equal(JSON.parse(fs.readFileSync('src/csl/manifest.json','utf8')).styles.aip.title,'AIP Style Manual 4th edition');
 });
 
 test('formatter preserves host order and keys despite CSL sorting and memoizes unchanged content',()=>{

@@ -9,7 +9,6 @@ import {openBibliographySource,refreshBibliographySource,rememberBibliographySou
 import {bibliographyStyles,isBibliographyStyle} from '@/bibliography-style';
 import {formatBibliography} from '@/bibliography-format';
 import {BibliographyText} from './bibliography-text';
-import {CSLAttribution} from './csl-attribution';
 import {t} from '@/i18n';
 import {ToolbarButton} from './toolbar';
 import {Dialog,DialogContent,DialogDescription,DialogTitle} from './dialog';
@@ -98,7 +97,6 @@ export function BibtexLibrariesButton({compact=false,onChooseKey}:{compact?:bool
         {preview&&<div className="rounded border bg-muted/30 p-3 text-sm leading-relaxed" aria-label={t('Format preview')}>
           <div className="mb-1 text-xs text-muted-foreground">{t('Format preview')} · {previewEntry.key}</div>
           <BibliographyText description={preview.text} runs={preview.runs} />
-          {style!=='simple'&&<CSLAttribution />}
         </div>}
         <div className="grid min-h-64 gap-4 sm:grid-cols-[minmax(150px,1fr)_minmax(0,2fr)]">
           <div className="max-h-96 overflow-auto rounded border p-1">

@@ -25,7 +25,7 @@ const markKeys=['italic','bold','superscript','subscript','smallCaps'] as const;
  * execution. CSL numeric margins are omitted: the host owns unified numbering.
  * No source attributes, URLs, arbitrary CSS or executable markup escape here.
  */
-function runsFromProcessorHTML(html:string):BibliographyRun[] {
+function runsFromProcessorHTML(html:string,omitSuperscriptLabel=false):BibliographyRun[] {
   const runs:BibliographyRun[]=[],stack:{tag:string;marks:Marks;hidden:boolean}[]=[];
   const state=()=>stack[stack.length-1]??{marks:{},hidden:false};
   const append=(value:string)=>{
@@ -63,6 +63,10 @@ function runsFromProcessorHTML(html:string):BibliographyRun[] {
     else if(!/\/$/.test(match[0].slice(0,-1))&&!['img','hr','input','meta','link'].includes(tag))stack.push({tag,marks,hidden:state().hidden||classes.includes('csl-left-margin')});
   }
   append(html.slice(offset));
+  while(runs.length&&!runs[0].text.trim())runs.shift();
+  // AIP puts its processor-generated numeric label in a leading superscript,
+  // rather than a separate csl-left-margin. The host supplies that label.
+  if(omitSuperscriptLabel&&runs[0]?.superscript&&/^\d+$/.test(runs[0].text.trim()))runs.shift();
   if(runs.length){runs[0].text=runs[0].text.trimStart();runs[runs.length-1].text=runs[runs.length-1].text.trimEnd();}
   return runs.filter(run=>run.text);
 }
@@ -102,7 +106,7 @@ export function formatBibliography(entries:readonly BibliographyFormatInput[],st
     processor.setOutputFormat('html');processor.updateItems([...items.keys()]);
     const bibliography=processor.makeBibliography();
     if(bibliography)bibliography[1].forEach((html,index)=>{
-      const entry=formatted(runsFromProcessorHTML(html));
+      const entry=formatted(runsFromProcessorHTML(html,style==='aip'));
       for(const key of bibliography[0].entry_ids[index]||[])outputs.set(String(key),entry);
     });
   }

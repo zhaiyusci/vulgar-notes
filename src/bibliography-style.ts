@@ -2,6 +2,8 @@
 export const bibliographyStyles=[
   {id:'simple',label:'Simple'},
   {id:'ieee',label:'IEEE'},
+  {id:'acs',label:'ACS'},
+  {id:'aip',label:'AIP'},
   {id:'vancouver',label:'Vancouver (NLM)'},
   {id:'apa',label:'APA 7th edition'},
   {id:'chicago',label:'Chicago 18th edition'},

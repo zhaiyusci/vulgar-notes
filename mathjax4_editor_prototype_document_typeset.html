@@ -117,7 +117,13 @@ body>h2,body>details{display:none}
 #error:empty,#fontHint:empty{display:none}
 @media(max-width:850px){.editor-workspace{grid-template-columns:minmax(320px,1fr) 280px}#plateMount [data-slate-editor]{padding:24px}}
 #uiLocale{font:12px system-ui;border:1px solid #d8dfe8;border-radius:4px;padding:3px;background:white}
-#editorSidebar{grid-column:2;grid-row:1;height:100%;min-width:0;overflow:auto;border-left:1px solid #e2e8f0;background:#fafbfd}
+#editorSidebar{grid-column:2;grid-row:1;display:flex;flex-direction:column;height:100%;min-width:0;overflow:hidden;border-left:1px solid #e2e8f0;background:#fafbfd}
+#editorSidebarContent{flex:1;min-height:0;overflow:auto}
+#appAttribution{flex:none;padding:8px 10px;border-top:1px solid var(--app-border,#e2e8f0);color:var(--app-muted,#64748b);font:12px/1.4 system-ui,sans-serif}
+#appAttribution a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+#appAttribution a:focus-visible{outline:2px solid var(--app-link,#2563eb);outline-offset:2px}
+#appAttribution span{display:block}
+@media print{#appAttribution{display:none}}
 #documentToolsSection{padding:10px;border-bottom:1px solid #e2e8f0}
 #documentToolsSection h3{font-size:13px;font-weight:600;margin:0 0 8px}
 #documentTools [role=toolbar]{position:static;border:0;border-radius:6px;overflow:visible;background:transparent;padding:0}
@@ -155,6 +161,7 @@ body>h2,body>details{display:none}
 
 <div class="editor-workspace">
 <aside id="editorSidebar">
+<div id="editorSidebarContent">
 <section id="documentToolsSection"><div class="sidebar-heading"><h3 data-i18n="Document tools">正文工具</h3><button id="openPreferences" type="button" aria-label="Preferences" aria-haspopup="dialog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1z"/><circle cx="12" cy="12" r="3"/></svg></button></div><div id="documentTools"></div></section>
 <section id="mathPanel" aria-label="数学输入板">
 <div class="board-heading"><h3 data-i18n="Math input">数学输入板</h3><div class="document-actions"><label><span data-i18n="Current formula">当前公式</span> <select id="formulaLayout" aria-label="当前公式排版"><option value="inline" data-i18n="Inline">行内</option><option value="display" data-i18n="Display">行间</option></select></label><span id="structureCount"></span></div></div>
@@ -162,6 +169,8 @@ body>h2,body>details{display:none}
 <div id="pendingFontHint" role="status" aria-live="polite"></div>
 
 </section>
+</div>
+<footer id="appAttribution" aria-label="Third-party attribution"><a href="https://citationstyles.org/" target="_blank" rel="noopener noreferrer">citeproc-js implements the Citation Style Language</a><span>(c) Frank Bennett</span></footer>
 </aside>
 
 <div id="preview"><div id="textFlow" contenteditable="true" role="textbox" aria-multiline="true" aria-label="正文" spellcheck="false"><span id="formula" class="inline-formula" contenteditable="false" tabindex="0" aria-label="可编辑行内公式">正在加载 MathJax…</span></div><textarea id="mathInput" hidden autocomplete="off" spellcheck="false" aria-label="编辑公式"></textarea></div>

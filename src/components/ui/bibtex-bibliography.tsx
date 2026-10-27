@@ -4,7 +4,6 @@ import {bibliographyItems} from '@/references';
 import {useBibliographyLibraries,useBibliographyStyle} from '@/use-bibliography';
 import {t} from '@/i18n';
 import {BibliographyText} from './bibliography-text';
-import {CSLAttribution} from './csl-attribution';
 
 /** Generated references are read-only views; their source stays outside prose. */
 export function BibtexBibliography({beforeNode,afterNode}:{beforeNode?:TElement;afterNode?:TElement}){
@@ -28,7 +27,7 @@ export function BibtexBibliography({beforeNode,afterNode}:{beforeNode?:TElement;
         <span className="shrink-0 text-muted-foreground">[{entry.number||'??'}]</span><span><BibliographyText description={entry.description} runs={entry.runs} /></span>
       </li>)}
     </ol>;
-  const title=heading?<><h2 className="mb-3 font-semibold" data-bibliography-heading="true">{t('Notes and references')}</h2>{style!=='simple'&&<CSLAttribution />}</>:null;
+  const title=heading?<h2 className="mb-3 font-semibold" data-bibliography-heading="true">{t('Notes and references')}</h2>:null;
   if(!standalone)return <div className={'bibtex-bibliography '+(beforeNode?'mb-3':'mt-3')} contentEditable={false}>{title}{entries.length?rows:null}</div>;
   return <section className="bibtex-bibliography mx-8 my-8 border-t pt-5" contentEditable={false} aria-label={t('Notes and references')}>
     {title}

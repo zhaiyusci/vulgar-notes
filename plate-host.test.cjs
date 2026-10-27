@@ -340,6 +340,7 @@ test('Plate document / independent MathJax mount integration',async t=>{
   assert.equal(flow.hasUnsavedChanges(),true);
   assert.deepEqual([...flow.mount.querySelectorAll('.tex-reference-content')].map(node=>node.textContent),['[1]','[2]']);
   const row=flow.mount.querySelector('[data-bibliography-key="paper"]');assert.match(row.textContent,/Doe.*2026.*Original title/);assert.ok(row.querySelector('i'));
+  assert.doesNotMatch(flow.mount.textContent,/citeproc-js|Frank Bennett/,'application attribution must not appear in the document bibliography');
   const snapshot=flow.serializeDocument();assert.equal(JSON.parse(snapshot).bibliographyStyle,'apa');
   assert.doesNotMatch(snapshot,/"csl"|fileHandle|bibliography-sources|"path"/);
   flow.markDocumentSaved(snapshot);assert.equal(flow.hasUnsavedChanges(),false);

@@ -172,6 +172,7 @@
   "Library added.": "文献库已添加。",
   "The source link could not be saved. You may need to select the original file again after reopening.": "未能保存源文件关联；重新打开后可能需要再次选择原文件。",
   "Reference list format": "参考文献表格式",
+  "Third-party attribution": "第三方署名",
   "Formats the reference list. Inline citations and endnotes keep their shared numbering.": "调整参考文献表格式；正文引用与尾注仍统一编号。",
   "Format preview": "格式预览",
   "Simple": "简洁",

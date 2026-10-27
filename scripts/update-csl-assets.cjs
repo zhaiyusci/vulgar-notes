@@ -1,6 +1,6 @@
 /* Download exact, pinned CSL XML; no runtime network access is required. */
 const { createHash } = require('node:crypto');
-const { mkdir, writeFile } = require('node:fs/promises');
+const { copyFile, mkdir, writeFile } = require('node:fs/promises');
 const path = require('node:path');
 
 const output = path.resolve(__dirname, '../src/csl');
@@ -18,6 +18,8 @@ const styles = {
   apa: 'apa.csl',
   chicago: 'chicago-notes-bibliography.csl',
   gbt7714: 'china-national-standard-gb-t-7714-2025-numeric.csl',
+  acs: 'american-chemical-society.csl',
+  aip: 'american-institute-of-physics.csl',
 };
 const locales = { 'en-US': 'locales-en-US.xml', 'zh-CN': 'locales-zh-CN.xml' };
 const licenseUrl = 'https://creativecommons.org/licenses/by-sa/3.0/legalcode.txt';
@@ -121,6 +123,12 @@ async function main() {
     writeFile(path.join(output, 'UPSTREAM-LOCALES-README.md'), localesReadme.xml),
     writeFile(path.join(output, 'LICENSE-CC-BY-SA-3.0.txt'), licenseBytes),
   ]);
+  const licenseOutput = path.resolve(__dirname, '../licenses/csl');
+  await mkdir(licenseOutput, { recursive: true });
+  await Promise.all([
+    'manifest.json', 'NOTICE.md', 'UPSTREAM-STYLES-README.md',
+    'UPSTREAM-LOCALES-README.md', 'LICENSE-CC-BY-SA-3.0.txt',
+  ].map(filename => copyFile(path.join(output, filename), path.join(licenseOutput, filename))));
   for (const [id, result] of downloadedStyles) console.log(`${id}: ${result.metadata.title}`);
   console.log(`Vendored ${downloadedStyles.length} styles and ${downloadedLocales.length} locales.`);
 }
