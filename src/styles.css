@@ -12,6 +12,12 @@
  --color-background:var(--background); --color-foreground:var(--foreground); --color-card:var(--card); --color-card-foreground:var(--card-foreground); --color-popover:var(--popover); --color-popover-foreground:var(--popover-foreground); --color-primary:var(--primary); --color-primary-foreground:var(--primary-foreground); --color-secondary:var(--secondary); --color-secondary-foreground:var(--secondary-foreground); --color-muted:var(--muted); --color-muted-foreground:var(--muted-foreground); --color-accent:var(--accent); --color-accent-foreground:var(--accent-foreground); --color-destructive:var(--destructive); --color-border:var(--border); --color-input:var(--input); --color-ring:var(--ring); --color-brand:var(--brand); --radius-sm:calc(var(--radius) - 4px); --radius-md:calc(var(--radius) - 2px); --radius-lg:var(--radius); --radius-xl:calc(var(--radius) + 4px);
 }
 @layer base { * { @apply border-border; } body { @apply bg-background text-foreground; } }
+/* Decorative tooltips must never capture a click or a drag over the editor.
+   The Radix positioning wrapper also has a hit area of its own. */
+[data-radix-popper-content-wrapper]:has(> [data-slot="tooltip-content"]),
+[data-slot="tooltip-content"],
+[data-slot="tooltip-content"] * { pointer-events:none !important; }
+[data-slot="tooltip-content"] { user-select:none; }
 #plateMount { text-align:left; }
 #plateMount [data-slate-editor] { min-height:430px; line-height:1.75; }
 #plateMount [role=toolbar]>div { flex-wrap:wrap; }

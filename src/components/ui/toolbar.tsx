@@ -339,8 +339,7 @@ function withTooltip<T extends React.ElementType>(Component: T) {
 function TooltipContent({
   children,
   className,
-  // CHANGE
-  sideOffset = 4,
+  sideOffset = 8,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Content>) {
   return (

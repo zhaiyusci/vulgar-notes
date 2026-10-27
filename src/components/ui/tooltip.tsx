@@ -5,13 +5,17 @@ import { cn } from "cn"
 import { Tooltip as TooltipPrimitive } from "radix-ui"
 
 function TooltipProvider({
-  delayDuration = 0,
+  delayDuration = 500,
+  skipDelayDuration = 0,
+  disableHoverableContent = true,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
   return (
     <TooltipPrimitive.Provider
       data-slot="tooltip-provider"
       delayDuration={delayDuration}
+      skipDelayDuration={skipDelayDuration}
+      disableHoverableContent={disableHoverableContent}
       {...props}
     />
   )
@@ -31,7 +35,7 @@ function TooltipTrigger({
 
 function TooltipContent({
   className,
-  sideOffset = 0,
+  sideOffset = 8,
   children,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Content>) {
