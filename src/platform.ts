@@ -6,6 +6,50 @@ export interface OpenedDocument {text: string; name: string; path?: string}
 export const defaultDocumentName = 'document.vulgar';
 const documentFilePattern = /\.(vulgar|json)$/i;
 const documentName = (name: string): string => name.replace(documentFilePattern, '') + '.vulgar';
+const documentSessionPattern = /^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i;
+
+/** Only an explicit, valid session URL gets a separate document draft. */
+export function documentSessionId(): string|null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const ids = new URL(window.location.href).searchParams.getAll('document');
+    return ids.length === 1 && documentSessionPattern.test(ids[0]) ? ids[0].toLowerCase() : null;
+  } catch {return null;}
+}
+
+/** Keep the current document in place and create a separate blank editor. */
+export async function newDocumentWindow(): Promise<void> {
+  const id = crypto.randomUUID();
+  const url = new URL(window.location.href);
+  url.searchParams.set('document', id);
+  url.hash = '';
+  if (!isTauri()) {
+    // This must precede any await so the browser still sees the user's gesture.
+    // With noopener, even a successfully opened tab can return null.
+    window.open(url.href, '_blank', 'noopener');
+    return;
+  }
+  const {WebviewWindow} = await import('@tauri-apps/api/webviewWindow');
+  const appPath = './' + (url.pathname.replace(/^\/+/, '') || 'index.html') + url.search;
+  const created = new WebviewWindow(`document-${id}`, {
+    url: appPath, title: 'Vulgar Notes', width: 1400, height: 900,
+    minWidth: 800, minHeight: 540, dragDropEnabled: false,
+  });
+  return new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const unlisteners: Array<() => void> = [];
+    const finish = (error?: unknown) => {
+      if (settled) return;
+      settled = true;
+      for (const unlisten of unlisteners) unlisten();
+      if (error !== undefined) reject(error instanceof Error ? error : new Error(String(error)));
+      else resolve();
+    };
+    const remember = (unlisten: () => void) => settled ? unlisten() : unlisteners.push(unlisten);
+    void created.once('tauri://created', () => finish()).then(remember, finish);
+    void created.once('tauri://error', event => finish(event.payload ?? 'Could not create a new document window.')).then(remember, finish);
+  });
+}
 
 async function openTextFile(extensions:string[],filterName:string,accept:string,errorMessage:string):Promise<OpenedDocument|null>{
   const supported=(name:string)=>extensions.some(extension=>name.toLowerCase().endsWith('.'+extension));

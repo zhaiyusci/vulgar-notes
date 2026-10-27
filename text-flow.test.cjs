@@ -4,7 +4,7 @@ const {buildSync}=require('esbuild');
 const vm=require('node:vm');
 const {EditorModel}=require('./editor-model.js');
 const source=buildSync({entryPoints:['src/plate-document.ts','src/tex-import.ts','src/latex-document.ts','src/references.ts'],bundle:true,format:'cjs',write:false,outdir:'test-output',platform:'node'}).outputFiles;
-function load(name,storage,desktopStorage){const module={exports:{}};vm.runInNewContext(source.find(f=>f.path.endsWith(name+'.js')).text,{module,exports:module.exports,console,crypto:globalThis.crypto,sessionStorage:storage,...(desktopStorage?{window:{__TAURI_INTERNALS__:{}},localStorage:desktopStorage}:{})});return module.exports;}
+function load(name,storage,desktopStorage,sessionId){const module={exports:{}};const window=desktopStorage||sessionId?{...(desktopStorage?{__TAURI_INTERNALS__:{}}:{}),location:{href:'https://example.test/vulgar-notes/'+(sessionId?'?document='+sessionId:'')}}:undefined;vm.runInNewContext(source.find(f=>f.path.endsWith(name+'.js')).text,{module,exports:module.exports,console,URL,crypto:globalThis.crypto,sessionStorage:storage,...(window?{window}:{}),...(desktopStorage?{localStorage:desktopStorage}:{})});return module.exports;}
 const storage=()=>{const data=new Map();return {getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,v)}};
 const model=()=>{const m=new EditorModel();m.root.items=['x'];m.index();m.setCursor(m.root.id,1);return m};
 
@@ -117,6 +117,57 @@ test('desktop draft survives a new session and browser drafts remain isolated',(
  assert.equal(first[0].children[0].text,'Desktop draft');
  assert.equal(reopened[0].children[0].text,'Desktop draft');
  assert.notEqual(load('plate-document',session).restoreDocument(model())[0].children[0].text,'Desktop draft');
+});
+
+test('new browser documents ignore copied opener drafts and all legacy migrations',()=>{
+ const s=storage(),primaryKey='math-plate-document-v1';
+ const main=JSON.stringify({version:1,value:[{type:'p',children:[{text:'Keep the original document'}]}]});
+ const legacyKeys=[primaryKey,'math-tiptap-document-v1','math-text-flow-state'];
+ const originals=[main,'old Tiptap draft bytes','old flow draft bytes'];
+ legacyKeys.forEach((key,index)=>s.setItem(key,originals[index]));
+ const reads=[],tracked={...s,getItem:key=>{reads.push(key);return s.getItem(key);}};
+ const first=load('plate-document',tracked,undefined,'11111111-1111-4111-8111-111111111111');
+ const second=load('plate-document',tracked,undefined,'22222222-2222-4222-8222-222222222222');
+ assert.notEqual(first.documentStorageKey,primaryKey);assert.notEqual(first.documentStorageKey,second.documentStorageKey);
+ for(const api of [first,second])assert.equal(JSON.stringify(api.restoreDocumentEnvelope(model())),JSON.stringify({version:1,value:[{type:'p',children:[{text:''}]}],bibliographyLibraries:[]}));
+ assert.equal(reads.some(key=>legacyKeys.includes(key)),false,'new documents must not even read another document or its migrations');
+ const edited=JSON.stringify({version:1,value:[{type:'p',children:[{text:'New tab contents'},first.formulaNode(model())]}],bibliographyLibraries:[]});
+ s.setItem(first.documentStorageKey,edited);
+ assert.equal(JSON.stringify(load('plate-document',s,undefined,'11111111-1111-4111-8111-111111111111').restoreDocumentEnvelope(model())),edited);
+ assert.equal(second.restoreDocument(model())[0].children[0].text,'');
+ legacyKeys.forEach((key,index)=>{assert.equal(s.getItem(key),originals[index]);assert.equal(s.getItem(key+'-recovery'),null);});
+ assert.equal(load('plate-document',s).restoreDocument(model())[0].children[0].text,'Keep the original document');
+});
+
+test('each desktop document restores its own formulas, notes and captured bibliography without changing the primary draft',()=>{
+ const persistent=storage(),primaryKey='math-plate-document-v1';
+ const original=JSON.stringify({version:1,value:[{type:'p',children:[{text:'Unsaved main window'}]}]});persistent.setItem(primaryKey,original);
+ const id='33333333-3333-4333-8333-333333333333',api=load('plate-document',storage(),persistent,id);
+ assert.equal(api.restoreDocument(model())[0].children[0].text,'');
+ const value=[{type:'p',children:[{text:'Independent '},api.formulaNode(model(),true),{type:'footnoteReference',identifier:'note',children:[{text:''}]},{type:'tex_reference',command:'cite',keys:['paper'],children:[{text:''}]}]},
+  {type:'footnoteDefinition',identifier:'note',children:[{type:'p',children:[{text:'A saved note',bold:true}]}]}];
+ const bibliographyLibraries=[{id:'papers',name:'Papers.bib',source:'@article{paper,title={Captured cited entry}}'}];
+ const saved=JSON.stringify({version:1,value,bibliographyLibraries});persistent.setItem(api.documentStorageKey,saved);
+ const reopened=load('plate-document',storage(),persistent,id).restoreDocumentEnvelope(model());
+ assert.equal(JSON.stringify(reopened),saved);
+ assert.equal(persistent.getItem(primaryKey),original);
+ assert.equal(load('plate-document',storage(),persistent).restoreDocument(model())[0].children[0].text,'Unsaved main window');
+ const another=load('plate-document',storage(),persistent,'44444444-4444-4444-8444-444444444444');
+ assert.equal(another.restoreDocument(model())[0].children[0].text,'');
+ assert.equal(persistent.getItem(api.documentStorageKey),saved);
+});
+
+test('a corrupt scoped draft is recovered only in its own namespace and falls back to a blank document',()=>{
+ const persistent=storage(),primaryKey='math-plate-document-v1';
+ const originals={[primaryKey]:'primary bytes','math-tiptap-document-v1':'Tiptap bytes','math-text-flow-state':'flow bytes'};
+ for(const [key,value]of Object.entries(originals))persistent.setItem(key,value);
+ const api=load('plate-document',storage(),persistent,'55555555-5555-4555-8555-555555555555');
+ persistent.setItem(api.documentStorageKey,'corrupt new document');
+ const restored=api.restoreDocumentEnvelope(model());
+ assert.equal(JSON.stringify(restored),JSON.stringify({version:1,value:[{type:'p',children:[{text:''}]}],bibliographyLibraries:[]}));
+ assert.equal(persistent.getItem(api.documentStorageKey),'corrupt new document');
+ assert.equal(persistent.getItem(api.documentStorageKey+'-recovery'),'corrupt new document');
+ for(const [key,value]of Object.entries(originals)){assert.equal(persistent.getItem(key),value);assert.equal(persistent.getItem(key+'-recovery'),null);}
 });
 
 test('Tiptap draft migration retains marks, nested math, layout, numbering and the original draft',()=>{

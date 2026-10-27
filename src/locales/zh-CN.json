@@ -130,6 +130,8 @@
   "Save document as": "另存为",
   "Document saved": "文档已保存",
   "Unable to open document": "无法打开文档",
+  "New document": "新建文档",
+  "Unable to create document": "无法新建文档",
   "Unable to save document": "无法保存文档",
   "Vulgar Notes document": "Vulgar Notes 文档",
   "Please choose a Vulgar Notes document (.vulgar or legacy .json).": "请选择 Vulgar Notes 文档（.vulgar 或旧版 .json）。",

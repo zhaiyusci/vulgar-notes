@@ -1,4 +1,4 @@
-import {draftStorage} from './platform';
+import {documentSessionId,draftStorage} from './platform';
 import {t} from './i18n';
 import React from 'react';
 import {DisplayBoundaryText} from './display-boundary-text';
@@ -107,7 +107,7 @@ export class PlateMathHost implements DocumentHost {
     mount.removeAttribute('contenteditable');mount.removeAttribute('role');mount.removeAttribute('aria-label');mount.id='plateMount';
     this.root=createRoot(mount);
     flushSync(()=>this.root.render(<HostContext.Provider value={this}><TooltipProvider><Plate editor={this.editor} onChange={()=>this.changed()}>
-      <EditorContainer><Editor renderText={props=><DisplayBoundaryText {...props} />} id="textFlow" aria-label={t("Body")} placeholder={t("Type here…")}
+      <EditorContainer><Editor autoFocus={documentSessionId()!==null} renderText={props=><DisplayBoundaryText {...props} />} id="textFlow" aria-label={t("Body")} placeholder={t("Type here…")}
         onPointerDown={e=>{if(!(e.target as Element).closest('.inline-formula')){this.activeFormula=undefined;this.hooks.leave();}}}
         onFocus={()=>{this.activeFormula=undefined;this.hooks.leave();}}
         onKeyDownCapture={e=>this.handleObjectDelete(e)} onKeyDown={e=>this.keyDown(e)} /><BibtexBibliography /></EditorContainer>

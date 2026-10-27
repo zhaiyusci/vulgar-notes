@@ -1,12 +1,14 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "Open and save documents only at paths selected through native dialogs.",
+  "description": "Create local document windows and open or save documents only at paths selected through native dialogs.",
   "windows": [
-    "main"
+    "main",
+    "document-*"
   ],
   "permissions": [
     "core:default",
+    "core:webview:allow-create-webview-window",
     "dialog:allow-save",
     "fs:allow-write-file",
     "dialog:allow-open",

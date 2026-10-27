@@ -3,13 +3,16 @@ import {elementById, eventElement} from './dom';
 import {fontPresentation} from './font-diagnostics';
 import {textNormal,preferredMathCommand} from './letter-variants';
 import {letterPreamble} from './letter-preamble';
+import {documentSessionId} from './platform';
 import type {DocumentHost,DocumentHostFactory} from './document-host';
 import {EditorModel, texChar, structureTex, catalog, symbols, type Region, type MathNode, type CommandCandidate} from './editor-model';
 const palette=[...catalog,...symbols];
 let model = new EditorModel(), editing = false, composing = false, sessionStart:string|null = null;
+const documentSession = documentSessionId();
+const mathStateKey = 'math-editor-state' + (documentSession ? ':' + documentSession : '');
 // Keep work across preview reloads, including recovery from a typesetting error.
 try {
-  const saved=sessionStorage.getItem('math-editor-state') || document.getElementById('recoveredEditorState')?.textContent;
+  const saved=sessionStorage.getItem(mathStateKey) || (!documentSession ? document.getElementById('recoveredEditorState')?.textContent : null);
   if(saved)model.restore(saved);
 } catch { /* An incompatible saved draft must not prevent the editor opening. */ }
 let revision = 0, rendering = false, scheduled = false;
@@ -131,7 +134,7 @@ function syncInput() {
 }
 function update(sync = true) {
   syncCommands();
-  try { sessionStorage.setItem('math-editor-state',model.snapshot()); } catch { /* Editing also works without storage. */ }
+  try { sessionStorage.setItem(mathStateKey,model.snapshot()); } catch { /* Editing also works without storage. */ }
   if (sync) syncInput();
   const pending=model.pendingFont?catalog.find(d=>d.type===model.pendingFont)?.command:null;
   elementById('pendingFontHint',HTMLElement).textContent=editing&&pending&&locale==='en'?`${pending}: applies to the next letter or digit. Use arrows or Backspace to cancel.`:editing&&pending?`\\${preferredMathCommand(pending.slice(1))}：仅作用于下一个字母或数字；方向键或 Backspace 取消。`:'';

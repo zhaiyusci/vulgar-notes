@@ -15,16 +15,29 @@ const source=build({
      ?`export const open=async options=>{const s=globalThis.platformTest;s.opens.push(options);return s.openPath;};
        export const save=async options=>{const s=globalThis.platformTest;s.saves.push(options);return s.savePath;};
        export const confirm=async()=>true;`
+     :path.endsWith('/webviewWindow')
+      ?`export class WebviewWindow {
+        constructor(label,options){
+         const s=globalThis.platformTest;if(s.windowConstructorError)throw Error(s.windowConstructorError);
+         this.label=label;this.options=options;this.listeners=new Map();s.windows.push(this);
+         if(s.autoWindowEvent)queueMicrotask(()=>this.emit(s.autoWindowEvent,s.windowError));
+        }
+        once(name,handler){this.listeners.set(name,handler);return Promise.resolve(()=>this.listeners.delete(name));}
+        emit(name,payload){this.listeners.get(name)?.({payload});}
+       }`
      :`export const readTextFile=async path=>{const s=globalThis.platformTest;s.reads.push(path);return s.files[path];};
        export const writeFile=async(path,data)=>{globalThis.platformTest.writes.push({path,data});};`,loader:'js'}));
  }}],
 }).then(result=>result.outputFiles[0].text);
 
-async function harness(t,desktop=true){
+async function harness(t,desktop=true,url='http://localhost/'){
  const {Window}=await import('happy-dom');
- const window=new Window({url:'http://localhost/'});
+ const window=new Window({url});
  window.document.write('<!doctype html><body></body>');
- const state=window.platformTest={desktop,openPath:null,savePath:null,opens:[],saves:[],reads:[],writes:[],files:{},downloads:[]};
+ const state=window.platformTest={desktop,openPath:null,savePath:null,opens:[],saves:[],reads:[],writes:[],files:{},downloads:[],windows:[],tabs:[],autoWindowEvent:'tauri://created'};
+ let uuidCounter=0;
+ Object.defineProperty(window,'crypto',{value:{randomUUID:()=>`6b363044-6c9a-4653-a2ba-${String(++uuidCounter).padStart(12,'0')}`},configurable:true});
+ window.open=(...args)=>{state.tabs.push(args);return null;};
  window.TextEncoder=TextEncoder;
  window.URL.createObjectURL=blob=>{state.downloadBlob=blob;return 'blob:test-document';};
  window.URL.revokeObjectURL=()=>{};
@@ -156,4 +169,94 @@ test('browser bibliography picker accepts .bib only and cleans up after selectio
  assert.equal(opened.name,'source.BIB');assert.equal(opened.text,source);
  await assert.rejects(browserSelection(h,new h.window.File(['{}'],'document.json'),{bibtex:true}));
  assert.equal(await browserSelection(h,null,{bibtex:true,cancel:true}),null);
+});
+
+test('document sessions accept one UUIDv4 parameter and cannot use arbitrary storage suffixes',async t=>{
+ const h=await harness(t,false);
+ assert.equal(h.api.documentSessionId(),null);
+ const id='6B363044-6C9A-4653-A2BA-000000000001';
+ h.window.location.href=`https://example.org/vulgar-notes/?document=${id}`;
+ assert.equal(h.api.documentSessionId(),id.toLowerCase());
+ for(const suffix of ['', '../draft', 'legacy', '6b363044-6c9a-1653-a2ba-000000000001',`${id}&document=${id}`,`${id}/extra`]){
+  h.window.location.href=`https://example.org/vulgar-notes/?document=${suffix}`;
+  assert.equal(h.api.documentSessionId(),null,suffix);
+ }
+ const vm=require('node:vm'),context={};
+ vm.runInNewContext(await source,context);
+ assert.equal(context.platform.documentSessionId(),null,'non-browser test hosts do not have a session');
+ context.window={};
+ assert.equal(context.platform.documentSessionId(),null,'incomplete location mocks safely use the legacy draft');
+});
+
+test('web New opens a fresh same-origin tab synchronously without touching the current editor or drafts',async t=>{
+ const oldId='6b363044-6c9a-4653-a2ba-000000000099';
+ const h=await harness(t,false,`https://www.zhaiyusci.net/vulgar-notes/?mode=test&document=${oldId}#formula`);
+ h.window.sessionStorage.setItem('math-plate-document-v1','original prose and formula');
+ h.window.localStorage.setItem('math-plate-document-v1','desktop original');
+ const originalURL=h.window.location.href;
+ const first=h.api.newDocumentWindow();
+ assert.equal(h.state.tabs.length,1,'open must run before the first await to retain the user gesture');
+ await first;
+ await h.api.newDocumentWindow();
+ assert.equal(h.state.tabs.length,2);
+ for(const [index,args] of h.state.tabs.entries()){
+  const [href,target,features]=args,url=new URL(href);
+  assert.equal(url.origin,'https://www.zhaiyusci.net');
+  assert.equal(url.pathname,'/vulgar-notes/');
+  assert.equal(url.searchParams.get('mode'),'test');
+  assert.equal(url.searchParams.getAll('document').length,1);
+  assert.equal(url.searchParams.get('document'),`6b363044-6c9a-4653-a2ba-${String(index+1).padStart(12,'0')}`);
+  assert.equal(url.hash,'');assert.equal(target,'_blank');assert.equal(features,'noopener');
+ }
+ assert.equal(h.window.location.href,originalURL);
+ assert.equal(h.window.sessionStorage.getItem('math-plate-document-v1'),'original prose and formula');
+ assert.equal(h.window.localStorage.getItem('math-plate-document-v1'),'desktop original');
+ assert.equal(h.state.windows.length,0);assert.equal(h.state.writes.length,0);
+});
+
+test('desktop New creates independent local windows with the editor drag and size settings',async t=>{
+ const h=await harness(t,true,'http://tauri.localhost/index.html?document=6b363044-6c9a-4653-a2ba-000000000099#formula');
+ const config=require('./src-tauri/tauri.conf.json').app.windows[0];
+ const originalURL=h.window.location.href;
+ h.window.localStorage.setItem('math-plate-document-v1','unchanged desktop draft');
+ await h.api.newDocumentWindow();await h.api.newDocumentWindow();
+ assert.equal(h.state.windows.length,2);
+ for(const [index,created] of h.state.windows.entries()){
+  const id=`6b363044-6c9a-4653-a2ba-${String(index+1).padStart(12,'0')}`;
+  assert.equal(created.label,`document-${id}`);
+  assert.equal(created.options.url,`./index.html?document=${id}`);
+  for(const key of ['title','width','height','minWidth','minHeight','dragDropEnabled'])assert.equal(created.options[key],config[key],key);
+  assert.equal(created.listeners.size,0,'creation listeners are released on success');
+ }
+ assert.equal(h.window.location.href,originalURL);
+ assert.equal(h.window.localStorage.getItem('math-plate-document-v1'),'unchanged desktop draft');
+ assert.equal(h.state.tabs.length,0);assert.equal(h.state.writes.length,0);
+});
+
+test('desktop New waits for creation and reports failures without altering drafts',async t=>{
+ const h=await harness(t);
+ h.state.autoWindowEvent=null;
+ let completed=false;
+ const pending=h.api.newDocumentWindow().then(()=>{completed=true;});
+ while(!h.state.windows.length)await new Promise(setImmediate);
+ assert.equal(completed,false);
+ h.state.windows[0].emit('tauri://created');await pending;
+ assert.equal(completed,true);assert.equal(h.state.windows[0].listeners.size,0);
+ h.state.autoWindowEvent='tauri://error';h.state.windowError='window creation denied';
+ await assert.rejects(h.api.newDocumentWindow(),/window creation denied/);
+ assert.equal(h.state.windows[1].listeners.size,0,'error listeners are released on failure');
+ h.state.windowConstructorError='invalid native window';
+ await assert.rejects(h.api.newDocumentWindow(),/invalid native window/);
+ assert.equal(h.state.writes.length,0);assert.equal(h.state.tabs.length,0);
+});
+
+test('new desktop document windows get the same local file capabilities without broad remote access',()=>{
+ const capability=require('./src-tauri/capabilities/main.json');
+ assert.deepEqual(capability.windows,['main','document-*']);
+ assert.ok(capability.permissions.includes('core:webview:allow-create-webview-window'));
+ for(const permission of ['dialog:allow-open','dialog:allow-save','dialog:allow-confirm','fs:allow-read-text-file','fs:allow-write-file']){
+  assert.ok(capability.permissions.includes(permission),permission);
+ }
+ assert.equal(capability.remote,undefined);
+ assert.ok(!capability.permissions.includes('core:webview:allow-create-webview'));
 });

@@ -1,11 +1,13 @@
-import {draftStorage} from './platform';
+import {documentSessionId,draftStorage} from './platform';
 import type {TElement, Value, Descendant} from 'platejs';
 import {type JSONContent, migrateLegacy, documentLatex} from './document-format';
 import {EditorModel} from './editor-model';
 import {referenceTex,validReferenceKey,type ReferenceNode} from './references';
 import {parseBibLibraries,validateBibLibraries,validCitationKey,type BibLibrary} from './bibtex';
 
-export const documentStorageKey='math-plate-document-v1';
+const sessionId=documentSessionId();
+/** A newly opened document owns its draft, even when the browser copies opener storage. */
+export const documentStorageKey='math-plate-document-v1'+(sessionId?':'+sessionId:'');
 export function documentContentKey(source:string):string {
   return JSON.stringify(JSON.parse(source), (key,value)=>{
     if(key==='snapshot'&&typeof value==='string')return JSON.parse(value).root;
@@ -82,16 +84,20 @@ export function fromTiptap(doc:JSONContent):Value {
   return read(doc) as Value;
 }
 export function restoreDocumentEnvelope(initial:EditorModel):DocumentEnvelope {
+  const keys=sessionId?[documentStorageKey]:[documentStorageKey,'math-tiptap-document-v1','math-text-flow-state'];
   try {
     const current=draftStorage().getItem(documentStorageKey);
     if(current)return parseDocumentEnvelope(current);
+    // New windows/tabs are blank documents, never another view of the primary draft.
+    if(sessionId)return {version:1,value:[{type:'p',children:[{text:''}]}],bibliographyLibraries:[]};
     const tiptap=draftStorage().getItem('math-tiptap-document-v1');
     if(tiptap){const saved=JSON.parse(tiptap);if(saved.version!==2)throw Error('Invalid previous document');return {version:1,value:fromTiptap(saved.doc),bibliographyLibraries:[]};}
     const legacy=draftStorage().getItem('math-text-flow-state');if(legacy)return {version:1,value:fromTiptap(migrateLegacy(legacy)),bibliographyLibraries:[]};
   }catch(error){
-    for(const key of [documentStorageKey,'math-tiptap-document-v1','math-text-flow-state']){const value=draftStorage().getItem(key);if(value)draftStorage().setItem(key+'-recovery',value);}
+    for(const key of keys){const value=draftStorage().getItem(key);if(value)draftStorage().setItem(key+'-recovery',value);}
     console.warn('The original draft has been preserved for recovery.',error);
   }
+  if(sessionId)return {version:1,value:[{type:'p',children:[{text:''}]}],bibliographyLibraries:[]};
   return {version:1,value:[{type:'p',children:[{text:'在这里输入正文。已知 '},formulaNode(initial),{text:'，可以继续输入文字，也可以在光标处插入新的公式。'}]}],bibliographyLibraries:[]};
 }
 export function restoreDocument(initial:EditorModel):Value {return restoreDocumentEnvelope(initial).value;}
