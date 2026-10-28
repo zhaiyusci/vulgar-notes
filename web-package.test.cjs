@@ -5,6 +5,10 @@ const os = require('node:os');
 const path = require('node:path');
 const vm = require('node:vm');
 const {prepareWebAssets} = require('./scripts/prepare-web.cjs');
+const {prepareDesktopAssets} = require('./scripts/prepare-desktop.cjs');
+const licenseFiles = ['LICENSE', 'THIRD_PARTY_NOTICES.md', ...[
+  'NOTICE.txt', 'LICENSE.txt', 'AGPLv3.txt', 'CPAL.txt', 'NPM-LICENSE.txt', 'manifest.json', 'citeproc_commonjs.js',
+].map(name => 'licenses/citeproc/' + name)];
 
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'vulgar-web-package-'));
@@ -25,6 +29,7 @@ function fixture(t) {
   write('plate.css');
   write('mathjax-config.js');
   write('licenses/third-party.txt');
+  for (const name of licenseFiles) write(name, 'Original contents of ' + name + '\n');
   write('node_modules/mathjax/tex-chtml.js');
   write('node_modules/mathjax/input/tex/extensions/mhchem.js');
   write('node_modules/mathjax/LICENSE', 'Apache license');
@@ -36,6 +41,13 @@ function fixture(t) {
     write('node_modules/@mathjax/' + name + '/cjs/source.js');
   }
   return {root, write};
+}
+
+function assertLicensesCopied(root, out) {
+  for (const name of licenseFiles) {
+    assert.deepEqual(fs.readFileSync(path.join(out, name)), fs.readFileSync(path.join(root, name)), name);
+  }
+  assert.equal(fs.readFileSync(path.join(out, 'licenses/mathjax-Apache-2.0.txt'), 'utf8'), 'Apache license');
 }
 
 test('web package resolves assets under a Pages subdirectory and retains local MathJax loaders/fonts', t => {
@@ -57,7 +69,7 @@ test('web package resolves assets under a Pages subdirectory and retains local M
   assert.ok(fs.existsSync(path.join(out, 'chunks/editor-ABC.js')));
   assert.ok(fs.existsSync(path.join(out, '.nojekyll')));
   assert.ok(fs.existsSync(path.join(out, 'licenses/third-party.txt')));
-  assert.equal(fs.readFileSync(path.join(out, 'licenses/mathjax-Apache-2.0.txt'), 'utf8'), 'Apache license');
+  assertLicensesCopied(root, out);
   assert.equal(fs.existsSync(path.join(out, 'editor-ui.js.map')), false);
   for (const name of ['mathjax-newcm', 'mathjax-bboldx', 'mathjax-mhchem']) {
     assert.ok(fs.existsSync(path.join(out, 'vendor', name, 'chtml/woff2/math.woff2')));
@@ -80,3 +92,34 @@ test('missing build inputs cannot erase the previously prepared website', t => {
   assert.throws(() => prepareWebAssets(root));
   assert.equal(fs.readFileSync(path.join(root, 'web-dist/keep.txt'), 'utf8'), 'previous website');
 });
+
+test('desktop package embeds the application license, processor licenses and unmodified source', t => {
+  const {root, write} = fixture(t);
+  write('desktop-dist/stale.js');
+  write('web-dist/keep.txt', 'website untouched');
+  const out = prepareDesktopAssets(root);
+  const html = fs.readFileSync(path.join(out, 'index.html'), 'utf8');
+  assert.doesNotMatch(html, /cdn\.jsdelivr/);
+  assert.match(html, /src="desktop-mathjax\.js"/);
+  assert.ok(fs.existsSync(path.join(out, 'vendor/mathjax/tex-chtml.js')));
+  assert.ok(fs.existsSync(path.join(out, 'chunks/editor-ABC.js')));
+  assert.equal(fs.existsSync(path.join(out, 'editor-ui.js.map')), false);
+  assert.equal(fs.existsSync(path.join(out, 'stale.js')), false);
+  assert.equal(fs.readFileSync(path.join(root, 'web-dist/keep.txt'), 'utf8'), 'website untouched');
+  assertLicensesCopied(root, out);
+});
+
+for (const [target, prepare] of [['web-dist', prepareWebAssets], ['desktop-dist', prepareDesktopAssets]]) {
+  test(target + ' requires complete license/source files before replacing the previous package', t => {
+    const {root, write} = fixture(t);
+    write(target + '/keep.txt', 'previous package');
+    for (const name of licenseFiles) {
+      const file = path.join(root, name);
+      const contents = fs.readFileSync(file);
+      fs.unlinkSync(file);
+      assert.throws(() => prepare(root), undefined, name);
+      assert.equal(fs.readFileSync(path.join(root, target, 'keep.txt'), 'utf8'), 'previous package', name);
+      fs.writeFileSync(file, contents);
+    }
+  });
+}

@@ -1,6 +1,6 @@
 import type {CSLItem} from './bibtex-csl';
 import {cslLocales,cslStyles} from './csl/assets';
-import {renderCSLBibliography} from './csl-lua/runtime';
+import {renderCSLBibliography} from './csl/processor';
 import {isBibliographyStyle,type BibliographyStyle,type BibliographyRun,type FormattedBibliographyEntry} from './bibliography-style';
 export {bibliographyStyles,isBibliographyStyle} from './bibliography-style';
 export type {BibliographyStyle,BibliographyRun,FormattedBibliographyEntry} from './bibliography-style';
@@ -94,7 +94,7 @@ export function formatBibliography(entries:readonly BibliographyFormatInput[],st
   const signature=JSON.stringify([style,entries.map(entry=>[entry.key,entry.csl,entry.description])]);
   const previous=cache.find(item=>item.signature===signature);if(previous)return previous.result;
   const result=new Map<string,FormattedBibliographyEntry>();
-  const inputs=entries.filter(entry=>entry.csl);
+  const inputs=entries.filter((entry):entry is BibliographyFormatInput&{csl:CSLItem}=>!!entry.csl);
   const outputs=new Map<string,FormattedBibliographyEntry>();
   if(style!=='simple'&&inputs.length){
     const items=inputs.map(entry=>({...entry.csl,id:entry.key}));
@@ -102,7 +102,7 @@ export function formatBibliography(entries:readonly BibliographyFormatInput[],st
     const bibliography=renderCSLBibliography(items,xml,style==='gbt7714-2025'?'zh-CN':'en-US',cslLocales);
     bibliography.html.forEach((html,index)=>{
       const entry=formatted(runsFromProcessorHTML(html,style==='aip'));
-      outputs.set(bibliography.ids[index],entry);
+      for(const key of bibliography.ids[index]||[])outputs.set(key,entry);
     });
   }
   for(const entry of entries){

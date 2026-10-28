@@ -1,0 +1,40 @@
+Vulgar Notes: citeproc-js third-party notice
+==========================================
+
+Vulgar Notes uses the unmodified citeproc npm package version 2.4.63 by
+Frank Bennett and its contributors under its GNU Affero General Public License
+version 3 or later (AGPL-3.0-or-later) option.
+
+Copyright (c) 2009-2019 Frank Bennett
+
+Upstream offers a choice of CPAL version 1 or later, or AGPL version 3 or later. This
+distribution selects AGPL-3.0-or-later, not CPAL. The original dual-license
+headers and both complete license texts are preserved without alteration;
+their preservation does not select CPAL or impose CPAL's user-interface
+attribution condition on this distribution. This notice does not remove the
+upstream licensing choices for the original processor.
+
+The npm package metadata's AGPL-1.0 identifier differs from the actual upstream
+license notice, which specifies AGPL version 3 or later. The fixed upstream
+source notice is authoritative for the licensing option selected here.
+
+The original, unmodified processor source is supplied as citeproc_commonjs.js
+beside this notice. Its SHA-256, exact npm version and source revision are in
+manifest.json. The source is also available from the official repository:
+https://github.com/Juris-M/citeproc-js/tree/73bc1b44bc7d54d0bfec4e070fd27f5efe024ff9
+
+The application-specific BibTeX adapter and marked-text renderer are separate
+code; no modifications have been made to the upstream processor.
+
+The application's original code is GPL-3.0-or-later. GPLv3 section 13 and
+AGPLv3 section 13 permit the combined work while retaining the respective
+licenses of those parts. AGPLv3 section 13's network-interaction requirements
+apply to the combination, including the applicable Corresponding Source.
+The public application source repository is:
+https://github.com/zhaiyusci/vulgar-notes
+
+See AGPLv3.txt for the selected license. NPM-LICENSE.txt preserves the exact
+notice distributed in the package; LICENSE.txt, CPAL.txt and AGPLv3.txt
+preserve the complete upstream files at the npm package's recorded source
+revision. The root LICENSE contains GPLv3 for the application's original code;
+it does not relicense the processor.

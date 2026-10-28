@@ -6,6 +6,8 @@
 
 [下载 Windows 桌面版](https://github.com/zhaiyusci/vulgar-notes/releases/latest)（免安装版 / 安装版）
 
+Original application code is licensed under **GPL-3.0-or-later**. See [LICENSE](LICENSE) and [third-party notices](THIRD_PARTY_NOTICES.md). The citation processor uses its **AGPL-3.0-or-later** option.
+
 ## 关于名称的郑重声明
 
 本项目郑重声明：**Vulgar Notes** 中的 **vulgar**，明确取现代英语中“低俗、粗俗、不雅”的含义。这个名字是有意这样取的。
@@ -82,7 +84,11 @@ Tauri 配置关闭原生文件拖放拦截，让编辑器继续处理段落排�
 
 “参考文献表格式”提供简洁、IEEE、ACS、AIP、Vancouver（NLM）、APA 第 7 版、Chicago 第 18 版及 GB/T 7714—2025，并显示实际格式预览。选项保存在当前文档中，正文引用和尾注继续按首次出现顺序统一编号。切换的是参考文献表条目格式，不是完整的作者—年份引用系统。正文末尾、悬浮预览、Markdown 和 LaTeX 导出使用同一格式；尾注中的富文本与公式保留。所选 CSL 格式的 LaTeX 导出使用预排版的 `thebibliography`，无需 Biber；简洁格式保留原来的 BibLaTeX 导出。
 
-格式处理使用 MIT 许可的 citeproc-lua，通过本地 WebAssembly 运行时在浏览器和 Tauri 中执行，排版时不访问外部服务。继续使用固定版本的官方 CSL 样式与语言资源。处理器、运行时和 Unicode 数据的来源、版本、许可证及局部修复记录见 `vendor/csl-lua/`、`licenses/csl-lua/`、`licenses/csl/`。署名和许可入口位于“首选项 → 关于 Vulgar Notes → 第三方许可”，默认收起，不在写作界面、文档或导出内容中插入署名文案。
+Bibliography formatting uses the unmodified **citeproc-js 2.4.63** JavaScript processor in both the browser and Tauri, with the pinned official CSL styles and locales. Formatting runs locally without an external service or a Lua/WASM interpreter. Metadata is copied before processing; a shared result cache avoids reformatting unchanged references. The document host retains reference/endnote numbering and order. Source provenance and licenses are in `licenses/citeproc/` and `licenses/csl/`.
+
+The application selects citeproc-js's **AGPL-3.0-or-later** option. The original application code is **GPL-3.0-or-later**; GPLv3 section 13 permits this combination, and the applicable AGPL network-source requirements extend to the combination. Original third-party licenses remain intact. Copyright, license and source links are available in **Preferences → About Vulgar Notes**, with no CPAL-specific startup message or credit text inserted into documents, reference lists or exports.
+
+Known upstream limitation: citeproc-js 2.4.63 renders only the first contributor in certain explicit groups inside conditional name substitutes. A pending regression test retains the required group output rather than changing its expectation to match that limitation. The application's existing seven-style reference fixtures are tested separately.
 
 界面语言与配色方案在右上角齿轮打开的“首选项”中设置。保留浅色、纸张、青灰和深色，并提供 Catppuccin Latte / Frappé / Macchiato / Mocha、Nord、Tokyo Night、Dracula、Solarized Light / Dark，共 13 套配色，按系列分组。选择时即时预览，保存后在本设备保留；取消或 Esc 恢复原配色。配色同时应用于正文、公式和工具界面，不改变文档内容、数学字体或导出结果。只有切换语言需要重新加载，当前草稿会保留。原生文档扩展名为 `.vulgar`，内部仍使用 JSON；导出菜单仅提供 Markdown 和 LaTeX。
 
@@ -101,13 +107,18 @@ MathJax 和编辑器会动态创建样式，因此 `dangerousDisableAssetCspModi
 
 首次安装依赖：`npm ci --legacy-peer-deps`。
 
-- `npm run typecheck`：准备处理器资源并运行严格类型检查。
-- `npm run csl:prepare`：校验引文处理器、Unicode 数据和运行时的固定哈希，生成构建所需的 TypeScript 资源。普通网页及桌面构建使用仓库内的预编译 WASM，不需要 C 编译器或 WASI SDK；运行时重编译方法见 `vendor/csl-lua/runtime/README.md`。
+- `npm run typecheck`：运行严格 TypeScript 类型检查。
 - `npm run build`：先检查类型，再编译浏览器脚本和 source map。
 - `npm test`：构建后运行模型回归测试，测试实际生成的代码。
 - `npm run dev`：构建并在 <http://127.0.0.1:8767/> 启动预览。
 
 修改源文件后运行 `npm run build`，再刷新页面；服务器无需重启。启动前确保端口没有被另一个预览进程占用。MathJax 仍由 CDN 加载，首次打开需要网络连接。
+
+## License and corresponding source
+
+Copyright (c) 2026 Yu Zhai. The original application code is free software under **GNU GPL version 3 or any later version**, without warranty. Third-party components, fonts and CSL resources keep their own notices and licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). This application license does not impose a license on documents users create or on their exported contents.
+
+The source repository is <https://github.com/zhaiyusci/vulgar-notes>. For a release, use its matching source revision/tag, including `package-lock.json`, `src/`, `src-tauri/`, the build/package scripts and the included third-party notices and processor source. Install the locked JavaScript dependencies with `npm ci --legacy-peer-deps`; run `npm test`, `npm run web:build`, or `npm run desktop:build` as appropriate. Desktop builds additionally need the Rust/Tauri system prerequisites. Do not offer an older source revision as the corresponding source for a newer binary or web deployment. The bundled About panel links to source and the applicable licenses; both web and desktop packages include the full license texts.
 
 ## 源码
 

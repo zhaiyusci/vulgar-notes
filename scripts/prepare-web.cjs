@@ -9,6 +9,9 @@ const vendorPackages = [
 ];
 const sourceDirectories = new Set(['cjs', 'mjs', 'def', 'examples', 'tsconfig']);
 const browserAsset = file => !file.endsWith('.map') && !sourceDirectories.has(path.basename(file));
+const licenseFiles = ['LICENSE', 'THIRD_PARTY_NOTICES.md', ...[
+  'NOTICE.txt', 'LICENSE.txt', 'AGPLv3.txt', 'CPAL.txt', 'NPM-LICENSE.txt', 'manifest.json', 'citeproc_commonjs.js',
+].map(name => 'licenses/citeproc/' + name)];
 
 /** Relative asset URLs work at both / and a GitHub Pages project subdirectory. */
 function prepareWebAssets(workspace = path.resolve(__dirname, '..')) {
@@ -27,7 +30,7 @@ function prepareWebAssets(workspace = path.resolve(__dirname, '..')) {
   html = html.replace(configScript, '$&<script src="web-mathjax.js"></script>');
 
   // Fail before replacing a previously prepared site if the build is missing.
-  for (const file of ['dist/editor-ui.js', 'dist/editor-ui.css', 'plate.css', 'mathjax-config.js', 'node_modules/mathjax/tex-chtml.js', 'node_modules/mathjax/LICENSE']) {
+  for (const file of ['dist/editor-ui.js', 'dist/editor-ui.css', 'plate.css', 'mathjax-config.js', 'node_modules/mathjax/tex-chtml.js', 'node_modules/mathjax/LICENSE', ...licenseFiles]) {
     if (!fs.statSync(path.join(root, file)).isFile()) throw Error('Missing web build input: ' + file);
   }
   for (const [pkg] of vendorPackages) fs.accessSync(path.join(root, 'node_modules', pkg));
@@ -48,6 +51,7 @@ MathJax.chtml = {fontURL:MathJax.loader.paths['mathjax-newcm']+'/chtml/woff2',dy
 `);
   for (const [pkg, target] of vendorPackages) fs.cpSync(path.join(root, 'node_modules', pkg), path.join(out, 'vendor', target), {recursive: true, filter: browserAsset});
   fs.cpSync(path.join(root, 'licenses'), path.join(out, 'licenses'), {recursive: true, filter: browserAsset});
+  for (const name of ['LICENSE', 'THIRD_PARTY_NOTICES.md']) fs.copyFileSync(path.join(root, name), path.join(out, name));
   fs.copyFileSync(path.join(root, 'node_modules/mathjax/LICENSE'), path.join(out, 'licenses/mathjax-Apache-2.0.txt'));
   console.log('Web assets prepared in web-dist (relative URLs, local MathJax and fonts).');
   return out;

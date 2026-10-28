@@ -18,5 +18,4 @@ diagnostics/font-coverage/__pycache__/
 *.aux
 *.log
 *.console.txt
-src/csl-lua/*.generated.ts
 *.synctex.gz
