@@ -9,7 +9,6 @@ import {
   AudioLinesIcon,
   FileUpIcon,
   FilmIcon,
-  ImageIcon,
   LinkIcon,
 } from 'lucide-react';
 import { isUrl, KEYS } from 'platejs';
@@ -62,12 +61,6 @@ const MEDIA_CONFIG: Record<
     icon: <FileUpIcon className="size-4" />,
     title: 'Insert File',
     tooltip: 'File',
-  },
-  [KEYS.img]: {
-    accept: ['image/*'],
-    icon: <ImageIcon className="size-4" />,
-    title: 'Insert Image',
-    tooltip: 'Image',
   },
   [KEYS.video]: {
     accept: ['video/*'],

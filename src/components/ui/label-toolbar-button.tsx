@@ -3,7 +3,7 @@ import {TagIcon} from 'lucide-react';
 import {useEditorRef} from 'platejs/react';
 import type {Range} from 'slate';
 import {HostContext} from '@/plate-math-element';
-import {referenceTargets,validReferenceKey} from '@/references';
+import {planLabelRename,referenceTargets,validReferenceKey} from '@/references';
 import {t} from '@/i18n';
 import {ToolbarButton} from './toolbar';
 import {Dialog,DialogContent,DialogTitle,DialogDescription} from './dialog';
@@ -14,12 +14,17 @@ export function LabelToolbarButton(){
   const editor=useEditorRef(),host=useContext(HostContext);
   const [open,setOpen]=useState(false),[key,setKey]=useState(''),[error,setError]=useState('');
   const selection=useRef<Range|null>(null),targetId=useRef<string|undefined>(undefined);
+  const targetPath=useRef<number[]|undefined>(undefined);
   const start=(id?:string)=>{
+    if(editor.api.isReadOnly())return;
     const chosenId=id||host?.activeFormulaId;
-    const chosen=chosenId?referenceTargets(editor.children).find(x=>x.node.id===chosenId&&x.kind!=='bibliography'&&x.kind!=='endnote'):undefined;
+    const current=chosenId?undefined:editor.api.above({match:node=>node.type==='float'||/^h[1-6]$/.test(String(node.type))});
+    const targets=referenceTargets(editor.children);
+    const chosen=chosenId?targets.find(x=>x.node.id===chosenId&&x.kind!=='bibliography'&&x.kind!=='endnote'):current?targets.find(x=>x.node===current[0]):undefined;
     host?.prepareTextInsertion();
     selection.current=editor.selection?structuredClone(editor.selection):null;
     targetId.current=chosen?.node.id as string|undefined;
+    targetPath.current=chosen?.path;
     setKey(chosen?.key||'');setError('');setOpen(true);
   };
   useEffect(()=>{
@@ -29,13 +34,14 @@ export function LabelToolbarButton(){
   });
   const submit=()=>{
     const value=key.trim(),targets=referenceTargets(editor.children);
-    const chosen=targets.find(x=>targetId.current&&x.node.id===targetId.current);
+    const chosen=targets.find(x=>targetId.current?x.node.id===targetId.current:targetPath.current&&x.path.join('.')===targetPath.current.join('.'));
     if(value&&!validReferenceKey(value)){setError(t('Use a letter followed by letters, digits, colon, dot, underscore or hyphen.'));return;}
     if(value&&targets.some(x=>x.kind!=='bibliography'&&x.kind!=='endnote'&&x.key===value&&x.node!==chosen?.node)){setError(t('This label already exists.'));return;}
     if(!chosen&&!selection.current){setError(t('Place the cursor in the document first.'));return;}
+    const renames=chosen&&value?planLabelRename(editor.children,chosen.path,value):[];
     editor.tf.withNewBatch(()=>{
       if(chosen){
-        if(value)editor.tf.setNodes({texLabel:value},{at:chosen.path});
+        if(value){editor.tf.setNodes({texLabel:value},{at:chosen.path});for(const rename of renames)editor.tf.setNodes({keys:rename.keys},{at:rename.path});}
         else if(chosen.kind==='anchor')editor.tf.removeNodes({at:chosen.path});
         else editor.tf.unsetNodes('texLabel',{at:chosen.path});
       }else if(value){

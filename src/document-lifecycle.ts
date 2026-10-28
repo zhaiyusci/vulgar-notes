@@ -1,6 +1,6 @@
 import {isTauri} from '@tauri-apps/api/core';
 import {parseDocumentFile,documentContentKey} from './plate-document';
-import {defaultDocumentName,documentSessionId,draftStorage,newDocumentWindow,openDocumentFile,saveDocumentFile,type DocumentFile,type OpenedDocument} from './platform';
+import {defaultDocumentName,documentSessionId,draftStorage,flushDocumentDraftStore,newDocumentWindow,openDocumentFile,saveDocumentFile,type DocumentFile,type OpenedDocument} from './platform';
 import {getRecentDocumentTarget,openRecentDocument,rememberRecentDocument} from './recent-documents';
 import {t} from './i18n';
 import {recordRuntimeEvent} from './runtime-diagnostics';
@@ -8,6 +8,7 @@ import {recordRuntimeEvent} from './runtime-diagnostics';
 /** The controller does not depend on the rich-text editor or its UI framework. */
 export interface DocumentLifecycleHost {
   persist():void;
+  cancelPendingRecovery?():void;
   serializeDocument():string;
   hasUnsavedChanges():boolean;
   markDocumentSaved(source:string):void;
@@ -106,18 +107,27 @@ async function saveCurrent(saveAs=false):Promise<boolean> {
   currentFile=file;metadata={name:file.name,...(file.path?{path:file.path}:{}),baseline:source};
   try{metadata.recentId=(await rememberRecentDocument(file)).id;}catch{/* Saving remains successful when the recent-file catalog is unavailable. */}
   savingHost.markDocumentSaved(source);const id=documentSessionId();if(id)writeMetadata(id,metadata);refreshDocumentState();
+  // The file write already succeeded. Recovery/cache availability must not
+  // turn a real Save into a reported file-save failure.
+  try{await flushDocumentDraftStore();}catch{}
   window.dispatchEvent(new CustomEvent('vulgar-document-saved'));
   // Do not navigate away if the document changed while its older snapshot saved.
   return host===savingHost&&!savingHost.hasUnsavedChanges();
 }
 async function mayLeave():Promise<LeaveDecision> {
-  host?.persist();refreshDocumentState();if(!host?.hasUnsavedChanges())return 'clean';
+  host?.persist();refreshDocumentState();
+  // Give the latest recovery a chance to commit before opening a picker or
+  // closing this view. A failed cache must still allow Save to a real file.
+  try{await flushDocumentDraftStore();}catch{}
+  // New edits can arrive while the recovery transaction is committing.
+  refreshDocumentState();if(!host?.hasUnsavedChanges())return 'clean';
   const choice=await askToSave();if(choice==='cancel')return 'cancel';
   if(choice==='save')return await saveCurrent()?'save':'cancel';return 'discard';
 }
 function discardRecovery():void {
   const id=documentSessionId();if(!id)return;const storage=draftStorage();
-  try{if(metadata.baseline!==undefined)storage.setItem(documentDraftKey(id),metadata.baseline);else{storage.removeItem(documentDraftKey(id));storage.removeItem(documentMetadataKey(id));}}catch{}
+  host?.cancelPendingRecovery?.();
+  if(metadata.baseline!==undefined)storage.setItem(documentDraftKey(id),metadata.baseline);else{storage.removeItem(documentDraftKey(id));storage.removeItem(documentMetadataKey(id));}
 }
 function navigate(event:string,detail?:unknown):void {
   // Suppress only this already-confirmed navigation, not an unrelated later close.
@@ -131,6 +141,18 @@ function navigate(event:string,detail?:unknown):void {
 function leaveAuthorization():LeaveAuthorization {
   return {host,contentKey:host?documentContentKey(host.serializeDocument()):null};
 }
+function checkLeaveAuthorization(authorization:LeaveAuthorization):void {
+  const current=leaveAuthorization();
+  if(current.host!==authorization.host||current.contentKey!==authorization.contentKey)
+    throw Error(t('The document changed while another file was opening. Your changes have been kept. Please try again.'));
+}
+function discardRecoveryBeforeDeparture():void {
+  discardRecovery();
+  // Do not await between Discard and navigation: a fresh serialization there
+  // would recreate discarded content. A stale recovery is safer than losing
+  // unconfirmed edits; preparing a new document is committed separately.
+  void flushDocumentDraftStore().catch(()=>{});
+}
 async function startOpenedDocument(file:OpenedDocument,discard:boolean,authorization:LeaveAuthorization):Promise<void> {
   parseDocumentFile(file.text);const id=crypto.randomUUID();
   const next:DocumentMetadata={name:file.name,...(file.path?{path:file.path}:{}),baseline:file.text,pendingOpen:true};
@@ -138,19 +160,20 @@ async function startOpenedDocument(file:OpenedDocument,discard:boolean,authoriza
   // File reads, permission requests and recent-handle storage can outlast the
   // picker. Edits made during those awaits were not part of the earlier choice.
   // Recheck after every await and before any discard or navigation is committed.
-  const current=leaveAuthorization();
-  if(current.host!==authorization.host||current.contentKey!==authorization.contentKey)
-    throw Error(t('The document changed while another file was opening. Your changes have been kept. Please try again.'));
+  checkLeaveAuthorization(authorization);
   const storage=draftStorage();
   try{
     storage.setItem(documentDraftKey(id),file.text);
     storage.setItem(documentMetadataKey(id),JSON.stringify(next));
+    await flushDocumentDraftStore();
+    checkLeaveAuthorization(authorization);
+    // Do not discard the current recovery until the next document is durable.
+    if(discard)discardRecoveryBeforeDeparture();
   }catch(error){
     try{storage.removeItem(documentDraftKey(id));storage.removeItem(documentMetadataKey(id));}catch{}
+    try{await flushDocumentDraftStore();}catch{}
     throw error;
   }
-  // Do not discard the current recovery until the next document is ready.
-  if(discard)discardRecovery();
   void recordRuntimeEvent('document-open-complete');
   navigate('vulgar-document-start',{documentId:id,opened:file});
 }
@@ -167,7 +190,7 @@ export async function runDocumentCommand(action:DocumentCommand):Promise<void> {
     else if(action==='save'||action==='saveAs')await saveCurrent(action==='saveAs');
     else{
       const decision=await mayLeave();if(decision==='cancel')return;
-      if(action==='home'){if(decision==='discard')discardRecovery();navigate('vulgar-document-home');}
+      if(action==='home'){if(decision==='discard')discardRecoveryBeforeDeparture();navigate('vulgar-document-home');}
       else{const authorization=leaveAuthorization();const file=await openDocumentFile();if(!file)return;await recordRuntimeEvent('document-parse-start');parseDocumentFile(file.text);await recordRuntimeEvent('document-parse-complete');await startOpenedDocument(file,decision==='discard',authorization);}
     }
   });
@@ -193,16 +216,17 @@ export function initDocumentLifecycle():()=>void {
     // Re-persisting here would recreate the recovery the user just discarded.
     if(isTauri()&&leaving)return;
     if(suppressNextUnload){suppressNextUnload=false;return;}host?.persist();
+    void flushDocumentDraftStore().catch(()=>{});
     if(!isTauri()&&host?.hasUnsavedChanges()){event.preventDefault();event.returnValue='';}
   };
   document.addEventListener('keydown',onKey,true);window.addEventListener('beforeunload',beforeUnload);
   let disposed=false,nativeUnlisten:(()=>void)|undefined;
   if(isTauri())void import('@tauri-apps/api/window').then(async({getCurrentWindow})=>{
     const current=getCurrentWindow();const unlisten=await current.onCloseRequested(event=>{
-      if(!host?.hasUnsavedChanges())return;event.preventDefault();
+      if(!host)return;event.preventDefault();
       void exclusive('close',async()=>{
         const decision=await mayLeave();if(decision==='cancel')return;
-        leaving=true;if(decision==='discard')discardRecovery();
+        if(decision==='discard')discardRecoveryBeforeDeparture();leaving=true;
         try{await current.destroy();}catch(error){leaving=false;host?.persist();throw error;}
       });
     });if(disposed)unlisten();else nativeUnlisten=unlisten;

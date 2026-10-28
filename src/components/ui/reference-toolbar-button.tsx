@@ -26,7 +26,7 @@ function ReferenceDialog({kind}:{kind:ReferenceKind}){
   const libraries=useBibliographyLibraries();
   const citation=kind==='citation';
   const title=t(citation?'Citation':'Cross-reference');
-  const [open,setOpen]=useState(false),[crossCommand,setCrossCommand]=useState<CrossReferenceCommand>('eqref');
+  const [open,setOpen]=useState(false),[crossCommand,setCrossCommand]=useState<CrossReferenceCommand>('ref');
   const action:ReferenceCommand=citation?'cite':crossCommand;
   const [key,setKey]=useState(''),[error,setError]=useState('');
   const [query,setQuery]=useState('');
@@ -38,7 +38,7 @@ function ReferenceDialog({kind}:{kind:ReferenceKind}){
     host?.prepareTextInsertion();
     selection.current=editor.selection?structuredClone(editor.selection):null;
     editing.current=node?.id as string|undefined;
-    setCrossCommand(node?.command==='ref'?'ref':'eqref');setKey(node?.keys.join(', ')||'');setError('');setQuery('');
+    setCrossCommand(node?.command==='eqref'?'eqref':'ref');setKey(node?.keys.join(', ')||'');setError('');setQuery('');
     setOpen(true);
   },[editor,host,citation]);
   useEffect(()=>{

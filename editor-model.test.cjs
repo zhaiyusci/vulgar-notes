@@ -59,10 +59,10 @@ test('saved drafts reject malformed data without replacing the current formula',
 test('all large operators default to automatic placement and expose two explicit variants',()=>{
   const {catalog}=require('./editor-model');
   for(const entry of catalog.filter(e=>e.category==='大型算符' && e.variantOf===e.type)){
-    const variants=catalog.filter(e=>e.variantOf===entry.type && e.type!=='sideset');
+    const variants=catalog.filter(e=>!e.hidden && e.variantOf===entry.type && e.type!=='sideset');
     assert.equal(variants.length,3,entry.type);
     const m=new EditorModel();m.insertStructure(entry.type);const node=m.root.items.at(-1);
-    m.replaceInput(...m.range,'_a^b');const regions=[...node.regions],cursor={...m.cursor};
+    m.replaceInput(...m.range,'_a');m.move(1);m.replaceInput(...m.range,'^b');const regions=[...node.regions],cursor={...m.cursor};
     assert.ok(!/\\(?:no)?limits/.test(m.exportLatex()),entry.type);
     for(const placement of ['\\limits','\\nolimits','']){
       const target=variants.find(e=>e.operatorPlacement===placement);
@@ -105,7 +105,7 @@ test('accepting a partial command preserves neighbors, undo and structure entry'
 });
 
 test('LaTeX command input accepts functions and symbols with delimiters, streamed or pasted',()=>{
-  for(const [input,expected] of [['\\sin x','\\sin x'],['\\sinh(x)','\\sinh (x)'],['\\alpha+\\beta ','\\alpha +\\beta '],['\\sin^2','{\\sin }^{2}']]){
+  for(const [input,expected] of [['\\sin x','\\sin x'],['\\sinh(x)','\\sinh (x)'],['\\alpha+\\beta ','\\alpha +\\beta '],['\\sin^2','\\sin^{2} ']]){
     for(const chunks of [[input],Array.from(input)]){
       const m=new EditorModel();m.root.items=[];m.index();m.setCursor(m.root.id,0);
       for(const chunk of chunks)m.replaceInput(...m.range,chunk);
@@ -116,8 +116,8 @@ test('LaTeX command input accepts functions and symbols with delimiters, streame
 test('command confirmation is undoable and does not prematurely commit prefixes',()=>{
   const m=new EditorModel();m.replaceInput(...m.range,'\\sin');
   const before=m.snapshot();assert.ok(m.pendingCommand());assert.ok(m.commitCommand());
-  assert.equal(m.root.items.at(-1).type,'symbol-sin');m.undo();assert.equal(m.snapshot(),before);
-  m.replaceInput(...m.range,'h');m.commitCommand();assert.equal(m.root.items.at(-1).type,'symbol-sinh');
+  assert.equal(m.root.items.at(-1).type,'function-sin');m.undo();assert.equal(m.snapshot(),before);
+  m.replaceInput(...m.range,'h');m.commitCommand();assert.equal(m.root.items.at(-1).type,'function-sinh');
   m.replaceInput(...m.range,'\\unknown');assert.equal(m.commitCommand(),false);m.remove(-1);assert.ok(m.current);
 });
 test('structure and font commands enter editable arguments and preserve surrounding content',()=>{
@@ -283,7 +283,7 @@ test('large operator inserts before selection in the same continuous sequence', 
 
 test('accent variants export their distinct commands rather than aliasing wide forms', () => {
   const {catalog} = require('./editor-model.js');
-  for (const entry of catalog.filter(e=>e.category==='重音与修饰')) {
+  for (const entry of catalog.filter(e=>!e.hidden&&e.category==='重音与修饰')) {
     const m = new EditorModel(),den=denominator(m);m.setCursor(den.id,2,0);
     m.insertStructure(entry.type);
     assert.equal(m.exportLatex(),`\\frac{\\sqrt{x+1}}{${entry.command}{a+}\\frac{b}{c}}`);
@@ -455,13 +455,54 @@ test('restored drafts allocate fresh ids above saved node and region ids',()=>{
   assert.ok(Number(restored.current.id.slice(1))>90001);
 });
 
-test('typing ^ and _ enters scripts for streamed and batched input',()=>{
-  for(const [text,expected] of [['x^2','{x}^{2}'],['x_i','{x}_{i}'],['x^2_i','{x}_{i}^{2}'],['x_i^2','{x}_{i}^{2}'],['x^y^2','{x}^{{y}^{2}}']]){
+test('typing ^ and _ nests in the current flow for streamed and batched input',()=>{
+  for(const [text,expected,content] of [['x^2','{x}^{2}','2'],['x_i','{x}_{i}','i'],['e^N_bead','{e}^{{N}_{bead}}','bead'],['x^2_i','{x}^{{2}_{i}}','i'],['x_i^2','{x}_{{i}^{2}}','2'],['x^y^2','{x}^{{y}^{2}}','2'],['x^_i','{x}^{{}_{i}}','i'],['x_^2','{x}_{{}^{2}}','2']]){
     for(const chunks of [[text],Array.from(text)]){
       const m=new EditorModel();m.root.items=[];m.index();m.setCursor(m.root.id,0);
       for(const part of chunks)m.replaceInput(...m.range,part);
-      assert.equal(m.exportLatex(),expected,text);assert.ok(m.current);assert.equal(m.projection(),text.endsWith('i')?'i':'2');
+      assert.equal(m.exportLatex(),expected,text);assert.ok(m.current);assert.equal(m.projection(),content);
     }
+  }
+});
+test('script shortcuts stay inside fraction, radical and matrix flows',()=>{
+  for(const [type,cell,expected] of [
+    ['frac',0,'\\frac{{e}^{{N}_{bead}}}{}'],
+    ['frac',1,'\\frac{}{{e}^{{N}_{bead}}}'],
+    ['sqrt',0,'\\sqrt{{e}^{{N}_{bead}}}'],
+    ['nthroot',1,'\\sqrt[{e}^{{N}_{bead}}]{}'],
+    ['matrix',3,'\\begin{pmatrix}&\\\\&{e}^{{N}_{bead}}\\end{pmatrix}'],
+  ]){
+    for(const chunks of [['e^N_bead'],Array.from('e^N_bead')]){
+      const m=new EditorModel();m.root.items=[];m.index();m.setCursor(m.root.id,0);m.insertStructure(type);
+      const structure=m.root.items[0],flow=structure.regions[cell];m.setCursor(flow.id,0);
+      for(const part of chunks)m.replaceInput(...m.range,part);
+      assert.equal(m.exportLatex(),expected,type+' region '+cell);
+      assert.equal(m.root.items[0],structure);assert.equal(flow.items.length,1);
+      const outer=flow.items[0],inner=outer.regions[1].items[0];
+      assert.equal(outer.type,'power');assert.equal(outer.regions[0].items.join(''),'e');
+      assert.equal(inner.type,'subscript');assert.equal(inner.regions[0].items.join(''),'N');
+      assert.equal(m.current,inner.regions[1]);assert.equal(m.projection(),'bead');
+      assert.ok(structure.regions.every(r=>r===flow||r.items.length===0));
+    }
+  }
+});
+test('typing scripts in operator limits attaches to the current symbol instead of the operator',()=>{
+  for(const [text,slot,expected] of [['_i^2','lower','\\sum_{{i}^{2}} '],['^N_bead','upper','\\sum^{{N}_{bead}} '],['_^2','lower','\\sum_{{}^{2}} '],['^_i','upper','\\sum^{{}_{i}} ']]){
+    for(const chunks of [[text],Array.from(text)]){
+      const m=new EditorModel();m.root.items=[];m.index();m.setCursor(m.root.id,0);m.insertStructure('sum');
+      const operator=m.root.items[0];for(const part of chunks)m.replaceInput(...m.range,part);
+      assert.equal(m.exportLatex(),expected);assert.equal(operator.regions.length,1);assert.equal(operator.regions[0].slot,slot);
+      const inner=operator.regions[0].items[0];assert.equal(inner.type,slot==='lower'?'power':'subscript');
+      assert.equal(m.current,inner.regions[1]);
+    }
+  }
+});
+test('explicitly leaving a script permits adding the opposite script to the same base',()=>{
+  for(const [first,second] of [['^N','_bead'],['_bead','^N']]){
+    const m=new EditorModel();m.root.items=[];m.index();m.setCursor(m.root.id,0);m.replaceInput(0,0,'e'+first);
+    m.move(1);assert.equal(m.current,m.root);m.replaceInput(...m.range,second);
+    assert.equal(m.exportLatex(),'{e}_{bead}^{N}');assert.equal(m.root.items[0].type,'sup');
+    assert.equal(m.current,m.root.items[0].regions[second[0]==='^'?2:1]);
   }
 });
 test('script shortcut wraps selection or preceding structure and is undoable',()=>{
@@ -485,7 +526,7 @@ test('every large operator starts with no limits or body slot and permits indepe
     assert.equal(m.current,outer);assert.equal(node.regions.length,0);
     const before=m.snapshot();m.replaceInput(...m.range,'_i');
     assert.equal(node.regions.length,1);assert.equal(node.regions[0].slot,'lower');
-    m.replaceInput(...m.range,'^n');assert.equal(node.regions.length,2);
+    m.move(1);assert.equal(m.current,outer);m.replaceInput(...m.range,'^n');assert.equal(node.regions.length,2);
     m.move(1);assert.equal(m.current,outer);m.insert('x+y');assert.deepEqual(outer.items.slice(-3),['x','+','y']);
     m.toggleOperatorScript(node.id,'lower');assert.equal(node.regions.length,1);assert.equal(node.regions[0].slot,'upper');
     m.toggleOperatorScript(node.id,'upper');assert.equal(node.regions.length,0);assert.ok(m.current);
@@ -517,7 +558,7 @@ test('deleting the last limit character removes only that limit and undo restore
 });
 test('selection deletion and native input deletion remove empty limits but preserve opposite limit',()=>{
   const m=new EditorModel();m.insertStructure('integral');const node=m.root.items.at(-1);
-  m.replaceInput(...m.range,'_ab^n');const upper=node.regions.find(r=>r.slot==='upper');
+  m.replaceInput(...m.range,'_ab');m.move(1);m.replaceInput(...m.range,'^n');const upper=node.regions.find(r=>r.slot==='upper');
   const lower=node.regions.find(r=>r.slot==='lower');m.setCursor(lower.id,2,0);m.remove(1);
   assert.deepEqual(node.regions,[upper]);assert.equal(m.current,m.root);
   m.setCursor(upper.id,0);m.replaceInput(0,1,'');assert.equal(node.regions.length,0);
@@ -540,7 +581,7 @@ test('deleting ordinary scripts unwraps the base, preserves neighbors and restor
 });
 test('combined scripts keep the opposite script before unwrapping the base',()=>{
   for(const first of [1,2]){
-    const m=new EditorModel();m.root.items=[];m.index();m.setCursor(m.root.id,0);m.replaceInput(0,0,'x_i^2');
+    const m=new EditorModel();m.root.items=[];m.index();m.setCursor(m.root.id,0);m.replaceInput(0,0,'x_i');m.move(1);m.replaceInput(...m.range,'^2');
     const node=m.root.items[0],base=node.regions[0],other=node.regions[first===1?2:1];
     m.setCursor(node.regions[first].id,1,0);m.remove(1);
     assert.equal(node.type,first===1?'power':'subscript');assert.equal(node.regions[0],base);assert.equal(node.regions[1],other);
@@ -645,7 +686,8 @@ test('named operators have one palette and command path with optional limits',()
   m.commitCommand();const node=m.root.items[0];assert.equal(node.type,op.type);assert.equal(node.regions.length,0);
   m.replaceInput(...m.range,'_i');assert.equal(node.regions[0].slot,'lower');
  }
- assert.ok(symbols.some(e=>!e.hidden&&e.type==='symbol-sin'));
+ assert.ok(catalog.some(e=>!e.hidden&&e.type==='function-sin'));
+ assert.ok(symbols.some(e=>e.hidden&&e.type==='symbol-sin'));
 });
 
 test('snapshots omit localized labels, preserve user text, and migrate legacy labels',()=>{

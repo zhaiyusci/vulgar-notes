@@ -11,13 +11,12 @@ import {
   ArrowRight,
   ArrowUp,
   Combine,
-  Grid3x3Icon,
   Table,
   Trash2Icon,
   Ungroup,
   XIcon,
 } from 'lucide-react';
-import { KEYS } from 'platejs';
+import { KEYS, NodeApi } from 'platejs';
 import { useEditorPlugin, useEditorSelector } from 'platejs/react';
 
 import {
@@ -30,7 +29,6 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
 
 import { ToolbarButton } from './toolbar';
 
@@ -43,11 +41,14 @@ export function TableToolbarButton(props: DropdownMenuProps) {
   const { editor, tf } = useEditorPlugin(TablePlugin);
   const [open, setOpen] = React.useState(false);
   const mergeState = useTableMergeState();
+  React.useEffect(()=>{if(!tableSelected)setOpen(false);},[tableSelected]);
+
+  if(!tableSelected)return null;
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
       <DropdownMenuTrigger asChild>
-        <ToolbarButton pressed={open} tooltip="Table" isDropdown>
+        <ToolbarButton pressed={open} tooltip="Table tools" isDropdown>
           <Table />
         </ToolbarButton>
       </DropdownMenuTrigger>
@@ -57,16 +58,6 @@ export function TableToolbarButton(props: DropdownMenuProps) {
         align="start"
       >
         <DropdownMenuGroup>
-          <DropdownMenuSub>
-            <DropdownMenuSubTrigger className="gap-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-50">
-              <Grid3x3Icon className="size-4" />
-              <span>Table</span>
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="m-0 p-0">
-              <TablePicker />
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
               className="gap-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
@@ -195,7 +186,11 @@ export function TableToolbarButton(props: DropdownMenuProps) {
             className="min-w-[180px]"
             disabled={!tableSelected}
             onSelect={() => {
-              tf.remove.table();
+              if(editor.api.isReadOnly())return;
+              const table=editor.api.above({match:node=>node.type===KEYS.table});
+              const parentPath=table?.[1].slice(0,-1),parent=parentPath?.length?NodeApi.get(editor,parentPath):undefined;
+              if(parent?.type==='float'&&parent.kind==='table')editor.tf.withNewBatch(()=>editor.tf.removeNodes({at:parentPath}));
+              else tf.remove.table();
               editor.tf.focus();
             }}
           >
@@ -205,62 +200,5 @@ export function TableToolbarButton(props: DropdownMenuProps) {
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
-}
-
-function TablePicker() {
-  const { editor, tf } = useEditorPlugin(TablePlugin);
-
-  const [tablePicker, setTablePicker] = React.useState({
-    grid: Array.from({ length: 8 }, () => Array.from({ length: 8 }).fill(0)),
-    size: { colCount: 0, rowCount: 0 },
-  });
-
-  const onCellMove = (rowIndex: number, colIndex: number) => {
-    const newGrid = [...tablePicker.grid];
-
-    for (let i = 0; i < newGrid.length; i++) {
-      for (let j = 0; j < newGrid[i].length; j++) {
-        newGrid[i][j] =
-          i >= 0 && i <= rowIndex && j >= 0 && j <= colIndex ? 1 : 0;
-      }
-    }
-
-    setTablePicker({
-      grid: newGrid,
-      size: { colCount: colIndex + 1, rowCount: rowIndex + 1 },
-    });
-  };
-
-  return (
-    <div
-      className="flex! m-0 flex-col p-0"
-      onClick={() => {
-        tf.insert.table(tablePicker.size, { select: true });
-        editor.tf.focus();
-      }}
-      role="button"
-    >
-      <div className="grid size-[130px] grid-cols-8 gap-0.5 p-1">
-        {tablePicker.grid.map((rows, rowIndex) =>
-          rows.map((value, columIndex) => (
-            <div
-              key={`(${rowIndex},${columIndex})`}
-              className={cn(
-                'col-span-1 size-3 border border-solid bg-secondary',
-                !!value && 'border-current'
-              )}
-              onMouseMove={() => {
-                onCellMove(rowIndex, columIndex);
-              }}
-            />
-          ))
-        )}
-      </div>
-
-      <div className="text-center text-current text-xs">
-        {tablePicker.size.rowCount} x {tablePicker.size.colCount}
-      </div>
-    </div>
   );
 }

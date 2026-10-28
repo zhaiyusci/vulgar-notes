@@ -1,6 +1,7 @@
 import React,{useLayoutEffect,useRef,useState} from 'react';
 import type {RenderTextProps} from 'slate-react';
 import {useComposedRef} from 'platejs/react';
+import {isEditorZoom,subscribeEditorZoom} from './editor-zoom';
 
 /** Keep Slate's insertion point, but place it beside the displayed inset,
  * as in LyX, instead of giving an empty leaf a separate prose line. */
@@ -26,9 +27,13 @@ export function DisplayBoundaryText({attributes,children,text}:RenderTextProps){
       const container=element.offsetParent as HTMLElement|null;
       if(!container)return;
       const origin=container.getBoundingClientRect();
+      const zoom=Number(container.closest<HTMLElement>('[data-editor-zoom]')?.dataset.editorZoom);
+      const scale=isEditorZoom(zoom)?zoom/100:1;
       const height=parseFloat(getComputedStyle(element).fontSize)*1.2;
-      const left=(after?box.right:box.left-3)-origin.left-container.clientLeft+container.scrollLeft;
-      const top=(box.top+box.bottom-height)/2-origin.top-container.clientTop+container.scrollTop;
+      // Rectangles use viewport pixels. Absolute positions inside the zoomed
+      // document use its unscaled CSS pixels, including border and scroll offsets.
+      const left=((after?box.right:box.left)-origin.left)/scale-(after?0:3)-container.clientLeft+container.scrollLeft;
+      const top=((box.top+box.bottom)/2-origin.top)/scale-height/2-container.clientTop+container.scrollTop;
       setPosition(old=>old?.left===left&&old?.top===top?old:{left,top});
     };
     const schedule=()=>{if(!frame)frame=requestAnimationFrame(place);};
@@ -37,9 +42,10 @@ export function DisplayBoundaryText({attributes,children,text}:RenderTextProps){
     const mutations=new MutationObserver(schedule);
     mutations.observe(parent,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['class']});
     const sizes=new ResizeObserver(schedule);sizes.observe(parent);
+    const unsubscribeZoom=subscribeEditorZoom(schedule);
     window.addEventListener('resize',schedule);
     place();
-    return ()=>{mutations.disconnect();sizes.disconnect();window.removeEventListener('resize',schedule);if(frame)cancelAnimationFrame(frame);};
+    return ()=>{mutations.disconnect();sizes.disconnect();unsubscribeZoom();window.removeEventListener('resize',schedule);if(frame)cancelAnimationFrame(frame);};
   },[empty]);
   return <span {...attributes} ref={composedRef} data-empty-text={empty?'true':undefined} style={empty?position:undefined}>{children}</span>;
 }

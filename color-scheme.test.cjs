@@ -17,8 +17,10 @@ const code = build({
   plugins: [{name: 'preferences-adapters', setup(build) {
     build.onResolve({filter: /^\.\/i18n$/}, () => ({path: 'i18n', namespace: 'preferences-test'}));
     build.onResolve({filter: /^@tauri-apps\/api\/core$/}, () => ({path: 'tauri', namespace: 'preferences-test'}));
+    build.onResolve({filter: /^\.\/document-draft-store$/}, () => ({path: 'draft-store', namespace: 'preferences-test'}));
     build.onLoad({filter: /.*/, namespace: 'preferences-test'}, ({path}) => ({contents: path === 'i18n'
       ? 'export const locale=globalThis.preferencesTest.locale;export const t=value=>value;'
+      : path === 'draft-store' ? 'export const flushDocumentDraftStore=async()=>{const s=globalThis.preferencesTest;s.flushes++;if(s.flushPending)await s.flushPending;if(s.flushError)throw Error(s.flushError);};'
       : 'export const isTauri=()=>globalThis.preferencesTest.desktop;', loader: 'js'}));
   }}],
 }).then(result => result.outputFiles[0].text);
@@ -28,7 +30,7 @@ async function harness(t, {scheme, locale = 'zh-CN', desktop = false, initialize
   const {Window} = await import('happy-dom');
   const window = new Window({url: 'http://localhost/'});
   window.document.write('<!doctype html><button id="openPreferences">Preferences</button><main id="draft" contenteditable="true">Unchanged α + x²</main>' + dialogMarkup);
-  const state = window.preferencesTest = {locale, desktop, reloads: []};
+  const state = window.preferencesTest = {locale, desktop, reloads: [], flushes: 0};
   if (scheme !== undefined) window.localStorage.setItem('editor.colorScheme', scheme);
   window.localStorage.setItem('private-document-draft', 'UNCHANGED_DOCUMENT');
   window.location.reload = () => state.reloads.push({scheme: window.localStorage.getItem('editor.colorScheme'), locale: window.localStorage.getItem('editor.locale')});
@@ -43,6 +45,7 @@ async function harness(t, {scheme, locale = 'zh-CN', desktop = false, initialize
   h.open = () => h.trigger.click();
   h.change = value => {h.select.value = value; h.select.dispatchEvent(new window.Event('change', {bubbles: true}));};
   h.submit = action => h.form.dispatchEvent(new window.SubmitEvent('submit', {bubbles: true, cancelable: true, submitter: h.form.querySelector(`button[value="${action}"]`)}));
+  h.tick = () => new Promise(resolve => setTimeout(resolve, 0));
   t.after(() => window.happyDOM.abort());
   return h;
 }
@@ -54,7 +57,7 @@ test('stored palette is validated and applied by the existing head script before
     h.window.eval(await headCode);
     assert.equal(h.root.dataset.colorScheme, scheme);
     assert.equal(h.root.classList.contains('dark'), DARK_SCHEMES.has(scheme), `${scheme} uses its correct Plate utility colors`);
-    assert.ok(h.window.MathJax.tex.packages['[+]'].includes('physics'), 'appearance initialization preserves the MathJax configuration');
+    assert.ok(h.window.MathJax.tex.packages['[+]'].some(entry=>(Array.isArray(entry)?entry[0]:entry)==='physics'), 'appearance initialization preserves the MathJax configuration');
     assert.equal(h.state.reloads.length, 0);
   }
 });
@@ -153,6 +156,7 @@ test('Cancel and native dialog dismissal restore the appearance from when prefer
 test('saving language and appearance stores both before the existing language reload', async t => {
   const h = await harness(t, {scheme: 'light'});
   h.open(); h.change('catppuccin-macchiato'); h.language.value = 'en'; h.submit('save');
+  await h.tick();
   assert.deepEqual(h.state.reloads, [{scheme: 'catppuccin-macchiato', locale: 'en'}]);
   assert.equal(h.root.dataset.colorScheme, 'catppuccin-macchiato');
   assert.equal(h.root.classList.contains('dark'), true);
@@ -185,12 +189,48 @@ test('a failed language save rolls back the saved palette and leaves the preview
   const setItem = h.window.localStorage.setItem.bind(h.window.localStorage);
   Object.defineProperty(h.window, 'localStorage', {configurable: true, value: {getItem, setItem(key, value) {if (key === 'editor.locale') throw Error('Storage denied'); setItem(key, value);}}});
   h.open(); h.change('dark'); h.language.value = 'en'; h.submit('save');
+  await h.tick();
   assert.equal(h.dialog.open, true);
   assert.equal(h.error.hidden, false);
   assert.equal(h.window.localStorage.getItem('editor.colorScheme'), 'slate');
   assert.equal(h.state.reloads.length, 0);
   h.submit('cancel');
   assert.equal(h.root.dataset.colorScheme, 'slate');
+});
+
+test('language reload waits for recovery commit and ignores duplicate submissions', async t => {
+  const h = await harness(t, {scheme: 'paper'});let release;
+  h.state.flushPending = new Promise(resolve => {release = resolve;});
+  h.open();h.change('dark');h.language.value = 'en';h.submit('save');h.submit('save');
+  assert.equal(h.state.flushes, 1);assert.equal(h.state.reloads.length, 0);
+  assert.equal(h.window.localStorage.getItem('editor.locale'), null);
+  assert.equal(h.window.localStorage.getItem('editor.colorScheme'), 'paper');
+  assert.equal(h.form.querySelector('button[value="save"]').disabled, true);
+  release();await h.tick();
+  assert.deepEqual(h.state.reloads, [{scheme: 'dark', locale: 'en'}]);
+});
+
+test('failed recovery commit keeps language unchanged and preferences available for retry', async t => {
+  const h = await harness(t, {scheme: 'paper'});h.state.flushError = 'Quota exceeded';
+  h.open();h.change('dark');h.language.value = 'en';h.submit('save');await h.tick();
+  assert.equal(h.dialog.open, true);assert.equal(h.error.hidden, false);
+  assert.match(h.error.textContent, /save the document to a file/);
+  assert.equal(h.window.localStorage.getItem('editor.locale'), null);
+  assert.equal(h.window.localStorage.getItem('editor.colorScheme'), 'paper');
+  assert.equal(h.state.reloads.length, 0);assert.equal(h.language.disabled, false);
+  h.state.flushError = null;h.submit('save');await h.tick();
+  assert.deepEqual(h.state.reloads, [{scheme: 'dark', locale: 'en'}]);
+});
+
+test('canceling preferences during recovery commit prevents a later language reload', async t => {
+  const h = await harness(t, {scheme: 'paper'});let release;
+  h.state.flushPending = new Promise(resolve => {release = resolve;});
+  h.open();h.change('dark');h.language.value = 'en';h.submit('save');h.submit('cancel');
+  assert.equal(h.dialog.open, false);assert.equal(h.root.dataset.colorScheme, 'paper');
+  h.open();h.change('slate');release();await h.tick();
+  assert.equal(h.dialog.open, true);assert.equal(h.root.dataset.colorScheme, 'slate');
+  assert.equal(h.state.reloads.length, 0);assert.equal(h.window.localStorage.getItem('editor.locale'), null);
+  assert.equal(h.window.localStorage.getItem('editor.colorScheme'), 'paper');
 });
 
 test('desktop and web retain their existing preference entries alongside the new scheme picker', async t => {

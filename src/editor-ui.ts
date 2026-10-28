@@ -2,10 +2,15 @@ import {t,locale,mathLabel} from './i18n';
 import {elementById, eventElement} from './dom';
 import {fontPresentation} from './font-diagnostics';
 import {textNormal,preferredMathCommand} from './letter-variants';
-import {letterPreamble} from './letter-preamble';
 import {documentSessionId} from './platform';
 import type {DocumentHost,DocumentHostFactory} from './document-host';
 import {EditorModel, texChar, structureTex, catalog, symbols, type Region, type MathNode, type CommandCandidate} from './editor-model';
+import {normalizeMathSource} from './tex-import';
+import {convertMath} from './tex-convert';
+import {readNativeClipboard,writeNativeClipboard,nativeClipboardHtml,type NativeMathFragment} from './native-clipboard';
+import {extractClipboardMathHtml} from './document-clipboard-format';
+import {standaloneMathEnvironmentBounds} from './tex-display-environment';
+import {equationNumbering} from './math-equation-numbering';
 const palette=[...catalog,...symbols];
 let model = new EditorModel(), editing = false, composing = false, sessionStart:string|null = null;
 const documentSession = documentSessionId();
@@ -23,11 +28,6 @@ const input = elementById('mathInput', HTMLTextAreaElement), error = elementById
 const fontHint=document.createElement('p');
 fontHint.id='fontHint';fontHint.setAttribute('role','status');fontHint.setAttribute('aria-live','polite');
 error.after(fontHint);
-const preambleDetails=document.createElement('details');
-const preambleSummary=document.createElement('summary');preambleSummary.textContent='LaTeX 导出配置（包含字体约定）';
-const preambleText=document.createElement('textarea');preambleText.readOnly=true;preambleText.rows=8;preambleText.value=letterPreamble;
-preambleText.setAttribute('aria-label','扩展字形的 LaTeX 导言区');
-preambleDetails.append(preambleSummary,preambleText);elementById('latex',HTMLTextAreaElement).after(preambleDetails);
 const caretTex = '\\class{math-caret}{\\kern0pt}';
 const placeholderTex='\\class{math-placeholder}{\\phantom{0}}';
 const commandMenu=document.createElement('div');
@@ -39,7 +39,7 @@ function syncCommands(){
   const query=editing && !composing?model.commandQuery():null;
   const key=query?`${model.cursor.region}:${query.from}:${query.end}:${query.name}`:'';
   if(key!==commandKey){commandChoice=0;commandKey=key;dismissedCommand='';}
-  commandChoices=query?model.commandCandidates():[];
+  commandChoices=query?model.commandCandidates().slice(0,80):[];
   commandMenu.hidden=!query || key===dismissedCommand;
   input.setAttribute('aria-expanded',String(!commandMenu.hidden));
   input.removeAttribute('aria-activedescendant');
@@ -75,18 +75,30 @@ commandMenu.addEventListener('click',event=>{
 });
 document.addEventListener('scroll',positionCommands,true);
 const chemicalStates=new Map<MathNode,{source:string;valid:boolean}>();
+function intrinsicMathLayout(editor:EditorModel):{name:string;numbered:boolean;count:number}|null {
+  if(editor.root.items.length!==1)return null;
+  const node=editor.root.items[0];if(typeof node==='string')return null;
+  if(node.type==='numcases'||node.type==='subnumcases'){
+    const body=node.regions[1].items[0],rows=body&&typeof body!=='string'?body.rows??1:1;
+    return {name:node.type,numbered:true,count:node.type==='subnumcases'?1:rows};
+  }
+  if(node.type!=='source-tex')return null;
+  const source=editing&&editor===model&&editor.cursor.region===node.regions[0].id?node.regions[0].items.join(''):chemicalStates.get(node)?.source??node.regions[0].items.join('');
+  const bounds=standaloneMathEnvironmentBounds(source);if(!bounds)return null;
+  return {name:bounds.name,numbered:bounds.numbered!==false,count:bounds.numbered===false?0:equationNumbering(source).count};
+}
 const isChemical=(node:MathNode)=>node.type==='chem-ce'||node.type==='chem-pu';
 async function validateChemistry():Promise<void>{
   const live=new Set<MathNode>();
   for(const editor of flow?.entries().map(e=>e.model)||[model])for(const node of editor.nodes.values()){
-    if(!isChemical(node))continue;
+    if(!isChemical(node)&&node.type!=='source-tex'&&node.type!=='case-text')continue;
     live.add(node);
     if(editing && editor===model && editor.cursor.region===node.regions[0].id)continue;
     const source=structureTex(node,r=>regionTex(r,editor,false));
     if(chemicalStates.get(node)?.source===source)continue;
     let valid=true;
     try {
-      const output=await MathJax.tex2chtmlPromise(source,{display:false});
+      const output=await MathJax.tex2chtmlPromise(node.type==='case-text'?`\\textnormal{${node.regions[0].items.join('')}}`:source,{display:false});
       valid=!output.querySelector('mjx-merror');
     } catch {valid=false;}
     chemicalStates.set(node,{source,valid});
@@ -100,16 +112,37 @@ function chemicalTex(node:MathNode,editor=model,isEditing=editing):string {
     return `\\mathrm{${regionTex(child,editor,isEditing)}}`;
   return `\\class{math-region region-${child.id}}{${source}}`;
 }
+function sourceTex(node:MathNode,editor:EditorModel,isEditing:boolean):string {
+  const child=node.regions[0],state=chemicalStates.get(node),raw=child.items.join('');
+  let textContext=false,ancestor=editor.parents.get(child.id);
+  while(ancestor){if(ancestor.node.type==='numbered-cases-body'&&ancestor.childIndex%2===1){textContext=true;break;}ancestor=editor.parents.get(ancestor.region.id);}
+  const source=node.type==='case-text'&&!textContext?`\\textnormal{${raw}}`:raw;
+  // Known MathJax syntax can still be displayed even when the editing grammar
+  // cannot represent it. Entering that fragment reveals its exact source.
+  const content=isEditing&&editor.cursor.region===child.id||!state?.valid||state.source!==(node.type==='case-text'?structureTex(node,r=>regionTex(r,editor,false)):source)?regionTex(child,editor,isEditing):`\\class{math-region region-${child.id}}{${source}${textContext?'':'\n'}}`;
+  return `\\class{${node.type==='case-text'?'math-text-region':'math-source-region'}}{${content}}`;
+}
 
 function regionTex(region:Region,editor=model,isEditing=editing):string {
-  const descriptive=editor.parents.get(region.id)?.node.type==='text-normal';
+  const parent=editor.parents.get(region.id),parentType=parent?.node.type;
+  // A numbered-cases body is an alignment preamble, not a grouped math atom.
+  // Class wrappers around the complete `a&b\\c&d` would hide its separators
+  // from MathJax. Keep markers on each cell so row editing still finds the grid.
+  if((parentType==='numcases'||parentType==='subnumcases')&&parent?.childIndex===1&&region.items.length===1){
+    const body=region.items[0];
+    if(typeof body!=='string'&&body.type==='numbered-cases-body'){
+      const columns=body.columns??2,cells=body.regions.map(cell=>`\\class{structure-node structure-${body.id}}{${regionTex(cell,editor,isEditing)}}`);
+      return Array.from({length:cells.length/columns},(_,index)=>cells.slice(index*columns,(index+1)*columns).join('&')).join('\\\\');
+    }
+  }
+  const descriptive=parentType==='text-normal'||parentType==='source-tex'||parentType==='case-text';
   const active = isEditing && editor.cursor.region === region.id;
   const [start, end] = active ? editor.range : [0, 0];
   let tex = '';
   region.items.forEach((item, i) => {
     if (active && editor.cursor.offset === i) tex += caretTex;
     const child=(r:Region)=>regionTex(r,editor,isEditing);
-    const content = typeof item === 'string' ? (descriptive?textNormal(item,true):texChar(item)) : item.type==='text-normal'?child(item.regions[0]):isChemical(item)?chemicalTex(item,editor,isEditing):structureTex(item, child);
+    const content = typeof item === 'string' ? (descriptive?textNormal(item==='\n'||item==='\r'?'↵':item,true):texChar(item)) : item.type==='source-tex'||item.type==='case-text'?sourceTex(item,editor,isEditing):item.type==='text-normal'?child(item.regions[0]):isChemical(item)?chemicalTex(item,editor,isEditing):structureTex(item, child);
     const selection = active && i >= start && i < end ? ' math-selected' : '';
     const structureMarker=typeof item==='string' || item.atom?'':` structure-node structure-${item.id}`;
     tex += `\\class{math-item item-${region.id}-${i}${selection}${structureMarker}}{${content}}`;
@@ -138,11 +171,13 @@ function update(sync = true) {
   if (sync) syncInput();
   const pending=model.pendingFont?catalog.find(d=>d.type===model.pendingFont)?.command:null;
   elementById('pendingFontHint',HTMLElement).textContent=editing&&pending&&locale==='en'?`${pending}: applies to the next letter or digit. Use arrows or Backspace to cancel.`:editing&&pending?`\\${preferredMathCommand(pending.slice(1))}：仅作用于下一个字母或数字；方向键或 Backspace 取消。`:'';
-  elementById('latex', HTMLTextAreaElement).value = model.exportLatex();
-  if(flow){flow.persist();elementById('documentLatex',HTMLTextAreaElement).value=flow.exportLatex();elementById('documentMarkdown',HTMLTextAreaElement).value=flow.exportMarkdown();}
+  if(flow?.syncMath)flow.syncMath();else flow?.persist();
   const layout=elementById('formulaLayout',HTMLSelectElement);
-  layout.disabled=!formula.isConnected;layout.value=flow?.isDisplay(formula)?'display':'inline';
-  preambleDetails.hidden=!/\\(?:math|sym|bb|bfbb)/.test(flow?.exportLatex()||model.exportLatex());
+  const intrinsic=intrinsicMathLayout(model);
+  layout.disabled=!formula.isConnected||!!intrinsic;layout.value=intrinsic||flow?.isDisplay(formula)?'display':'inline';
+  layout.title=intrinsic?t('This environment defines its own display layout and numbering.'):'';
+  const sourceButton=document.getElementById('formulaSourceButton') as HTMLButtonElement|null;
+  if(sourceButton)sourceButton.disabled=!formula.isConnected||!!flow?.readOnly;
   revision++;
   if (!scheduled) {
     scheduled = true;
@@ -185,7 +220,7 @@ function insertStructure(type:string) {
   if (composing) { composing = false; acceptInput(); }
   if (!editing && flow)flow.insertFormula();
   else if (!editing) begin(model.cursor.region, model.cursor.offset, model.cursor.anchor);
-  if(type.startsWith('symbol-'))model.insertSymbol(type);else model.insertStructure(type);
+  if(palette.find(entry=>entry.type===type)?.atom)model.insertSymbol(type);else model.insertStructure(type);
   inputEdit = null;
   syncInput(); input.focus({preventScroll:true}); update();
 }
@@ -230,7 +265,7 @@ function buildBoard() {
       const coverage=entry.font?fontPresentation(entry.command)?.coverage:undefined;
       if(coverage)card.title+=' · '+coverage;
       if(entry.operator)card.title=mathLabel(entry)+' · \\'+entry.operatorCommand+' · 插入符号；^ / _ 或右击添加上下限';
-      if(entry.atom || entry.font)card.classList.add('compact-card');
+      if(entry.atom || entry.font || entry.category==='函数名称')card.classList.add('compact-card');
       if(locale==='en')card.title=mathLabel(entry)+' · '+t('Right-click for variants');
       if(entry.variantOf){card.title+=' · '+t('Right-click for variants');card.setAttribute('aria-haspopup','menu');card.setAttribute('aria-expanded','false');}
       const sample=entry.atom?entry.tex:entry.render(entry.previewArgs||entry.labels.map(()=>placeholderTex));
@@ -254,6 +289,40 @@ variantMenu.className='variant-menu';variantMenu.id='variantMenu';variantMenu.hi
 variantMenu.setAttribute('role','menu');document.body.append(variantMenu);
 let variantTrigger:HTMLElement|null=null, variantNodeId:string|undefined, variantCellId:string|undefined;
 let variantLetter:{region:string;index:number}|null=null;
+const sourceDialog=document.createElement('dialog');
+sourceDialog.id='formulaSourceDialog';sourceDialog.className='document-unsaved-dialog formula-source-dialog';
+const sourceTitle=document.createElement('h2');sourceTitle.id='formulaSourceTitle';sourceTitle.textContent=t('Edit LaTeX source');sourceDialog.setAttribute('aria-labelledby',sourceTitle.id);
+const sourceHelp=document.createElement('p');sourceHelp.textContent=t('Edit the existing source and convert it back to editable math. Unsupported fragments keep their source.');
+const sourceInput=document.createElement('textarea');sourceInput.id='formulaSourceInput';sourceInput.setAttribute('aria-label',t('LaTeX source'));sourceInput.spellcheck=false;
+const sourceActions=document.createElement('div');sourceActions.className='document-unsaved-actions';
+const sourceCancel=document.createElement('button');sourceCancel.type='button';sourceCancel.textContent=t('Cancel');
+const sourceApply=document.createElement('button');sourceApply.type='button';sourceApply.dataset.choice='save';sourceApply.textContent=t('Apply and convert');
+sourceActions.append(sourceCancel,sourceApply);sourceDialog.append(sourceTitle,sourceHelp,sourceInput,sourceActions);document.body.append(sourceDialog);
+let sourceOwner:HTMLElement|undefined;
+function openFormulaSource(owner=formula){
+  if(flow?.readOnly||!owner.isConnected)return;
+  if(owner!==formula)flow?.enter(owner,'end');
+  closeVariantMenu();flow?.syncMath?.();sourceOwner=owner;
+  sourceInput.value=flow?.getFormulaSource?.(owner)??model.exportLatex();
+  sourceDialog.showModal();sourceInput.focus();sourceInput.setSelectionRange(0,0);
+}
+sourceCancel.addEventListener('click',()=>sourceDialog.close());
+sourceDialog.addEventListener('close',()=>{if(sourceOwner?.isConnected){if(flow)flow.enter(sourceOwner,'end');else begin(model.root.id,model.root.items.length);}sourceOwner=undefined;});
+sourceApply.addEventListener('click',()=>{
+  if(!sourceOwner?.isConnected)return;
+  if(flow?.replaceFormulaSource)flow.replaceFormulaSource(sourceOwner,sourceInput.value);
+  else{model.record();model.restore(convertMath(sourceInput.value).snapshot());}
+  inputEdit=null;sourceDialog.close();update();
+});
+const sourceButton=document.createElement('button');sourceButton.id='formulaSourceButton';sourceButton.type='button';sourceButton.textContent='LaTeX';sourceButton.title=t('Edit LaTeX source');sourceButton.setAttribute('aria-label',t('Edit LaTeX source'));
+const layoutControl=document.getElementById('formulaLayout');
+(layoutControl?.closest('.document-actions')??document.getElementById('mathPanel'))?.append(sourceButton);
+sourceButton.addEventListener('pointerdown',event=>event.preventDefault());sourceButton.addEventListener('click',()=>openFormulaSource());
+function appendSourceMenu(owner:HTMLElement,x:number,y:number){
+  if(variantMenu.hidden){variantMenu.replaceChildren();variantMenu.setAttribute('aria-label',t('Formula'));}
+  const option=document.createElement('button');option.type='button';option.dataset.editFormulaSource=owner.dataset.mathId??'';option.textContent=t('Edit LaTeX source');option.setAttribute('role','menuitem');variantMenu.append(option);
+  variantMenu.hidden=false;const rect=variantMenu.getBoundingClientRect();variantMenu.style.left=Math.max(8,Math.min(x,innerWidth-rect.width-8))+'px';variantMenu.style.top=Math.max(8,Math.min(y,innerHeight-rect.height-8))+'px';
+}
 function closeVariantMenu(restoreFocus=false){
   variantMenu.hidden=true;
   variantTrigger?.setAttribute('aria-expanded','false');
@@ -335,6 +404,7 @@ elementById('insertToolbar', HTMLElement).addEventListener('keydown',event=>{
 variantMenu.addEventListener('pointerdown',event=>event.preventDefault());
 function appendNumberingMenu(owner:HTMLElement,x:number,y:number){
   if(!flow?.isDisplay(owner))return;
+  const entry=flow.entries().find(entry=>entry.element===owner);if(entry&&intrinsicMathLayout(entry.model))return;
   if(variantMenu.hidden){MathJax.typesetClear([variantMenu]);variantMenu.replaceChildren();variantMenu.setAttribute('aria-label',t('Display'));}
   else {const divider=document.createElement('div');divider.setAttribute('role','separator');variantMenu.append(divider);}
   for(const [value,label] of [['true','编号'],['false','不编号']]){
@@ -347,6 +417,8 @@ function appendNumberingMenu(owner:HTMLElement,x:number,y:number){
   variantMenu.style.top=Math.max(8,Math.min(y,innerHeight-rect.height-8))+'px';
 }
 variantMenu.addEventListener('click',event=>{
+  const source=eventElement(event).closest<HTMLButtonElement>('[data-edit-formula-source]');
+  if(source){const owner=flow?.entries().find(e=>e.element.dataset.mathId===source.dataset.editFormulaSource)?.element??formula;openFormulaSource(owner);return;}
   const numbering=eventElement(event).closest<HTMLButtonElement>('[data-numbered]');
   if(numbering){const owner=flow?.entries().find(e=>e.element.dataset.mathId===numbering.dataset.formulaId)?.element;
     if(owner)flow?.setNumbered(owner,numbering.dataset.numbered==='true');closeVariantMenu();return;}
@@ -413,18 +485,19 @@ async function render() {
       const edge = (side:string) => `\\class{math-boundary boundary-${side}}{\\vphantom{Xg}\\kern0.15em}`;
       let equationNumber=0;
       for(const entry of flow?.entries()||[{element:formula,model}]){
-        const display=flow?.isDisplay(entry.element);
-        const numbered=display&&flow?.isNumbered(entry.element),environment=numbered?'equation':'equation*';
-        if(numbered)equationNumber++;
+        const intrinsic=intrinsicMathLayout(entry.model),display=flow?.isDisplay(entry.element)||!!intrinsic;
+        const numbered=intrinsic?intrinsic.numbered:display&&flow?.isNumbered(entry.element),environment=numbered?'equation':'equation*';
+        const firstNumber=equationNumber;
+        if(numbered)equationNumber+=intrinsic?.count??1;
         const label=entry.element.dataset.texLabel;
-        const source=(display?`\\begin{${environment}}`:'\\(')+edge('start')+regionTex(entry.model.root,entry.model,editing&&entry.model===model)+edge('end')+(display?`\\end{${environment}}`:'\\)');
+        const source=(intrinsic?'\\[':display?`\\begin{${environment}}`:'\\(')+edge('start')+regionTex(entry.model.root,entry.model,editing&&entry.model===model)+edge('end')+(intrinsic?'\\]':display?`\\end{${environment}}`:'\\)');
         const width=elementById('textFlow',HTMLElement).clientWidth;
         const cacheKey=(label||'')+(display?`${equationNumber}:${width}:`:'')+source;
         if(renderedSources.get(entry.element)===cacheKey)continue;
         MathJax.typesetClear([stage]);stage.style.width=display?width+'px':'auto';stage.textContent=source;
         // Let MathJax generate the tag, seeded by this equation's document order.
         // Cursor redraws must not increment numbering; moved equations invalidate the cache.
-        if(display)MathJax.texReset(numbered?equationNumber-1:equationNumber);
+        if(display)MathJax.texReset(firstNumber);
         await MathJax.typesetPromise([stage]);
         if(rendered!==revision)break;
         const failed=stage.querySelector('mjx-merror');
@@ -432,7 +505,9 @@ async function render() {
         MathJax.typesetClear([entry.element]);entry.element.replaceChildren(...stage.childNodes);renderedSources.set(entry.element,cacheKey);
       }
     } while (rendered !== revision);
-    error.textContent = [...chemicalStates.values()].some(state=>!state.valid)?t('化学语法尚未完整，已保留源码；点击该区域可继续编辑。'):''; annotateFontWarnings(); positionInput();
+    error.textContent = [...chemicalStates].some(([node,state])=>isChemical(node)&&!state.valid)?t('化学语法尚未完整，已保留源码；点击该区域可继续编辑。'):'';
+    preview.querySelectorAll<HTMLElement>('.math-source-region').forEach(element=>{element.title=t('Click to edit this fragment’s LaTeX source');});
+    annotateFontWarnings(); positionInput();
   } catch (err) { error.textContent = t('公式排版失败：') + String(err); }
   finally { MathJax.typesetClear([stage]); stage.remove(); rendering = false; }
 }
@@ -505,7 +580,7 @@ preview.addEventListener('contextmenu',event=>{
     if(def?.letter&&model.parents.get(rid)?.node.type!=='text-normal'){
       event.preventDefault();event.stopPropagation();
       openVariantMenu(iElement,event.clientX,event.clientY,typeof item==='string'?{id:'',type:def.type,atom:true,regions:[]}:item!);
-      variantLetter={region:rid,index};appendNumberingMenu(owner,event.clientX,event.clientY);return;
+      variantLetter={region:rid,index};appendNumberingMenu(owner,event.clientX,event.clientY);appendSourceMenu(owner,event.clientX,event.clientY);return;
     }
   }
   let element:HTMLElement|null=eventElement(event).closest<HTMLElement>('.structure-node');
@@ -515,11 +590,11 @@ preview.addEventListener('contextmenu',event=>{
     const definition=catalog.find(entry=>entry.type===node?.type);
     if(node && !definition?.font && (definition?.operator || definition?.variantOf || definition?.matrixEnvironment || definition?.rowEnvironment)){
       const regionElement=eventElement(event).closest<HTMLElement>('.math-region');
-      event.preventDefault();event.stopPropagation();openVariantMenu(element,event.clientX,event.clientY,node,regionElement?regionId(regionElement):undefined);appendNumberingMenu(owner,event.clientX,event.clientY);return;
+      event.preventDefault();event.stopPropagation();openVariantMenu(element,event.clientX,event.clientY,node,regionElement?regionId(regionElement):undefined);appendNumberingMenu(owner,event.clientX,event.clientY);appendSourceMenu(owner,event.clientX,event.clientY);return;
     }
     element=element.parentElement?.closest<HTMLElement>('.structure-node') || null;
   }
-  if(flow?.isDisplay(owner)){event.preventDefault();event.stopPropagation();appendNumberingMenu(owner,event.clientX,event.clientY);}
+  event.preventDefault();event.stopPropagation();appendNumberingMenu(owner,event.clientX,event.clientY);appendSourceMenu(owner,event.clientX,event.clientY);
 },true);
 preview.addEventListener('keydown', event => {
   const target=eventElement(event).closest<HTMLElement>('.inline-formula');if(!target)return;
@@ -608,11 +683,66 @@ document.addEventListener('selectionchange', () => {
   if (offset !== model.cursor.offset || anchor !== model.cursor.anchor) { model.setCursor(model.cursor.region, offset, anchor); update(false); }
 });
 input.addEventListener('blur', event => { if(event.relatedTarget instanceof Node && elementById('mathPanel',HTMLElement).contains(event.relatedTarget))return; finish(); });
-input.addEventListener('copy', event => {
-  const [a,b] = model.range; if (a === b) return;
-  const r = {items: model.current.items.slice(a,b)};
-  const plain = (node:Pick<Region,'items'>):string => node.items.map(item => typeof item === 'string' ? texChar(item) : structureTex(item, plain)).join('');
-  event.preventDefault(); event.clipboardData?.setData('text/plain', model.rawInput?r.items.join(''):plain(r));
+function clipboardSelection(){
+  if(input.value!==model.projection())return;
+  const start=Array.from(input.value.slice(0,input.selectionStart)).length,end=Array.from(input.value.slice(0,input.selectionEnd)).length;
+  model.setCursor(model.cursor.region,input.selectionDirection==='backward'?start:end,input.selectionDirection==='backward'?end:start);
+}
+function copyMath(event:ClipboardEvent,cut=false){
+  if(!editing||!event.clipboardData||flow?.readOnly)return;
+  if(composing){composing=false;acceptInput();}
+  clipboardSelection();const [start,end]=model.range;if(start===end)return;
+  event.preventDefault();event.stopPropagation();
+  const fragment:NativeMathFragment={version:1,kind:'math',snapshot:model.selectionSnapshot()};
+  const plain=model.selectionLatex();
+  // A cut may delete only after at least its readable representation was written.
+  try{event.clipboardData.setData('text/plain',plain);}catch{return;}
+  writeNativeClipboard(event.clipboardData,fragment);
+  try{const html=plain.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');event.clipboardData.setData('text/html',nativeClipboardHtml(fragment,'<span>'+html+'</span>'));}catch{/* Plain text/custom MIME remain available. */}
+  if(cut){model.replace(start,end,'');inputEdit=null;update();}
+}
+input.addEventListener('copy',event=>copyMath(event));
+input.addEventListener('cut',event=>copyMath(event,true));
+input.addEventListener('paste',event=>{
+  if(!editing||!event.clipboardData||flow?.readOnly)return;
+  if(composing){composing=false;acceptInput();}
+  clipboardSelection();const data=event.clipboardData,native=readNativeClipboard(data);
+  const plain=data.getData('text/plain');
+  let imported:EditorModel|undefined,sourceFallback:string|undefined;
+  if(native?.kind==='math'){
+    imported=new EditorModel();imported.restore(native.snapshot);
+  }else if(native?.kind==='document'){
+    // Copying a whole formula from prose can use the same native math structure.
+    const formulas:{snapshot?:string;texExpression?:string}[]=[],other:string[]=[];
+    const walk=(nodes:readonly any[])=>{for(const node of nodes){
+      if(node.type==='inline_equation'||node.type==='equation')formulas.push(node);
+      else if(typeof node.text==='string'){if(node.text.trim())other.push(node.text);}
+      else if(node.type==='p'&&Array.isArray(node.children))walk(node.children);
+      else other.push('block');
+    }};walk(native.value);
+    if(formulas.length===1&&!other.length){
+      const formula=formulas[0];
+      if(formula.snapshot){imported=new EditorModel();imported.restore(formula.snapshot);}
+      else if(formula.texExpression!==undefined){const normalized=normalizeMathSource(formula.texExpression);sourceFallback=normalized?.source??formula.texExpression;imported=(normalized?convertMath(normalized.source):null)??undefined;}
+    }
+  }
+  if(model.rawInput){
+    const text=plain||(imported?.exportLatex()??sourceFallback??'');if(!text)return;
+    event.preventDefault();event.stopPropagation();model.replace(...model.range,text);
+  }else if(imported){
+    if(!imported.root.items.length)return;
+    event.preventDefault();event.stopPropagation();model.replaceFragment(imported.root.items);
+  }else{
+    // Use an explicit TeX annotation when available; rendered glyphs alone are
+    // never enough to reconstruct the formula's source or structure.
+    const annotated=extractClipboardMathHtml(data.getData('text/html'));
+    const incoming=sourceFallback??annotated?.source??plain;if(!incoming)return;
+    const normalized=normalizeMathSource(incoming),source=normalized?.source??incoming;
+    const parsed=normalized?convertMath(source):null;
+    event.preventDefault();event.stopPropagation();
+    if(parsed)model.replaceFragment(parsed.root.items);else model.insertSourceTex(source);
+  }
+  inputEdit=null;update();
 });
 window.addEventListener('resize',()=>{positionInput();update();});
 new ResizeObserver(positionInput).observe(preview);

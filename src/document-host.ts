@@ -10,6 +10,10 @@ export interface MathHostHooks {
 export interface DocumentHost {
   readonly readOnly:boolean;
   entries():FormulaEntry[];
+  /** Synchronize edited math without forcing full-document recovery storage. */
+  syncMath?():void;
+  getFormulaSource?(element:HTMLElement):string|undefined;
+  replaceFormulaSource?(element:HTMLElement,source:string):void;
   persist():void;
   exportLatex():string;
   exportMarkdown():string;

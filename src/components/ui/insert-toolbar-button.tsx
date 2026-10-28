@@ -16,7 +16,6 @@ import {
   Heading1Icon,
   Heading2Icon,
   Heading3Icon,
-  ImageIcon,
   Link2Icon,
   ListIcon,
   ListOrderedIcon,
@@ -28,7 +27,6 @@ import {
   RadicalIcon,
   SquareIcon,
   SuperscriptIcon,
-  TableIcon,
   TableOfContentsIcon,
 } from 'lucide-react';
 import { KEYS } from 'platejs';
@@ -86,11 +84,6 @@ const groups: Group[] = [
         value: 'h3',
       },
       {
-        icon: <TableIcon />,
-        label: 'Table',
-        value: KEYS.table,
-      },
-      {
         icon: <FileCodeIcon />,
         label: 'Code',
         value: KEYS.codeBlock,
@@ -145,11 +138,6 @@ const groups: Group[] = [
   {
     group: 'Media',
     items: [
-      {
-        icon: <ImageIcon />,
-        label: 'Image',
-        value: KEYS.img,
-      },
       {
         icon: <FilmIcon />,
         label: 'Embed',

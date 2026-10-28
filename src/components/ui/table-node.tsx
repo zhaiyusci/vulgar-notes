@@ -51,6 +51,7 @@ import {
   type TTableElement,
   type TTableRowElement,
   KEYS,
+  NodeApi,
   PathApi,
 } from 'platejs';
 import {
@@ -837,14 +838,22 @@ function ExpandedSelectionTableFloatingToolbarContent(
 function SingleCellTableFloatingToolbarContent(
   props: React.ComponentProps<typeof PopoverContent>
 ) {
-  const { tf } = useEditorPlugin(TablePlugin);
+  const { editor,tf } = useEditorPlugin(TablePlugin);
   const element = useElement<TTableElement>();
   const { props: buttonProps } = useRemoveNodeButton({ element });
+  const elementPath=editor.api.findPath(element),parentPath=elementPath?.slice(0,-1);
+  const parent=parentPath?NodeApi.get(editor,parentPath) as TElement|undefined:undefined;
+  const tableFloat=parent?.type==='float'&&parent.kind==='table'&&elementPath?.at(-1)===1?parent:undefined;
+  const removeButtonProps=tableFloat?{...buttonProps,onClick:(event:React.MouseEvent<HTMLButtonElement>)=>{
+    event.preventDefault();if(editor.api.isReadOnly())return;
+    const at=editor.api.findPath(tableFloat);if(!at)return;
+    editor.tf.withNewBatch(()=>editor.tf.removeNodes({at}));editor.tf.focus();
+  }}:buttonProps;
   const { canSplit } = useTableMergeState();
 
   return (
     <TableFloatingToolbarContent
-      buttonProps={buttonProps}
+      buttonProps={removeButtonProps}
       canSplit={canSplit}
       singleCellMode
       onDeleteColumn={() => {

@@ -1,0 +1,24 @@
+.document-zoom-surface { min-width: 0; }
+.document-zoom-dock { display: flex; flex: none; align-items: center; justify-content: flex-end; min-height: 36px; padding: 4px 12px 6px; background: var(--background); color: var(--foreground); cursor: default; }
+.document-zoom-controls { display: inline-flex; align-items: center; gap: 2px; user-select: none; font: 12px/1.4 system-ui, sans-serif; }
+.document-zoom-controls > button { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; padding: 4px; border: 0; border-radius: 4px; background: transparent; color: var(--muted-foreground); cursor: pointer; }
+.document-zoom-controls > button svg { width: 16px; height: 16px; pointer-events: none; }
+.document-zoom-controls > button:disabled { opacity: .35; cursor: default; }
+.document-zoom-controls > button:hover:not(:disabled), .document-zoom-select:hover { background: var(--accent); color: var(--foreground); }
+.document-zoom-controls :is(button,select):focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+.document-zoom-select { width: 4rem; height: 26px; padding: 0 .25rem; border: 1px solid transparent; border-radius: 4px; color: inherit; background: var(--background); font: inherit; cursor: pointer; }
+.document-toc { margin: 1.5em 0; padding: .75em 0; }
+.document-toc-title { margin-bottom: .5em; font-size: 1.15em; font-weight: 600; }
+.document-toc-list { margin: 0; padding: 0; list-style: none; }
+.document-toc-link { display: flex; align-items: baseline; gap: .65em; width: 100%; padding: .3em .35em; border: 0; border-radius: .2em; background: transparent; color: inherit; font: inherit; text-align: start; cursor: pointer; }
+.document-toc-link:hover, .document-toc-link:focus-visible, .document-toc-link[aria-current="location"] { background: var(--accent); }
+.document-toc-link:focus-visible { outline: 1px solid var(--ring); }
+.document-toc-number { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.document-toc-empty { font-size: .9em; color: var(--muted-foreground); }
+@media print {
+  .document-zoom-dock, .document-zoom-controls { display: none; }
+  .editor-workspace > .document-editor-frame { display: block; height: auto; overflow: visible; }
+  .editor-workspace > .document-editor-frame > #preview { height: auto; overflow: visible; }
+  .document-zoom-surface { zoom: 1 !important; }
+  .document-toc-link { padding-top: .15em; padding-bottom: .15em; background: transparent !important; }
+}

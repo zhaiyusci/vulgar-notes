@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 
-import type { WithRequiredKey } from 'platejs';
+import {NodeApi,type TElement,type WithRequiredKey} from 'platejs';
 
 import {
   FloatingMedia as FloatingMediaPrimitive,
@@ -31,6 +31,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 
 import { CaptionButton } from './caption';
+import {t} from '@/i18n';
 
 const inputVariants = cva(
   'flex h-[28px] w-full rounded-md border-none bg-transparent px-1.5 py-1 text-base placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-transparent md:text-sm'
@@ -68,7 +69,16 @@ export function MediaToolbar({
   }, [open]);
 
   const element = useElement();
+  const elementPath=editor.api.findPath(element);
+  const parentPath=elementPath?.slice(0,-1);
+  const parent=parentPath?NodeApi.get(editor,parentPath) as TElement|undefined:undefined;
+  const figure=element.type==='img'&&parent?.type==='float'&&parent.kind==='figure'&&elementPath?.at(-1)===0?[parent,parentPath!] as const:undefined;
   const { props: buttonProps } = useRemoveNodeButton({ element });
+  const removeButtonProps=figure?{...buttonProps,onClick:(event:React.MouseEvent<HTMLButtonElement>)=>{
+    event.preventDefault();if(editor.api.isReadOnly())return;
+    const at=editor.api.findPath(figure[0]);if(!at)return;
+    editor.tf.withNewBatch(()=>editor.tf.removeNodes({at}));editor.tf.focus();
+  }}:buttonProps;
 
   return (
     <Popover open={open} modal={false}>
@@ -94,19 +104,18 @@ export function MediaToolbar({
           </div>
         ) : (
           <div className="box-content flex items-center">
-            <FloatingMediaPrimitive.EditButton
+            {figure?<Button size="sm" variant="ghost" onClick={()=>document.dispatchEvent(new CustomEvent('edit-document-figure',{detail:figure[0].id}))}>{t('Change image')}</Button>:<FloatingMediaPrimitive.EditButton
               className={buttonVariants({ size: 'sm', variant: 'ghost' })}
             >
               Edit link
-            </FloatingMediaPrimitive.EditButton>
+            </FloatingMediaPrimitive.EditButton>}
 
-            <CaptionButton size="sm" variant="ghost">
-              Caption
-            </CaptionButton>
+            {figure?<Button size="sm" variant="ghost" onClick={()=>{editor.tf.select(editor.api.start([...figure[1],1]));editor.tf.focus();}}>{t('Caption')}</Button>:
+              <CaptionButton size="sm" variant="ghost">{t('Caption')}</CaptionButton>}
 
             <Separator orientation="vertical" className="mx-1 h-6" />
 
-            <Button size="sm" variant="ghost" {...buttonProps}>
+            <Button size="sm" variant="ghost" {...removeButtonProps}>
               <Trash2Icon />
             </Button>
           </div>

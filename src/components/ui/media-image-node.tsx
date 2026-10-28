@@ -25,9 +25,12 @@ export const ImageElement = withHOC(
   function ImageElement(props: PlateElementProps<TImageElement>) {
     const { align = 'center', focused, readOnly, selected } = useMediaState();
     const width = useResizableValue('width');
+    const imagePath=props.editor.api.findPath(props.element);
+    const figure=imagePath?props.editor.api.above({at:imagePath,match:node=>node.type==='float'}):undefined;
 
     const { isDragging, handleRef } = useDraggable({
-      element: props.element,
+      // Dragging the image moves its caption and label with it.
+      element: figure?.[0] as TImageElement ?? props.element,
     });
 
     return (
@@ -54,7 +57,7 @@ export const ImageElement = withHOC(
                     focused && selected && 'ring-2 ring-ring ring-offset-2',
                     isDragging && 'opacity-50'
                   )}
-                  alt={props.attributes.alt as string | undefined}
+                  alt={typeof props.element.alt==='string'?props.element.alt:''}
                 />
               </div>
               <ResizeHandle

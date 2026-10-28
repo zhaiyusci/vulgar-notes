@@ -75,6 +75,8 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
       <ContextMenuTrigger
         asChild
         onContextMenu={(event) => {
+          // Figure/table menus own their whole group, including nested cells.
+          if(event.defaultPrevented||(event.target as Element).closest?.('.document-float'))return;
           const dataset = (event.target as HTMLElement).dataset;
           const disabled =
             dataset?.slateEditor === 'true' ||

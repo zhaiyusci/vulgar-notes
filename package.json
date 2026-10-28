@@ -5,7 +5,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && node build.cjs",
-    "test": "npm run build && node --test editor-model.test.cjs letter-variants.test.cjs text-flow.test.cjs plate-host.test.cjs plate-render-recovery.test.cjs paragraph-drag.test.cjs math-input.test.cjs platform.test.cjs new-document-toolbar.test.cjs document-lifecycle.test.cjs document-home.test.cjs document-recovery.test.cjs native-document-validation.test.cjs color-scheme.test.cjs community-palettes.test.cjs preferences-about.test.cjs bibtex.test.cjs bibtex-latex.test.cjs bibliography-markdown.test.cjs bibliography-library-store.test.cjs bibliography-format.test.cjs bibliography-source.test.cjs bibtex-libraries.test.cjs references-endnotes.test.cjs endnote-toolbar.test.cjs reference-toolbar.test.cjs web-package.test.cjs",
+    "test": "npm run build && node --test --test-concurrency=2 editor-model.test.cjs letter-variants.test.cjs text-flow.test.cjs plate-host.test.cjs plate-render-recovery.test.cjs paragraph-drag.test.cjs math-input.test.cjs platform.test.cjs document-draft-store.test.cjs document-content-comparison.test.cjs large-document-storage.test.cjs new-document-toolbar.test.cjs document-lifecycle.test.cjs document-home.test.cjs document-recovery.test.cjs native-document-validation.test.cjs color-scheme.test.cjs community-palettes.test.cjs preferences-about.test.cjs bibtex.test.cjs bibtex-latex.test.cjs bibliography-markdown.test.cjs bibliography-library-store.test.cjs bibliography-format.test.cjs bibliography-source.test.cjs bibtex-libraries.test.cjs references-endnotes.test.cjs endnote-toolbar.test.cjs reference-toolbar.test.cjs web-package.test.cjs document-metadata.test.cjs metadata-authblk.test.cjs document-metadata-ui.test.cjs document-outline.test.cjs editor-zoom.test.cjs document-floats.test.cjs document-structure.test.cjs tex-import-safety.test.cjs native-clipboard.test.cjs body-clipboard.test.cjs math-clipboard.test.cjs math-fragment.test.cjs tex-import-environments.test.cjs tex-convert.test.cjs host-formula-conversion.test.cjs boldsymbol-input.test.cjs formula-source-dialog.test.cjs function-input.test.cjs function-convert.test.cjs text-symbols.test.cjs mathjax-extension-policy.test.cjs mathjax-commands.test.cjs cases-input.test.cjs tex-layout-structures.test.cjs tex-structure-grammar.test.cjs tex-sideset.test.cjs mathjax-latex-packages.test.cjs tex-display-environment.test.cjs math-equation-numbering.test.cjs mathjax-editor-render.test.cjs",
     "dev": "npm run build && node serve.cjs",
     "web:prepare": "node scripts/prepare-web.cjs",
     "web:build": "npm run build && npm run web:prepare",
@@ -20,6 +20,7 @@
     "@types/lodash": "^4.17.27",
     "@types/node": "^26.6.5",
     "esbuild": "^0.28.2",
+    "fake-indexeddb": "^6.2.6",
     "happy-dom": "^21.0.4",
     "typescript": "^7.0.2"
   },

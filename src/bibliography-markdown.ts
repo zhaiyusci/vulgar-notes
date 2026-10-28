@@ -1,15 +1,20 @@
 import type {Descendant,Value} from 'platejs';
 import type {BibLibrary} from './bibtex';
-import {bibliographyItems} from './references';
+import {bibliographyItems,referenceTargets,resolveReferenceTargets,type ReferenceNode,type ReferenceTarget} from './references';
 import type {BibliographyStyle} from './bibliography-style';
 
 /** Export endnotes and references in the document's shared numbering order. */
 export function bibliographyMarkdown(value:Value,libraries:readonly BibLibrary[],serialize:(value:Value)=>string,style:BibliographyStyle='simple'):string {
   const entries=bibliographyItems(value,libraries,style);
+  let targets:ReferenceTarget[]|undefined;
   const noteNumbers=new Map(entries.filter(entry=>entry.kind==='endnote').map(entry=>[entry.identifier,entry.number||'??']));
   const withoutEntries=(nodes:Descendant[]):Descendant[]=>nodes.flatMap(node=>{
     if(node.type==='bibliography_entry'||node.type==='footnoteDefinition')return [];
     if(node.type==='footnoteReference')return [{text:'['+(noteNumbers.get(String(node.identifier??''))||'??')+']'}];
+    if(node.type==='tex_reference'&&(node.command==='ref'||node.command==='eqref')){
+      const resolved=resolveReferenceTargets(targets??=referenceTargets(value,libraries),node as ReferenceNode);
+      return resolved.invalid?[{text:resolved.text}]:[{type:'a',url:'#'+(node as ReferenceNode).keys[0],children:[{text:resolved.text}]}];
+    }
     return [Array.isArray(node.children)?{...node,children:withoutEntries(node.children as Descendant[])}:node];
   });
   const body=serialize(withoutEntries(value) as Value);

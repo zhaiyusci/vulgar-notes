@@ -8,6 +8,7 @@ const source=build({entryPoints:['src/document-lifecycle.ts'],bundle:true,write:
   './i18n':'export const t=value=>value;',
   './plate-document':`export const parseDocumentFile=source=>{const data=JSON.parse(source);if(data.version!==1||!Array.isArray(data.value)||!data.value.length)throw Error('Invalid document format');return data.value;};export const documentContentKey=source=>JSON.stringify(JSON.parse(source),(key,value)=>key==='snapshot'&&typeof value==='string'?JSON.parse(value).root:value);`,
   './platform':`export const defaultDocumentName='document.vulgar';export const documentSessionId=()=>new URL(window.location.href).searchParams.get('document');export const draftStorage=()=>{const s=globalThis.lifecycleTest,storage=s.desktop?localStorage:sessionStorage;return s.storageFail?{getItem:key=>storage.getItem(key),removeItem:key=>storage.removeItem(key),setItem:()=>{throw Error('storage quota');}}:storage;};
+   export const flushDocumentDraftStore=async()=>{const s=globalThis.lifecycleTest;s.flushes++;if(s.flushPending&&(!s.flushPendingAt||s.flushPendingAt===s.flushes))await s.flushPending;if(s.flushError&&(!s.flushErrorAt||s.flushErrorAt===s.flushes))throw Error(s.flushError);};
    export const newDocumentWindow=async()=>{const s=globalThis.lifecycleTest;s.newWindows++;if(s.newError)throw Error(s.newError);if(s.newPending)await s.newPending;};
    export const openDocumentFile=async()=>{const s=globalThis.lifecycleTest;s.pickers++;if(s.openError)throw Error(s.openError);if(s.openPending)await s.openPending;return s.openResult;};
    export const saveDocumentFile=async(source,target,name)=>{const s=globalThis.lifecycleTest;s.saves.push({source,target,name});if(s.saveError)throw Error(s.saveError);if(s.savePending)await s.savePending;return s.saveResult;};`,
@@ -23,7 +24,7 @@ async function harness(t,{desktop=false,home=false,metadata,content=edited,basel
  const {Window}=await import('happy-dom');
  const window=new Window({url:'http://localhost/vulgar-notes/'+(home?'':'?document='+id)});
  let counter=0;Object.defineProperty(window,'crypto',{configurable:true,value:{randomUUID:()=>`6b363044-6c9a-4653-a2ba-${String(++counter).padStart(12,'0')}`}});
- const state=window.lifecycleTest={desktop,titles:[],newWindows:0,pickers:0,saves:[],remembered:[],openedRecent:[],restored:[],destroyed:0,openResult:null,saveResult:null,recentId:'recent-test',restoredTarget:null};
+ const state=window.lifecycleTest={desktop,titles:[],newWindows:0,pickers:0,saves:[],remembered:[],openedRecent:[],restored:[],destroyed:0,openResult:null,saveResult:null,recentId:'recent-test',restoredTarget:null,flushes:0};
  const storage=desktop?window.localStorage:window.sessionStorage;
  if(metadata)storage.setItem('editor.open-document:'+id,JSON.stringify(metadata));
  storage.setItem('math-plate-document-v1:'+id,content);
@@ -116,6 +117,61 @@ test('preparing another document is transactional when recovery storage is unava
  assert.equal(h.events.start.length,0);assert.equal(h.storage.getItem(h.api.documentDraftKey(id)),edited);assert.equal(h.events.errors.length,1);
 });
 
+test('Open waits for the prepared document to commit before navigating',async t=>{
+ const h=await harness(t,{home:true});let release;
+ h.state.flushPending=new Promise(resolve=>release=resolve);h.state.flushPendingAt=2;
+ h.state.openResult={name:'large.vulgar',text:doc('Full paper with embedded images')};
+ const pending=h.api.runDocumentCommand('open');await h.tick();
+ assert.equal(h.state.flushes,2);assert.equal(h.events.start.length,0);
+ release();await pending;
+ assert.equal(h.events.start.length,1);assert.equal(h.events.errors.length,0);
+});
+
+test('a failed document commit removes only the abandoned session and keeps the current recovery',async t=>{
+ const h=await harness(t,{metadata:{name:'saved.vulgar',baseline:saved}});
+ h.state.openResult={name:'large.vulgar',text:doc('Full paper')};h.state.flushError='IndexedDB quota';h.state.flushErrorAt=2;
+ const pending=h.api.runDocumentCommand('open');await h.tick();h.prompt('discard');await pending;
+ assert.equal(h.events.start.length,0);assert.equal(h.host.content,edited);
+ assert.equal(h.storage.getItem(h.api.documentDraftKey(id)),edited);assert.equal(h.storage.length,2);
+ assert.equal(h.state.flushes,3,'cleanup is committed after the failed preparation');assert.match(h.events.errors[0].error,/IndexedDB quota/);
+});
+
+test('edits made while the new document commits cancel Open and clean its prepared session',async t=>{
+ const h=await harness(t,{metadata:{name:'saved.vulgar',baseline:saved},content:saved});let release;
+ h.state.flushPending=new Promise(resolve=>release=resolve);h.state.flushPendingAt=2;
+ h.state.openResult={name:'next.vulgar',text:doc('Other paper')};
+ const pending=h.api.runDocumentCommand('open');await h.tick();
+ assert.equal(h.state.flushes,2);h.host.content=edited;h.host.persist();release();await pending;
+ assert.equal(h.events.start.length,0);assert.equal(h.storage.getItem(h.api.documentDraftKey(id)),edited);
+ assert.equal(h.storage.length,2);assert.match(h.events.errors[0].error,/document changed/);
+});
+
+test('Home flushes the latest recovery before deciding whether unsaved edits need a prompt',async t=>{
+ const h=await harness(t,{metadata:{name:'saved.vulgar',baseline:saved}});let release;
+ h.state.flushPending=new Promise(resolve=>release=resolve);
+ const pending=h.api.runDocumentCommand('home');await h.tick();
+ assert.equal(h.events.home.length,0);assert.equal(h.window.document.querySelector('dialog'),null);
+ const newer=doc('Typed while recovery was committing');h.host.content=newer;h.host.persist();release();await h.tick();
+ h.prompt('cancel');await pending;
+ assert.equal(h.events.home.length,0);assert.equal(h.storage.getItem(h.api.documentDraftKey(id)),newer);
+ assert.equal(h.host.baseline,saved);assert.equal(h.events.errors.length,0);
+});
+
+test('a successful file Save remains successful when recovery commit fails',async t=>{
+ const h=await harness(t,{metadata:{name:'saved.vulgar',baseline:saved}});
+ h.state.saveResult={name:'saved.vulgar'};h.state.flushError='IndexedDB quota';
+ await h.api.runDocumentCommand('save');
+ assert.equal(h.state.saves.length,1);assert.equal(h.host.baseline,edited);assert.equal(h.events.saved.length,1);
+ assert.equal(h.events.errors.length,0);assert.equal(h.api.getDocumentState().dirty,false);
+});
+
+test('Save then Home can leave after the file is safe even if its recovery cache cannot commit',async t=>{
+ const h=await harness(t,{metadata:{name:'saved.vulgar',baseline:saved}});
+ h.state.saveResult={name:'saved.vulgar'};h.state.flushError='IndexedDB quota';
+ const pending=h.api.runDocumentCommand('home');await h.tick();h.prompt('save');await pending;
+ assert.equal(h.events.home.length,1);assert.equal(h.events.saved.length,1);assert.equal(h.events.errors.length,0);
+});
+
 test('edits made during Open or recent-file reading abort navigation and remain recoverable',async t=>{
  for(const recent of [false,true]){
   const h=await harness(t,{metadata:{name:'saved.vulgar',baseline:saved},content:saved});h.state.persistOnSerialize=true;
@@ -180,6 +236,23 @@ test('native close offers the same three choices and canceled Save cannot destro
  let prevented=0;h.state.closeHandler({preventDefault(){prevented++;}});await h.tick();h.prompt('save');await h.tick();assert.equal(h.state.destroyed,0);assert.equal(prevented,1);
  h.state.closeHandler({preventDefault(){prevented++;}});await h.tick();h.prompt('cancel');await h.tick();assert.equal(h.state.destroyed,0);
  h.state.closeHandler({preventDefault(){prevented++;}});await h.tick();h.prompt('discard');await h.tick();assert.equal(h.state.destroyed,1);assert.equal(h.storage.getItem(h.api.documentDraftKey(id)),saved);
+});
+
+test('native close commits the latest clean-document recovery before destroying its window',async t=>{
+ const h=await harness(t,{desktop:true,metadata:{name:'saved.vulgar',baseline:saved},content:saved});await h.tick();let release;
+ h.state.flushPending=new Promise(resolve=>release=resolve);
+ let prevented=0;h.state.closeHandler({preventDefault(){prevented++;}});await h.tick();
+ assert.equal(prevented,1);assert.equal(h.state.destroyed,0);assert.equal(h.window.document.querySelector('dialog'),null);
+ release();await h.tick();assert.equal(h.state.destroyed,1);assert.equal(h.events.errors.length,0);
+});
+
+test('edits during the recovery commit after Save remain dirty and prevent Home',async t=>{
+ const h=await harness(t,{metadata:{name:'saved.vulgar',baseline:saved}});let release;
+ h.state.saveResult={name:'saved.vulgar'};h.state.flushPending=new Promise(resolve=>release=resolve);h.state.flushPendingAt=2;
+ const pending=h.api.runDocumentCommand('home');await h.tick();h.prompt('save');await h.tick();
+ const newer=doc('Typed after the real file write');h.host.content=newer;h.host.persist();release();await pending;
+ assert.equal(h.host.baseline,edited);assert.equal(h.host.content,newer);assert.equal(h.events.home.length,0);
+ assert.equal(h.events.saved.length,1);assert.equal(h.api.getDocumentState().dirty,true);assert.equal(h.events.errors.length,0);
 });
 
 test('a rejected native close restores the unsaved recovery and dirty protection',async t=>{

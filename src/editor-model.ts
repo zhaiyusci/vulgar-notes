@@ -1,30 +1,41 @@
 import {registerExtensions} from './extensions';
 import {diagnosticSymbol,fontDiagnostic} from './font-diagnostics';
 import {registerLetterVariants,textNormal,preferredMathCommand,extensionHasLetter} from './letter-variants';
+import {mathFunction,mathFunctions} from './math-functions';
+import {textSymbols} from './text-symbols';
+import {mathjaxSymbolCommands,mathjaxSourceCommands,mathjaxSourceTemplate,mathjaxEnvironments,mathjaxCommandDefinition} from './mathjax-commands';
+import {registerPhysicsStructures} from './physics-structures';
+import {registerTexLayoutStructures,validateTexLayoutOptions,type TexLayoutOptionsKind} from './tex-layout-structures';
+import {registerSideSetStructures} from './tex-sideset';
 export type ScriptSlot = 'lower' | 'upper' | 'leftLower' | 'leftUpper';
 export type Direction = -1 | 1;
 export type MathItem = string | MathNode;
 export interface Region {id:string; label:string; items:MathItem[]; slot?:ScriptSlot}
-export interface MathNode {id:string; type:string; regions:Region[]; atom?:boolean; operatorLayout?:boolean; rows?:number; columns?:number}
+export interface MathNode {id:string; type:string; regions:Region[]; atom?:boolean; operatorLayout?:boolean; rows?:number; columns?:number;texOptions?:string}
 export interface Cursor {region:string; offset:number; anchor:number}
 interface SavedState {root:Region;cursor:Cursor;pendingFont?:string}
 interface Parent {region:Region; index:number; node:MathNode; childIndex:number}
 export interface Definition {
- type:string; label:string; category:string; labels:string[]; render:(r:string[])=>string;
+ type:string; label:string; category:string; labels:string[]; render:(r:string[])=>string; exportRender?:(r:string[])=>string;
  selectedIndex:number; command:string; tex?:string; atom?:boolean; font?:boolean;
- aliases?:string[]; raw?:boolean; commandCandidate?:boolean; legacy?:boolean;
+ aliases?:string[]; raw?:boolean; commandCandidate?:boolean; commandName?:string; legacy?:boolean;
  hidden?:boolean;letter?:string;exportTex?:string;equivalentTex?:string[];glyphKey?:string;fontCommand?:string;
  previewArgs?:string[]; variantOf?:string; variantLabel?:string; columns?:number;
  matrixEnvironment?:string; matrixAlign?:string; rowEnvironment?:string; rowOptions?:string;
  operator?:boolean; operatorCommand?:string; operatorPlacement?:string;
+ functionExponent?:boolean;
+ ungroupScriptBase?:boolean;
+ texOptionsKind?:TexLayoutOptionsKind;
  scriptSlots?:ScriptSlot[]; scriptLabels?:string[]; legacySlots?:number;
 }
-export interface CommandCandidate {name:string; type:string; atom:boolean; label:string; category:string}
+export interface CommandCandidate {name:string; type:string; atom:boolean; label:string; category:string;source?:string;script?:'^'|'_'}
 export interface FontWarning {region:string;index:number;message:string}
 /* Content is a tree of sequences. Strings and structures share one sequence;
  * only a structure's arguments introduce new regions. No operator/text slots. */
 
-  let serial = 0;
+  // Saved/clipboard IDs are decimal strings. Keep their counter exact even
+  // when an external document uses values beyond JavaScript's safe integers.
+  let serial = 0n;
   const region = (label:string, items:MathItem[] | string = []):Region => ({id: 'r' + ++serial, label, items: typeof items === 'string' ? Array.from(items) : items});
   const structure = (type:string, regions:Region[]):MathNode => ({id: 'n' + ++serial, type, regions});
   const frac = (a:MathItem[] | string, b:MathItem[] | string) => structure('frac', [region('分子', a), region('分母', b)]);
@@ -41,6 +52,8 @@ export interface FontWarning {region:string;index:number;message:string}
     ['函数名称','sin cos tan cot sec csc arcsin arccos arctan sinh cosh tanh coth exp ln log lg arg deg det dim gcd hom ker Pr min max sup inf lim limsup liminf']
   ]) for(const command of commands.split(' '))symbols.push({labels:[],render:()=>'',selectedIndex:0,type:'symbol-'+command,label:command,category,command:'\\'+command,tex:'\\'+command+' ',atom:true});
   for(const name of ['arcsinh','arccosh','arctanh','sgn','tr','rank','erf'])symbols.push({labels:[],render:()=>'',selectedIndex:0,type:'symbol-'+name,label:name,category:'函数名称',command:'\\operatorname{'+name+'}',tex:'\\operatorname{'+name+'}',atom:true});
+  for(const command of ['lvert','rvert','lVert','rVert','langle','rangle','lbrace','rbrace','lbrack','rbrack','vert','Vert','lfloor','rfloor','lceil','rceil'])
+    symbols.push({type:'symbol-'+command,label:command,category:'括号与定界符',command:'\\'+command,tex:'\\'+command+' ',atom:true,labels:[],selectedIndex:0,render:()=>'',hidden:true,commandCandidate:false});
   const symbolDefinitions=new Map(symbols.map(entry=>[entry.type,entry]));
   const add = (type:string, label:string, category:string, labels:string[], render:(r:string[])=>string, options:Partial<Definition> = {}) => catalog.push({command:'',type, label, category, labels, render, selectedIndex:0, ...options});
   for(const [command,label,sample] of [
@@ -63,6 +76,10 @@ export interface FontWarning {region:string;index:number;message:string}
     add(type,label,'矩阵与多行',Array.from({length:size*size},(_,i)=>`矩阵第${Math.floor(i/size)+1}行第${i%size+1}列`),r=>`\\begin{${env}}${Array.from({length:size},(_,i)=>r.slice(i*size,(i+1)*size).join('&')).join('\\\\')}\\end{${env}}`,{columns:size});
   }
   add('cases','分段函数','矩阵与多行',['第一段表达式','第一段条件','第二段表达式','第二段条件'],r=>`\\begin{cases}${r[0]}&${r[1]}\\\\${r[2]}&${r[3]}\\end{cases}`,{columns:2});
+  add('numbered-cases-body','Cases rows','矩阵与多行',['Expression','Condition','Expression','Condition'],r=>`${r[0]}&${r[1]}\\\\${r[2]}&${r[3]}`,{
+    hidden:true,commandCandidate:false,columns:2,rowEnvironment:'numbered-cases-body'});
+  for(const name of ['numcases','subnumcases'])add(name,name,'矩阵与多行',['Left-hand side','Cases'],r=>`\\begin{${name}}{${r[0]}}${r[1]}\\end{${name}}`,{
+    command:`\\begin{${name}}`,commandName:name,variantOf:'numcases',variantLabel:name,previewArgs:['f(x)=','x&x>0\\\\-x&x<0']});
   add('aligned','两行对齐','矩阵与多行',['第一行左侧','第一行右侧','第二行左侧','第二行右侧'],r=>`\\begin{aligned}${r[0]}&${r[1]}\\\\${r[2]}&${r[3]}\\end{aligned}`,{columns:2});
   for (const [type,label,command] of [
     ['hat','帽子','hat'],['widehat','宽帽子','widehat'],
@@ -125,8 +142,41 @@ export interface FontWarning {region:string;index:number;message:string}
   add('cancelto','消去至指定值','标注与箭头',['内容','目标值'],r=>`\\cancelto{${r[1]}}{${r[0]}}`);
   for(const [cmd,label] of [['xlongleftarrow','长左箭头'],['xlongrightarrow','长右箭头'],['xLongleftarrow','长左双线箭头'],['xLongrightarrow','长右双线箭头']])add(cmd,label,'标注与箭头',['上方标注','下方标注'],r=>`\\${cmd}[${r[1]}]{${r[0]}}`);
   registerExtensions(catalog,symbols);
+  registerPhysicsStructures(catalog);
+  registerTexLayoutStructures(catalog);
   add('text-normal','描述文字','文字',['描述文字'],r=>textNormal(r[0]),{raw:true,command:'\\textnormal',aliases:['textrm'],previewArgs:['说明']});
+  add('case-text','Condition text','文字',['Condition text'],r=>`\\textnormal{${r[0]}}`,{raw:true,hidden:true,commandCandidate:false});
+  // Unsupported imported TeX is an opaque source component, never escaped into
+  // ordinary mathematical characters or partially interpreted as keystrokes.
+  add('source-tex','LaTeX source','文字',['LaTeX source'],r=>r[0],{raw:true,hidden:true,commandCandidate:false});
+  add('tex-group','TeX group','文字',['Content'],r=>`{${r[0]}}`,{hidden:true,commandCandidate:false});
+  // physics Expression consumes literal parentheses itself, with a different
+  // atom class from \left...\right. Render an editable fence but export the
+  // exact consuming syntax so its surrounding spacing remains unchanged.
+  add('physics-auto-parens','Parentheses','括号与定界符',['Content'],r=>`\\left(${r[0]}\\right)`,{
+    exportRender:r=>`(${r[0]})`,hidden:true,commandCandidate:false});
   registerLetterVariants(catalog,symbols);
+  for(const entry of mathFunctions){
+    const type='function-'+(entry.command.startsWith('operatorname')?'operatorname-'+entry.name:entry.name);
+    add(type,entry.name,'函数名称',[],()=>`\\${entry.command} `,{command:`\\${entry.command}`,commandName:entry.name,aliases:entry.aliases,
+      hidden:entry.hidden,operator:true,operatorCommand:entry.command,operatorPlacement:'',scriptSlots:['lower','upper'],scriptLabels:['下标','上标'],legacySlots:0});
+    if(entry.optionalExponent)add(type+'-exponent',entry.name,'函数名称',[],()=>`\\${entry.command} `,{command:`\\${entry.command}`,hidden:true,commandCandidate:false,variantOf:type,
+      operator:true,operatorCommand:entry.command,operatorPlacement:'',scriptSlots:['lower','upper'],scriptLabels:['下标','上标'],legacySlots:0,functionExponent:true});
+  }
+  // Explicit operatorname is a different grammar from physics' parenthesis-
+  // consuming functions. Preserve it as such when converting imported source.
+  for(const name of mathFunctions.filter(entry=>!entry.command.startsWith('operatorname')).map(entry=>entry.name))
+    add('function-operatorname-'+name,name,'函数名称',[],()=>`\\operatorname{${name}} `,{command:`\\operatorname{${name}}`,hidden:true,commandCandidate:false,
+      operator:true,operatorCommand:`operatorname{${name}}`,operatorPlacement:'',scriptSlots:['lower','upper'],scriptLabels:['下标','上标'],legacySlots:0});
+  for(const entry of textSymbols)if(!symbols.some(symbol=>symbol.command==='\\'+entry.command))
+    symbols.push({type:'symbol-'+entry.command,label:entry.command,category:'其他符号',command:'\\'+entry.command,tex:'\\'+entry.command+' ',atom:true,labels:[],selectedIndex:0,render:()=>''});
+  const registeredCommands=new Set([...symbols,...catalog].map(entry=>entry.command));
+  for(const command of mathjaxSymbolCommands()){
+    if(registeredCommands.has('\\'+command.name)||/^bfbb/.test(command.name))continue;
+    // Keep upstream token commands, including their atom class and alphabet.
+    symbols.push({type:'mathjax-symbol-'+command.name,label:command.name,category:'其他符号',command:'\\'+command.name,tex:'\\'+command.name+' ',
+      atom:true,labels:[],selectedIndex:0,render:()=>'',ungroupScriptBase:true});
+  }
   add('font-bboldx-bold','黑板粗体','数学字体',['字体内容'],r=>'\\mathbfbb{'+r[0]+'}',{font:true,hidden:true,commandCandidate:false,command:'\\mathbfbb'});
   symbols.forEach(entry=>symbolDefinitions.set(entry.type,entry));
   // Layout variants remain insertable but live in their primary button's menu.
@@ -207,14 +257,48 @@ export interface FontWarning {region:string;index:number;message:string}
   }
   // The sum-specific sideset template belongs to sum's menu, not generic scripts.
   Object.assign(definitions.get('sideset')!,{category:'大型算符',variantOf:'sum'});
+  registerSideSetStructures(catalog);
+  for(const entry of catalog)if(!definitions.has(entry.type))definitions.set(entry.type,entry);
   // A named operator has one insertion path, including command completion.
   // Keep retired atoms readable for saved drafts, but do not offer duplicates.
   const operatorCommands=new Set(catalog.filter(e=>e.operator).map(e=>e.operatorCommand));
   for(const entry of symbols.filter(e=>e.category==='函数名称')){
-    if(operatorCommands.has(entry.command.slice(1))){
+    if(operatorCommands.has(entry.command.slice(1))||mathFunctions.some(fn=>fn.name===entry.type.slice(7))){
       entry.hidden=true;entry.commandCandidate=false;
     }
   }
+  // Build once. Candidate filtering must not rebuild the installed command
+  // inventory (or a thousand DOM options) for every typed letter.
+  const commandEntries=new Map<string,CommandCandidate>();
+  for(const entry of [...symbols,...catalog]){
+    if(entry.commandCandidate===false)continue;
+    const name=entry.commandName??(entry.command?.match(/^\\begin\{([A-Za-z]+)\}/)?.[1])??
+      (entry.atom&&entry.command.startsWith('\\operatorname')?entry.type.slice(7):entry.command?.match(/^\\([a-zA-Z]+)/)?.[1]);
+    for(const candidate of [name,...(entry.aliases||[])])
+      if(candidate&&candidate!=='begin'&&!commandEntries.has(candidate))commandEntries.set(candidate,{name:candidate,type:entry.type,atom:!!entry.atom,label:entry.label,category:entry.category});
+  }
+  for(const [name,type,script,label] of [['sp','power','^','上标'],['sb','subscript','_','下标']] as const)
+    commandEntries.set(name,{name,type,script,label,category:'上下标',atom:false});
+  // Only an exact, zero-argument expansion to one control word is a spelling
+  // alias. General Macro expansions and handler args are never guessed here.
+  for(let pass=0;pass<4;pass++)for(const command of mathjaxSourceCommands()){
+    if(commandEntries.has(command.name))continue;
+    const definition=mathjaxCommandDefinition(command);
+    if(definition?.syntax.kind!=='macro-expansion'||definition.syntax.arity||definition.syntax.optionalDefault!==undefined)continue;
+    const target=/^\\([A-Za-z]+)\s*$/.exec(String(definition.args?.[0]??''))?.[1],entry=target?commandEntries.get(target):undefined;
+    if(entry&&!entry.source&&!definitions.get(entry.type)?.font)commandEntries.set(command.name,{...entry,name:command.name});
+  }
+  for(const command of mathjaxSourceCommands()){
+    if(commandEntries.has(command.name)||/^bfbb/.test(command.name))continue;
+    const source=mathjaxSourceTemplate(command.name);if(!source)continue;
+    commandEntries.set(command.name,{name:command.name,type:'source-tex',atom:false,label:'LaTeX source',category:'LaTeX source',source});
+  }
+  for(const environment of mathjaxEnvironments){
+    if(!environment.configured||!/^\w+$/.test(environment.name)||commandEntries.has(environment.name))continue;
+    commandEntries.set(environment.name,{name:environment.name,type:'source-tex',atom:false,label:'LaTeX source',category:'LaTeX source',
+      source:`\\begin{${environment.name}}\n\n\\end{${environment.name}}`});
+  }
+  const commandInventory=[...commandEntries.values()];
   function example(kind:string) {
     let node;
     if (kind === 'frac') node = frac('a+b', 'c');
@@ -233,18 +317,34 @@ export interface FontWarning {region:string;index:number;message:string}
     if(raw?.raw)return raw.render(node.regions.map(r=>r.items.map(item=>typeof item==='string'?item:structureTex(item,latex)).join('')));
     const r = node.regions.map(renderRegion);
     const definition=definitions.get(node.type);
+    if(node.texOptions!==undefined&&definition?.texOptionsKind)return definition.command+node.texOptions+r.map(value=>'{'+value+'}').join('');
+    if(renderRegion===latex&&definition?.exportRender)return definition.exportRender(r);
+    if(renderRegion===latex&&['power','subscript','sup'].includes(node.type)&&node.regions[0]?.items.length===1){
+      const base=node.regions[0].items[0];
+      if(typeof base!=='string'&&(base.type==='physics-auto-parens'||(base.atom?symbolDefinitions.get(base.type):definitions.get(base.type))?.ungroupScriptBase))
+        return r[0]+(node.type==='power'?`^{${r[1]}}`:node.type==='subscript'?`_{${r[1]}}`:`_{${r[1]}}^{${r[2]}}`);
+    }
     if(definition?.operator){
       const script=(slot:ScriptSlot)=>{const i=node.regions.findIndex(r=>r.slot===slot);return i<0?'':`${slot.toLowerCase().includes('lower')?'_':'^'}{${r[i]}}`;};
-      if(node.type==='sideset'){
+      if(definition.scriptSlots?.includes('leftLower')){
         const left=script('leftLower')+script('leftUpper'),right=script('lower')+script('upper');
-        return left||right?`\\sideset{${left}}{${right}}\\sum `:'\\sum ';
+        return (left||right?`\\sideset{${left}}{${right}}`:'')+`\\${definition.operatorCommand}${definition.operatorPlacement} `;
+      }
+      if(definition.functionExponent){
+        const upper=node.regions.findIndex(region=>region.slot==='upper');
+        return `\\${definition.operatorCommand}${upper<0?'':`[${r[upper]}]`}${definition.operatorPlacement}${script('lower')} `;
       }
       return `\\${definition.operatorCommand}${definition.operatorPlacement}${script('lower')}${script('upper')} `;
     }
     if(definition?.matrixEnvironment || definition?.rowEnvironment){
       const columns=node.columns || definition.columns || 1, env=definition.matrixEnvironment || definition.rowEnvironment;
+      if(env==='numbered-cases-body')for(let index=1;index<node.regions.length;index+=columns){
+        const items=node.regions[index].items,child=items.length===1?items[0]:undefined;
+        if(child&&typeof child!=='string'&&child.type==='case-text')r[index]=child.regions[0].items.join('');
+      }
       const options=env==='array'?`{${(definition.matrixAlign || 'c').repeat(columns)}}`:definition.matrixAlign?`[${definition.matrixAlign}]`:definition.rowOptions || '';
       const content=Array.from({length:r.length/columns},(_,i)=>r.slice(i*columns,(i+1)*columns).join('&')).join('\\\\');
+      if(env==='numbered-cases-body')return content;
       return env==='substack'?`\\substack{${content}}`:`\\begin{${env}}${options}${content}\\end{${env}}`;
     }
     if (definitions.has(node.type)) return definitions.get(node.type)!.render(r);
@@ -259,9 +359,23 @@ export interface FontWarning {region:string;index:number;message:string}
     if(definitions.get(item.type)?.font)return latex({id:'',label:'',items:[item]});
     return structureTex(item,child=>styledLatex(child,command));
   }).join('');
-  const latex = (r:Region):string => r.items.map(item => {
+  const automaticParenthesesAfter=(item:MathItem|undefined):boolean=>{
+    if(!item||typeof item==='string')return false;
+    const definition=item.atom?symbolDefinitions.get(item.type):definitions.get(item.type);
+    if(!definition)return false;
+    const grammar=mathFunction(definition.operatorCommand??definition.command.slice(1));
+    return !!grammar?.automaticParentheses&&!definition.operatorPlacement&&
+      item.regions.every(region=>definition.functionExponent&&region.slot==='upper');
+  };
+  const latex = (r:Region):string => r.items.map((item,index) => {
     if(typeof item==='string')return texChar(item);
     const def=definitions.get(item.type);
+    const scriptedFence=['power','subscript','sup'].includes(item.type)&&item.regions[0]?.items.length===1?item.regions[0].items[0]:null;
+    const fence=item.type==='physics-auto-parens'?item:scriptedFence&&typeof scriptedFence!=='string'&&scriptedFence.type==='physics-auto-parens'?scriptedFence:null;
+    if(fence){
+      const content=latex(fence.regions[0]),value=automaticParenthesesAfter(r.items[index-1])?`(${content})`:`\\left(${content}\\right)`;
+      return value+(fence===item?'':item.type==='power'?`^{${latex(item.regions[1])}}`:item.type==='subscript'?`_{${latex(item.regions[1])}}`:`_{${latex(item.regions[1])}}^{${latex(item.regions[2])}}`);
+    }
     if(def?.font){
       const command=def.command.slice(1);
       if(command==='symbb'||command==='mathbfbb')return styledLatex(item.regions[0],command==='symbb'?'editorbboldx':'editorbboldxbold');
@@ -296,7 +410,28 @@ export interface FontWarning {region:string;index:number;message:string}
         const type=item.type.replace(/--(?:mathbbm(?:ss|tt)?|editorbbm(?:ss)?bold|mathds|editordssans)$/, '--editorbboldx');
         item.type=type;
         if(item.atom ? !symbolDefinitions.has(type) || item.regions.length!==0 : !definitions.has(type))return false;
+        if(item.texOptions!==undefined&&(item.atom||!definitions.get(type)?.texOptionsKind||!validateTexLayoutOptions(definitions.get(type)!.texOptionsKind!,item.texOptions)))return false;
+        if((type==='source-tex'||type==='case-text')&&(item.regions.length!==1||!isObject(item.regions[0])||!Array.isArray(item.regions[0].items)||item.regions[0].items.some(child=>typeof child!=='string')))return false;
         for(const key of ['rows','columns'])if(item[key]!==undefined && (!Number.isSafeInteger(item[key]) || Number(item[key])<1))return false;
+        if(!item.atom){
+          const definition=definitions.get(type)!;
+          if(definition.matrixEnvironment||definition.rowEnvironment){
+            const columns=typeof item.columns==='number'?item.columns:definition.columns||1;
+            if(item.regions.length<columns||item.regions.length%columns!==0)return false;
+            if(item.rows!==undefined&&item.rows!==item.regions.length/columns)return false;
+            if(definition.rowEnvironment&&columns!==(definition.columns||1))return false;
+          }else if(definition.operator){
+            if(item.operatorLayout){
+              const slots=new Set<unknown>();
+              for(const child of item.regions){
+                if(!isObject(child)||!definition.scriptSlots?.includes(child.slot as ScriptSlot)||slots.has(child.slot))return false;
+                slots.add(child.slot);
+              }
+            // Older snapshots have all script regions followed by a body
+            // region. index() migrates that complete shape into the flow.
+            }else if(item.regions.length!==definition.labels.length)return false;
+          }else if(item.regions.length!==definition.labels.length)return false;
+        }
         return item.regions.every(child=>validRegion(child,depth+1));
       });
     };
@@ -342,11 +477,11 @@ export interface FontWarning {region:string;index:number;message:string}
       };migrate(this.root);
       this.regions = new Map(); this.parents = new Map(); this.nodes = new Map(); this.order = [];
       const visit = (r:Region) => {
-        serial=Math.max(serial,Number(r.id.slice(1))||0);
+        const regionSerial=BigInt(r.id.slice(1));if(regionSerial>serial)serial=regionSerial;
         this.regions.set(r.id, r); this.order.push(r.id);
         r.items.forEach((item, index) => {
           if (typeof item === 'string') return;
-          serial=Math.max(serial,Number(item.id.slice(1))||0);
+          const nodeSerial=BigInt(item.id.slice(1));if(nodeSerial>serial)serial=nodeSerial;
           this.nodes.set(item.id,item);
           const definition=definitions.get(item.type);
           if(definition?.matrixEnvironment || definition?.rowEnvironment){
@@ -389,7 +524,8 @@ export interface FontWarning {region:string;index:number;message:string}
     replace(start:number, end:number, text:string) {
       this.record();
       const hadContent=this.current.items.length>0;
-      const chars = Array.from(text).filter(ch => ch !== '\uFFFC' && ch !== '\r' && ch !== '\n');
+      const source=['source-tex','case-text'].includes(this.parents.get(this.cursor.region)?.node.type??'');
+      const chars = Array.from(text).filter(ch => ch !== '\uFFFC' && (source||ch !== '\r' && ch !== '\n'));
       this.current.items.splice(start, end - start, ...chars);
       this.setCursor(this.cursor.region, start + chars.length); this.index();
       if(hadContent)this.removeEmptyScript();
@@ -409,6 +545,7 @@ export interface FontWarning {region:string;index:number;message:string}
         this.index();this.setCursor(outer.id,index+1);return true;
       }
       if(definitions.get(node.type)?.operator){
+        if(definitions.get(node.type)?.functionExponent&&node.regions[childIndex].slot==='upper')node.type=definitions.get(node.type)!.variantOf!;
         node.regions.splice(childIndex,1);this.index();this.setCursor(outer.id,index+1);return true;
       }
       const both=node.type==='sup'||node.type==='prescript';
@@ -425,6 +562,41 @@ export interface FontWarning {region:string;index:number;message:string}
       return true;
     }
     insert(text:string) { this.replace(...this.range, text); }
+    selectionSnapshot():string {
+      const [start,end]=this.range,selected=this.current.items.slice(start,end);
+      const parent=this.parents.get(this.cursor.region)?.node;
+      // A selection inside source/text/chemistry is still in that language.
+      // Keep its enclosing raw command when it is pasted into normal math.
+      const items=this.rawInput&&parent?[structure(parent.type,[region('内容',selected)])]:selected;
+      const root=region('公式',items);
+      return JSON.stringify({version:2,root,cursor:{region:root.id,offset:root.items.length,anchor:root.items.length}},(key,value)=>key==='label'?undefined:value);
+    }
+    selectionLatex():string {
+      const [start,end]=this.range,items=this.current.items.slice(start,end);
+      return this.rawInput?items.map(item=>typeof item==='string'?item:structureTex(item,latex)).join(''):latex({id:'',label:'',items});
+    }
+    replaceFragment(items:readonly MathItem[]):void {
+      // Validate before touching history or the destination. Clipboard IDs are
+      // only source identities; every inserted region/node receives a fresh ID.
+      const source:unknown=JSON.parse(JSON.stringify(items));
+      if(!Array.isArray(source))throw Error('Invalid math fragment');
+      const used=new Set<string>();
+      const collect=(values:unknown[])=>{for(const value of values){if(!isObject(value))continue;if(typeof value.id==='string')used.add(value.id);if(Array.isArray(value.regions))for(const child of value.regions)if(isObject(child)){if(typeof child.id==='string')used.add(child.id);if(Array.isArray(child.items))collect(child.items);}}};
+      collect(source);const root=region('公式',source as MathItem[]);while(used.has(root.id))root.id='r'+ ++serial;
+      if(!isSavedState({version:2,root,cursor:{region:root.id,offset:0,anchor:0}}))throw Error('Invalid math fragment');
+      const cloneRegion=(r:Region):Region=>({...r,id:'r'+ ++serial,items:r.items.map(cloneItem)});
+      const cloneItem=(item:MathItem):MathItem=>typeof item==='string'?item:{...item,id:'n'+ ++serial,regions:item.regions.map(cloneRegion)};
+      const cloned=root.items.map(cloneItem);
+      if(this.rawInput){this.replace(...this.range,latex({id:'',label:'',items:cloned}));return;}
+      this.record();this.pendingFont=undefined;
+      const container=this.current,[start,end]=this.range;
+      container.items.splice(start,end-start,...cloned);this.index();this.setCursor(container.id,start+cloned.length);
+      if(!container.items.length)this.removeEmptyScript();
+    }
+    insertSourceTex(source:string):void {
+      if(this.rawInput){this.replace(...this.range,source);return;}
+      this.replaceFragment([structure('source-tex',[region('LaTeX source',Array.from(source))])]);
+    }
     get rawInput():boolean {return !!definitions.get(this.parents.get(this.cursor.region)?.node.type || '')?.raw;}
     commandQuery() {
       if(this.rawInput)return null;
@@ -437,15 +609,8 @@ export interface FontWarning {region:string;index:number;message:string}
     }
     commandCandidates() {
       const query=this.commandQuery();if(!query)return [];
-      const entries=new Map<string,CommandCandidate>();
-      for(const entry of [...symbols,...catalog]){
-        if(entry.commandCandidate===false)continue;
-        const name=entry.atom && entry.command.startsWith('\\operatorname')?entry.type.slice(7):entry.command?.match(/^\\([a-zA-Z]+)/)?.[1];
-        for(const candidate of [name,...(entry.aliases || [])])
-          if(candidate && candidate!=='begin' && !entries.has(candidate))entries.set(candidate,{name:candidate,type:entry.type,atom:!!entry.atom,label:entry.label,category:entry.category});
-      }
       const common=['sin','cos','tan','exp','log','alpha','beta','pi','frac','sqrt','sum','int','mathbf'];
-      return [...entries.values()].filter(e=>e.name.startsWith(query.name)).sort((a,b)=>{
+      return commandInventory.filter(e=>e.name.startsWith(query.name)).sort((a,b)=>{
         const rank=(e:CommandCandidate)=>e.name===query.name?-2:common.includes(e.name)?common.indexOf(e.name):100;
         return rank(a)-rank(b) || a.name.localeCompare(b.name);
       });
@@ -462,7 +627,14 @@ export interface FontWarning {region:string;index:number;message:string}
       if(record)this.record();
       this.current.items.splice(query.from,query.end-query.from);
       this.setCursor(this.cursor.region,query.from);this.index();
-      if(definitions.get(command.type)?.font)this.pendingFont=command.type;
+      if(command.script)this.enterScript(command.script);
+      else if(command.source){
+        this.insertStructure('source-tex',false);
+        this.current.items=Array.from(command.source);
+        const at=command.source.startsWith('\\begin{')?command.source.indexOf('\n')+1:command.source.indexOf('{}')+1;
+        this.index();this.setCursor(this.current.id,at>0?at:this.current.items.length);
+      }
+      else if(definitions.get(command.type)?.font)this.pendingFont=command.type;
       else if(command.atom)this.insertSymbol(command.type,false);else {this.pendingFont=undefined;this.insertStructure(command.type,false);}
       return true;
     }
@@ -493,19 +665,12 @@ export interface FontWarning {region:string;index:number;message:string}
     }
     enterScript(marker:string) {
       const upper=marker==='^', [start,end]=this.range;
-      const parent=this.parents.get(this.cursor.region);
       const previousOperator=start===end && start>0?this.current.items[start-1]:null;
-      const operator=start===end && end===this.current.items.length && parent && definitions.get(parent.node.type)?.operator?parent.node:
-        previousOperator && typeof previousOperator!=='string' && definitions.get(previousOperator.type)?.operator?previousOperator:null;
+      const operator=previousOperator && typeof previousOperator!=='string' && definitions.get(previousOperator.type)?.operator?previousOperator:null;
       if(operator){this.ensureOperatorScript(operator,upper?'upper':'lower');return;}
       let node:MathNode|null=null;
-      // x^2_i switches from the upper argument to the lower one on the same x.
-      if(start===end && end===this.current.items.length && parent){
-        const type=parent.node.type, child=parent.childIndex;
-        const opposite=(type==='power' && !upper && child===1)||(type==='subscript' && upper && child===1)||
-          (type==='sup' && child===(upper?1:2));
-        if(opposite)node=parent.node;
-      }
+      // Script shortcuts stay in the current sequence, including inside another
+      // script or an operator limit. Only explicit navigation changes that scope.
       const previous=start===end && start>0?this.current.items[start-1]:null;
       if(!node && previous && typeof previous!=='string' && ['power','subscript','sup'].includes(previous.type))node=previous;
       if(node){
@@ -543,6 +708,10 @@ export interface FontWarning {region:string;index:number;message:string}
         this.setCursor(parent.id,start+1+selected.length);return;
       }
       const node = structure(type, definition.labels.map((label,i)=>region(label,i===definition.selectedIndex?contents:[])));
+      if(type==='numcases'||type==='subnumcases'){
+        const body=structure('numbered-cases-body',Array.from({length:4},(_,i)=>region(i%2?'Condition':'Expression',i%2?[structure('case-text',[region('Condition text')])]:[])));
+        body.rows=2;body.columns=2;node.regions[1].items=[body];
+      }
       if(record)this.record();
       // Move the selection into the new structure rather than flattening it.
       parent.items.splice(start, end - start, node);
@@ -632,7 +801,7 @@ export interface FontWarning {region:string;index:number;message:string}
       const columns=node.columns || 1, rows=node.rows || 1;
       const grid=Array.from({length:rows},(_,i)=>node.regions.slice(i*columns,(i+1)*columns));
       const at=(isRow?row:column)+(action.endsWith('After')?1:0);
-      if(isRow)grid.splice(at,deleting?1:0,...(deleting?[]:[Array.from({length:columns},()=>region(''))]));
+      if(isRow)grid.splice(at,deleting?1:0,...(deleting?[]:[Array.from({length:columns},(_,column)=>region('',node.type==='numbered-cases-body'&&column===1?[structure('case-text',[region('Condition text')])]:[]))]));
       else for(const cells of grid)cells.splice(at,deleting?1:0,...(deleting?[]:[region('')]));
       node.columns=grid[0].length;node.regions=grid.flat();this.index();
       // Keep a surviving cursor (including nested content); enter the new cell

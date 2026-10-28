@@ -18,7 +18,7 @@ test('without imported libraries, manual bibliography keeps the legacy LaTeX pat
   assert.match(tex,/\\begin\{thebibliography\}\{1\}/);
   assert.match(tex,/\\bibitem\{manual\} Author \\& Title\./);
   assert.doesNotMatch(tex,/biblatex|filecontents|Biber/);
-  assert.match(tex,/% Run twice to resolve cross-references and citations\./);
+  assert.match(tex,/% Rerun LaTeX until cross-references, contents and citations are stable\./);
 });
 
 test('BibTeX export retains cited raw entries and string macros with generated resource filenames',()=>{
@@ -166,7 +166,7 @@ test('selected CSL reference formats export their exact entry bodies without a s
     assert.match(tex,/\\begin\{thebibliography\}\{1\}/);
     assert.match(tex,/\\cite\{paper\}/);
     assert.doesNotMatch(tex,/biblatex|filecontents|Biber|\\printbibliography/);
-    assert.match(tex,/% Run twice to resolve cross-references and citations\./);
+    assert.match(tex,/% Rerun LaTeX until cross-references, contents and citations are stable\./);
   }
   assert.equal(latexDocument(value,libraries,'simple'),latexDocument(value,libraries),'the default BibLaTeX path stays unchanged');
   assert.equal(JSON.stringify({value,libraries}),before);

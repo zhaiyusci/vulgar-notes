@@ -19,3 +19,8 @@ diagnostics/font-coverage/__pycache__/
 *.log
 *.console.txt
 *.synctex.gz
+# Local documents, generated output and investigations are not release source.
+output/
+tmp/
+diagnostics/
+vendor/

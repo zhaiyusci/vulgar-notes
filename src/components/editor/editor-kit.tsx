@@ -36,6 +36,8 @@ import { MediaKit } from './plugins/media-kit';
 import { MentionKit } from './plugins/mention-kit';
 import { SuggestionKit } from './plugins/suggestion-kit';
 import { TableKit } from './plugins/table-kit';
+import { FloatKit } from './plugins/float-kit';
+import { MetadataKit } from './plugins/metadata-kit';
 import { TocKit } from './plugins/toc-kit';
 import { ToggleKit } from './plugins/toggle-kit';
 
@@ -49,6 +51,8 @@ export const EditorKit = [
   ...CodeDrawingKit,
   ...ExcalidrawKit,
   ...TableKit,
+  ...FloatKit,
+  ...MetadataKit,
   ...ToggleKit,
   ...TocKit,
   ...MediaKit,

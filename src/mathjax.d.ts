@@ -16,6 +16,6 @@ interface MathJaxConfiguration {
   output?:{fontExtensions:string[]};
   options:{enableSpeech?:boolean;enableBraille?:boolean;enableMenu:boolean;enableExplorer:boolean;enableExplorerHelp:boolean;renderActions:{explorable:never[];attachSpeech?:never[]}};
   loader:{load:string[];paths?:Record<string,string>};
-  tex:{packages:{'[+]':string[]};tags?:'ams'|'all'|'none';mathStyle:string;mathStyleGreekLC:boolean;mathStyleMathAlphabets:boolean};
+  tex:{packages:{'[+]':import('./mathjax-extension-policy').MathJaxTexPackage[];'[-]'?:string[]};require?:{allow:Record<string,boolean>;defaultAllow:boolean};textmacros?:{packages:{'[+]':string[]}};tags?:'ams'|'cases'|'all'|'none';mathStyle:string;mathStyleGreekLC:boolean;mathStyleMathAlphabets:boolean};
   startup:{ready:()=>void;pageReady:()=>Promise<void>};
 }

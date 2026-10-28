@@ -4,7 +4,7 @@ import React from 'react';
 import {DisplayBoundaryText} from './display-boundary-text';
 import {HostContext} from './plate-math-element';
 import {createRoot,type Root} from 'react-dom/client';
-import {flushSync} from 'react-dom';
+import {createPortal,flushSync} from 'react-dom';
 import {createPlateEditor,Plate,type PlateEditor} from 'platejs/react';
 import {type TElement,type Value,NodeApi,assignLegacyTransforms,KEYS} from 'platejs';
 import {MarkdownPlugin} from '@platejs/markdown';
@@ -13,16 +13,22 @@ import {EditorKit} from './components/editor/editor-kit';
 import {Editor,EditorContainer} from './components/ui/editor';
 import {BibtexBibliography} from './components/ui/bibtex-bibliography';
 import {TooltipProvider} from './components/ui/tooltip';
-import {Toaster} from 'sonner';
-import {EditorModel} from './editor-model';
+import {Toaster,toast} from 'sonner';
+import {EditorModel,type MathItem} from './editor-model';
 import type {DocumentHost,MathHostHooks,FormulaEntry} from './document-host';
-import {documentStorageKey,formulaNode,isFormula,newId,plateLatex,restoreDocumentEnvelope,parseDocumentEnvelope,validateDocumentLibraries,documentContentKey,isBlankDocument,type FormulaNode} from './plate-document';
-import {importMath} from './tex-import';
+import {documentStorageKey,formulaNode,isFormula,newId,plateLatex,restoreDocumentEnvelope,parseDocumentEnvelope,validateDocumentLibraries,isBlankDocument,type FormulaNode} from './plate-document';
+import {convertMath} from './tex-convert';
 import {bibliographyItems,citedReferenceKeys,validReferenceKey} from './references';
 import {citedBibLibraries,validateBibLibraries,validCitationKey,type BibLibrary} from './bibtex';
 import {bibliographyMarkdown} from './bibliography-markdown';
 import {readLibraryCache,writeLibraryCache,restoreLibraryAttachments} from './bibliography-library-store';
 import {isBibliographyStyle,type BibliographyStyle} from './bibliography-style';
+import {DocumentZoomSurface} from './components/ui/document-zoom-surface';
+import {DocumentZoomControls} from './components/ui/document-zoom-controls';
+import {DocumentContentComparison} from './document-content-comparison';
+import {registerDocumentDraftProducer} from './document-draft-store';
+import {hasNativeClipboard,readNativeClipboard,writeNativeClipboard,nativeClipboardHtml,captureDocumentFragment,cloneDocumentFragment} from './native-clipboard';
+import {documentClipboardHtml,documentClipboardText,prepareClipboardHtml,restoreClipboardMath} from './document-clipboard-format';
 
 export class PlateMathHost implements DocumentHost {
   readonly editor:PlateEditor;
@@ -34,10 +40,20 @@ export class PlateMathHost implements DocumentHost {
   private initialized=false;
   private pending=false;
   private savedDocument='';
+  private savedContent:DocumentContentComparison|undefined;
+  private recoveryTimer:ReturnType<typeof setTimeout>|undefined;
+  private recoverySuspended=false;
+  private unregisterDraftProducer:(()=>void)|undefined;
+  private serializedCache:{value:Value;libraries:readonly BibLibrary[];style:BibliographyStyle;envelope:ReturnType<PlateMathHost['envelope']>;compact:string;pretty?:string}|undefined;
+  private snapshotRoots=new Map<string,string>();
+  private checkedFormulaSources=new Set<string>();
+  private formulaMigrations=new Map<string,{before?:string;source:string;after:string;id:string;numbered:boolean}[]>();
   private activeFormula:HTMLElement|undefined;
   private pendingActivation=new Set<string>();
   private bibliographyLibraries:readonly BibLibrary[]=Object.freeze([]);
   private bibliographyStyle:BibliographyStyle='simple';
+  private clipboardDocumentId=newId();
+  private clipboardCopySucceeded=false;
   getBibliographyStyle=():BibliographyStyle=>this.bibliographyStyle;
   setBibliographyStyle(style:BibliographyStyle):void {
     if(!isBibliographyStyle(style))throw Error('Invalid bibliography style');
@@ -105,15 +121,16 @@ export class PlateMathHost implements DocumentHost {
     this.editor.tf.normalizeNode=entry=>{
       const [node,path]=entry;
       if(path.length===0&&this.groupBibliography())return;
-      if('type' in node&&isFormula(node)){
+      if('type' in node&&(isFormula(node)||node.type==='float')){
         const n=node as FormulaNode;
-        const duplicate=[...NodeApi.nodes(this.editor)].some(([other,p])=>other!==node&&'type' in other&&isFormula(other)&&other.id===n.id&&Path.compare(p,path)<0);
+        const duplicate=[...NodeApi.nodes(this.editor)].some(([other,p])=>other!==node&&'type' in other&&(isFormula(other)||other.type==='float')&&other.id===n.id&&Path.compare(p,path)<0);
         if(!n.id||duplicate){this.editor.tf.setNodes({id:newId()},{at:path});return;}
       }
       originalNormalize(entry);
     };
     // Slate's normalization loop also calls its legacy entry point.
     assignLegacyTransforms(this.editor,{normalizeNode:this.editor.tf.normalizeNode});
+    this.installClipboard();
     this.editor.tf.withoutSaving(()=>this.editor.tf.normalize({force:true}));
     // Recovery is not a file save. The lifecycle restores a real saved baseline
     // after construction; otherwise restored content remains unsaved.
@@ -124,14 +141,113 @@ export class PlateMathHost implements DocumentHost {
       try{draftStorage().setItem(documentStorageKey+'-render-recovery',JSON.stringify(this.envelope()));}catch{}
       queueMicrotask(()=>window.dispatchEvent(new CustomEvent('vulgar-document-render-error',{detail:{error:String(error)}})));
     }});
+    const zoomDock=document.getElementById('documentZoomDock');
     flushSync(()=>this.root.render(<HostContext.Provider value={this}><TooltipProvider><Plate editor={this.editor} onChange={()=>this.changed()}>
-      <EditorContainer><Editor autoFocus={documentSessionId()!==null} renderText={props=><DisplayBoundaryText {...props} />} id="textFlow" aria-label={t("Body")} placeholder={t("Type here…")}
+      <EditorContainer><DocumentZoomSurface><Editor autoFocus={documentSessionId()!==null} renderText={props=><DisplayBoundaryText {...props} />} id="textFlow" aria-label={t("Body")} placeholder={t("Type here…")}
         onPointerDown={e=>{if(!(e.target as Element).closest('.inline-formula')){this.activeFormula=undefined;this.hooks.leave();}}}
         onFocus={()=>{this.activeFormula=undefined;this.hooks.leave();}}
-        onKeyDownCapture={e=>this.handleObjectDelete(e)} onKeyDown={e=>this.keyDown(e)} /><BibtexBibliography /></EditorContainer>
+        onKeyDownCapture={e=>this.handleObjectDelete(e)} onKeyDown={e=>this.keyDown(e)} onCut={e=>this.cut(e)} /><BibtexBibliography /></DocumentZoomSurface></EditorContainer>
+      {zoomDock&&createPortal(<DocumentZoomControls />,zoomDock)}
     </Plate><Toaster /></TooltipProvider></HostContext.Provider>));
     if(this.renderFailure!==undefined){this.root.unmount();throw this.renderFailure;}
     this.initialized=true;this.persist();
+    this.unregisterDraftProducer=registerDocumentDraftProducer(()=>{
+      if(this.recoveryTimer!==undefined)this.saveNow();
+    });
+  }
+  /** Keep Slate's fragment selection and history, without copying rendered math DOM. */
+  private installClipboard(){
+    const editor=this.editor,insertData=editor.tf.insertData.bind(editor);
+    editor.tf.setFragmentData=(data)=>{
+      this.clipboardCopySucceeded=false;
+      if(!editor.selection||Range.isCollapsed(editor.selection)&&!editor.api.above({match:node=>'type' in node&&editor.api.isVoid(node as TElement),voids:true}))return;
+      try{
+        this.syncMath();
+        const value=editor.api.getFragment() as Value;
+        if(!value.length)return;
+        const fragment=captureDocumentFragment(value,this.bibliographyLibraries,editor.children,this.clipboardDocumentId);
+        // Native data is the authority; these two standard formats are portable
+        // fallbacks for other applications and browsers that remove custom MIME.
+        const html=nativeClipboardHtml(fragment,documentClipboardHtml(value));
+        data.setData('text/plain',documentClipboardText(value));
+        data.setData('text/html',html);
+        writeNativeClipboard(data,fragment);this.clipboardCopySucceeded=true;
+      }catch{toast.error(t('This selection could not be copied safely. The document has not been changed.'));}
+    };
+    const insert=(value:Value,libraries:readonly BibLibrary[]=[],endnoteDefinitions:Value=[])=>{
+      const previous=this.bibliographyLibraries;
+      if(libraries.length){
+        const combined=validateBibLibraries([...previous,...libraries]);
+        validateDocumentLibraries(editor.children,combined);
+        // Clipboard records are document dependencies, not a replacement for
+        // the user's full on-device bibliography catalog.
+        for(const library of libraries)this.capturedLibraryIds.add(library.id);
+        this.replaceBibliography(combined);
+      }
+      try{
+        editor.tf.withNewBatch(()=>editor.tf.withoutNormalizing(()=>{
+          if(!editor.selection)editor.tf.select(editor.api.end([]));
+          editor.tf.insertFragment(value);
+          if(endnoteDefinitions.length)editor.tf.insertNodes(endnoteDefinitions,{at:[editor.children.length]});
+        }));
+      }catch(error){
+        if(libraries.length){for(const library of libraries)this.capturedLibraryIds.delete(library.id);this.replaceBibliography(previous);}
+        throw error;
+      }
+    };
+    const plain=(data:DataTransfer)=>{
+      const source=data.getData('text/plain');
+      if(source)insert(source.split(/\r\n|\r|\n/).map(text=>({type:'p',children:[{text}]})));
+    };
+    editor.tf.insertData=(data)=>{
+      if(this.readOnly)return;
+      const fragment=readNativeClipboard(data);
+      if(fragment?.kind==='document'){
+        // Preparation is detached and can fail without a partial document or
+        // library write. Never turn a rejected native fragment into plain text.
+        let cloned;
+        try{cloned=cloneDocumentFragment(fragment,editor.children,{existingLibraries:this.bibliographyLibraries,sameDocument:fragment.sourceDocumentId===this.clipboardDocumentId});}
+        catch{toast.error(t('This clipboard fragment could not be pasted safely. The document has not been changed.'));return;}
+        insert(cloned.value,cloned.bibliographyLibraries,cloned.endnoteDefinitions);return;
+      }
+      if(fragment?.kind==='math'){
+        const model=new EditorModel();model.restore(fragment.snapshot);
+        insert([{type:'p',children:[{text:''},formulaNode(model),{text:''}]}]);return;
+      }
+      // A corrupt native payload must never partially enter Slate or silently
+      // fall through to a stale HTML rendition of the same clipboard content.
+      if(hasNativeClipboard(data)){plain(data);return;}
+      const html=data.getData('text/html');
+      if(html){
+        const prepared=prepareClipboardHtml(html);
+        const value=restoreClipboardMath(editor.api.html.deserialize({element:prepared.html}) as Value,prepared.math,(source,display)=>formulaNode(this.sourceModel(source),display));
+        if(value.length){insert(value);return;}
+      }
+      if(data.getData('text/plain')){plain(data);return;}
+      // Preserve established image/file handlers when no text representation
+      // exists. Markdown's automatic text parser is independently disabled.
+      insertData(data);
+    };
+    // React/Slate clipboard events call the legacy entry points as well.
+    assignLegacyTransforms(editor,{setFragmentData:editor.tf.setFragmentData,insertData:editor.tf.insertData});
+  }
+  private sourceModel(source:string):EditorModel {
+    return convertMath(source);
+  }
+  private cut(event:React.ClipboardEvent){
+    const selection=this.editor.selection;if(this.readOnly||!selection)return;
+    const object=Range.isCollapsed(selection)?this.editor.api.above({match:node=>'type' in node&&this.editor.api.isVoid(node as TElement),voids:true}):undefined;
+    if(Range.isCollapsed(selection)&&!object)return;
+    // Plate's handler pipe treats propagation, rather than preventDefault
+    // alone, as handled. Stop it even when clipboard writing fails, otherwise
+    // Slate's default cut would still delete the original selection.
+    event.preventDefault();event.stopPropagation();
+    this.editor.tf.setFragmentData(event.clipboardData,'cut');
+    if(!this.clipboardCopySucceeded)return;
+    this.editor.tf.withNewBatch(()=>{
+      if(object)this.editor.tf.removeNodes({at:object[1]});
+      else this.editor.tf.deleteFragment();
+    });
   }
   /** Editable references and endnotes form one tail in their shared number order. */
   private groupBibliography():boolean {
@@ -160,14 +276,39 @@ export class PlateMathHost implements DocumentHost {
     for(const [raw,path] of NodeApi.nodes(this.editor)){
       if(!('type' in raw)||!isFormula(raw))continue;
       const node=raw as FormulaNode;
-      if(!node.snapshot){
-        const model=importMath(node.texExpression||'');
-        if(model){
-          const id=node.id||newId();
-          if(this.initialized&&!node.texExpression)this.pendingActivation.add(id);
-          this.editor.tf.withoutSaving(()=>this.editor.tf.setNodes({id,snapshot:model.snapshot(),texExpression:model.exportLatex(),numbered:node.numbered!==false},{at:path}));
+      const id=node.id||newId();
+      // Raw components are retried once per loaded/new formula, never for
+      // every caret move or keystroke in a large document.
+      if(node.snapshot&&this.checkedFormulaSources.has(id))continue;
+      this.checkedFormulaSources.add(id);
+      let model:EditorModel,upgraded=false;
+      if(!node.snapshot){model=this.sourceModel(node.texExpression||'');upgraded=true;}
+      else{
+        if(!node.snapshot.includes('"source-tex"'))continue;
+        model=new EditorModel();model.restore(node.snapshot);
+        const raw=[...model.nodes.values()].filter(item=>item.type==='source-tex');
+        const comparable=(items:MathItem[])=>JSON.stringify(items,(key,value)=>key==='id'||key==='label'?undefined:value);
+        for(const item of raw){
+          const parent=model.parents.get(item.regions[0].id);if(!parent)continue;
+          const parsed=this.sourceModel(item.regions[0].items.join(''));
+          // An opaque fallback alone is no progress. Retain its IDs and source
+          // cursor rather than repeatedly replacing it with another fallback.
+          if(comparable([item])===comparable(parsed.root.items))continue;
+          const cursor={...model.cursor};
+          model.setCursor(parent.region.id,parent.index+1,parent.index);
+          model.replaceFragment(parsed.root.items);upgraded=true;
+          if(model.regions.has(cursor.region))model.setCursor(cursor.region,cursor.offset,cursor.anchor);
         }
       }
+      if(!upgraded)continue;
+      model.undoStack=[];model.redoStack=[];
+      const snapshot=model.snapshot();
+      const key=node.id||'path:'+path.join('.');
+      this.formulaMigrations.set(key,[...(this.formulaMigrations.get(key)??[]),{before:node.snapshot,source:node.texExpression,after:snapshot,id,numbered:node.numbered!==false}]);
+      this.models.set(id,model);
+      if(this.initialized&&!node.texExpression)this.pendingActivation.add(id);
+      // This is a derived editing representation, not an edit to the source.
+      this.editor.tf.withoutSaving(()=>this.editor.tf.setNodes({id,snapshot,numbered:node.numbered!==false},{at:path}));
     }
   }
   attach(node:FormulaNode,element:HTMLElement){
@@ -197,7 +338,9 @@ export class PlateMathHost implements DocumentHost {
     for(const [raw] of NodeApi.nodes(this.editor)){
       if(!isFormula(raw))continue;
       const n=raw as FormulaNode,m=this.models.get(n.id);
-      if(m&&n.snapshot&&m.snapshot()!==n.snapshot)m.restore(n.snapshot);
+      // Cursor/selection belongs to the live math editor. A prose selection or
+      // repaint must not restore an older cursor from the saved node snapshot.
+      if(m&&n.snapshot&&this.snapshotContent(m.snapshot())!==this.snapshotContent(n.snapshot))m.restore(n.snapshot);
     }
     this.save();this.scheduleChange();
   }
@@ -205,35 +348,99 @@ export class PlateMathHost implements DocumentHost {
     const model=this.models.get(element.dataset.mathId!);return model?[{element,model}]:[];
   });}
   private locate(element:HTMLElement){return [...NodeApi.nodes(this.editor)].find(([n])=>'type' in n&&isFormula(n)&&n.id===element.dataset.mathId) as [FormulaNode,number[]]|undefined;}
-  private save(){try{
-    const storage=draftStorage(),source=JSON.stringify(this.envelope());
-    if(storage.getItem(documentStorageKey)!==source){storage.setItem(documentStorageKey,source);storage.setItem(documentStorageKey+'-updated-at',String(Date.now()));}
-  }catch{const error=document.getElementById('error');if(error)error.textContent=t('Recovery storage is full. Please save the document to a file.');}}
-  persist(){
-    if(this.syncing||!this.initialized)return;this.syncing=true;
+  private save(){
+    if(this.recoveryTimer!==undefined||!this.initialized||this.recoverySuspended)return;
+    // A bounded batch: continuous typing cannot postpone recovery indefinitely.
+    this.recoveryTimer=setTimeout(()=>{this.recoveryTimer=undefined;if(this.initialized)this.saveNow();},250);
+  }
+  private serialized(pretty=false):string {
+    let cached=this.serializedCache;
+    if(!cached||cached.value!==this.editor.children||cached.libraries!==this.bibliographyLibraries||cached.style!==this.bibliographyStyle){
+      const envelope=this.envelope();
+      cached=this.serializedCache={value:this.editor.children,libraries:this.bibliographyLibraries,style:this.bibliographyStyle,envelope,compact:JSON.stringify(envelope)};
+    }
+    return pretty?(cached.pretty??=JSON.stringify(cached.envelope,null,2)):cached.compact;
+  }
+  private saveNow(){
+    if(this.recoveryTimer!==undefined){clearTimeout(this.recoveryTimer);this.recoveryTimer=undefined;}
+    try{
+      const storage=draftStorage(),source=this.serialized();
+      if(storage.getItem(documentStorageKey)!==source){storage.setItem(documentStorageKey,source);storage.setItem(documentStorageKey+'-updated-at',String(Date.now()));}
+    }catch{const error=document.getElementById('error');if(error)error.textContent=t('Recovery storage is full. Please save the document to a file.');}
+  }
+  cancelPendingRecovery(){
+    this.recoverySuspended=true;
+    if(this.recoveryTimer!==undefined){clearTimeout(this.recoveryTimer);this.recoveryTimer=undefined;}
+  }
+  private snapshotContent(snapshot:string):string {
+    let content=this.snapshotRoots.get(snapshot);
+    if(content===undefined){
+      content=JSON.stringify(JSON.parse(snapshot).root);
+      if(this.snapshotRoots.size>=256)this.snapshotRoots.clear();
+      this.snapshotRoots.set(snapshot,content);
+    }
+    return content;
+  }
+  private synchronizeMath(includeCursor:boolean):boolean {
+    if(this.syncing||!this.initialized)return false;this.syncing=true;
+    let changed=false;
     try{
       for(const [raw,path] of NodeApi.nodes(this.editor)){
         if(!('type' in raw)||!isFormula(raw))continue;
         const node=raw as FormulaNode,model=this.models.get(node.id);if(!model)continue;
         const snapshot=model.snapshot();if(snapshot===node.snapshot)continue;
-        const set=()=>this.editor.tf.setNodes({snapshot,texExpression:model.exportLatex()},{at:path});
-        if(node.snapshot&&JSON.stringify(JSON.parse(snapshot).root)===JSON.stringify(JSON.parse(node.snapshot).root))this.editor.tf.withoutSaving(set);
+        const contentChanged=!node.snapshot||this.snapshotContent(snapshot)!==this.snapshotContent(node.snapshot);
+        if(!contentChanged&&!includeCursor)continue;
+        const set=()=>this.editor.tf.setNodes({snapshot,...(contentChanged?{texExpression:model.exportLatex()}:{})},{at:path});
+        if(!contentChanged)this.editor.tf.withoutSaving(set);
         else this.editor.tf.withNewBatch(set);
+        changed=true;
       }
-      this.save();
     }finally{this.syncing=false;}
+    return changed;
+  }
+  syncMath(){
+    if(this.synchronizeMath(false))this.save();
+  }
+  persist(){
+    if(this.syncing||!this.initialized)return;
+    this.recoverySuspended=false;
+    this.synchronizeMath(true);this.saveNow();
   }
   exportLatex(){return plateLatex(this.editor.children as Value);}
-  serializeDocument(){this.persist();return JSON.stringify(this.envelope(),null,2);}
-  hasUnsavedChanges(){return documentContentKey(this.serializeDocument())!==documentContentKey(this.savedDocument);}
-  markDocumentSaved(source:string){this.savedDocument=source;}
+  serializeDocument(){this.persist();return this.serialized(true);}
+  hasUnsavedChanges(){
+    this.syncMath();
+    this.savedContent??=new DocumentContentComparison(this.savedDocument);
+    return !this.savedContent.isEqual(this.envelope());
+  }
+  markDocumentSaved(source:string){
+    // Recovery can restore a saved baseline from an older converter version.
+    // Upgrade only the exact old state we just migrated; unsaved source/tree
+    // edits keep comparing against their actual saved original.
+    const baseline=JSON.parse(source);
+    const visit=(nodes:any[],parent:number[]=[])=>nodes.forEach((node,index)=>{
+      const path=[...parent,index];
+      if(isFormula(node)){
+        for(const migration of this.formulaMigrations.get(node.id||'path:'+path.join('.'))??[]){
+          const sameSnapshot=migration.before===undefined?node.snapshot===undefined:typeof node.snapshot==='string'&&this.snapshotContent(node.snapshot)===this.snapshotContent(migration.before);
+          if(node.texExpression===migration.source&&sameSnapshot){node.snapshot=migration.after;node.id=migration.id;node.numbered=migration.numbered;}
+        }
+      }
+      if(Array.isArray(node.children))visit(node.children,path);
+    });visit(baseline.value);
+    this.savedDocument=JSON.stringify(baseline);this.savedContent=new DocumentContentComparison(this.savedDocument);
+  }
   openDocument(source:string){
     const opened=parseDocumentEnvelope(source);
     this.persist();
     draftStorage().setItem(documentStorageKey+'-before-open',this.serializeDocument());
+    this.clipboardDocumentId=newId();
     this.hooks.leave();this.activeFormula=undefined;this.pendingActivation.clear();this.models.clear();
+    this.checkedFormulaSources.clear();this.formulaMigrations.clear();
     flushSync(()=>{
       this.bibliographyStyle=opened.bibliographyStyle??'simple';this.restoreBibliography(opened.bibliographyLibraries,opened.value);this.editor.tf.setValue(opened.value);
+      this.ensureFormulas();
       this.editor.tf.withoutSaving(()=>this.editor.tf.normalize({force:true}));
     });
     for(const [raw] of NodeApi.nodes(this.editor)){
@@ -242,12 +449,34 @@ export class PlateMathHost implements DocumentHost {
       if(node.snapshot&&!this.models.has(node.id)){const model=new EditorModel();model.restore(node.snapshot);this.models.set(node.id,model);}
     }
     this.editor.history={undos:[],redos:[]};
-    this.persist();this.savedDocument=this.serializeDocument();this.scheduleChange();
+    this.persist();this.markDocumentSaved(this.serializeDocument());this.scheduleChange();
   }
   exportMarkdown(){
     return bibliographyMarkdown(this.editor.children,this.bibliographyLibraries,value=>this.editor.getApi(MarkdownPlugin).markdown.serialize({value}),this.bibliographyStyle);
   }
   get activeFormulaId(){return this.activeFormula?.dataset.mathId;}
+  getFormulaSource(element:HTMLElement):string|undefined {
+    this.syncMath();return this.locate(element)?.[0].texExpression;
+  }
+  replaceFormulaSource(element:HTMLElement,source:string):void {
+    if(this.readOnly)return;
+    this.syncMath();const entry=this.locate(element);if(!entry)return;
+    const [node,path]=entry,model=this.models.get(node.id)??new EditorModel();
+    const unchanged=source===node.texExpression;
+    // Editing an opaque fragment updates texExpression before it has a native
+    // tree. Apply must retry that conversion even when the dialog's text itself
+    // was left unchanged; only an unchanged representation is a no-op.
+    if(unchanged&&![...model.nodes.values()].some(item=>item.type==='source-tex'))return;
+    const next=this.sourceModel(source);
+    if(unchanged){
+      const shape=(root:typeof model.root)=>JSON.stringify(root,(key,value)=>key==='id'||key==='label'?undefined:value);
+      if(shape(next.root)===shape(model.root))return;
+    }
+    model.record();model.restore(next.snapshot());this.models.set(node.id,model);
+    this.checkedFormulaSources.add(node.id);
+    flushSync(()=>this.editor.tf.withNewBatch(()=>this.editor.tf.setNodes({snapshot:model.snapshot(),texExpression:source},{at:path})));
+    this.save();this.scheduleChange();
+  }
   prepareTextInsertion(){
     if(this.activeFormula?.isConnected)this.exit(this.activeFormula,1,false);
     this.hooks.leave();this.persist();
@@ -273,8 +502,7 @@ export class PlateMathHost implements DocumentHost {
     if(this.readOnly)throw Error('Document is read-only');
     if(this.activeFormula?.isConnected)this.exit(this.activeFormula,1,false);
     this.hooks.leave();this.persist();
-    const parsed=source?importMath(source):null,model=parsed||new EditorModel();
-    if(!parsed){model.root.items=Array.from(source);model.index();}
+    const model=this.sourceModel(source);
     model.setCursor(model.root.id,model.root.items.length);
     const node=formulaNode(model,display);this.models.set(node.id,model);
     flushSync(()=>this.editor.tf.withNewBatch(()=>{
@@ -384,5 +612,5 @@ export class PlateMathHost implements DocumentHost {
     const above=this.editor.api.above({at:point,match:n=>'type' in n&&isFormula(n),voids:true});
     if(above){const el=this.mounts.get((above[0] as FormulaNode).id);if(el){event.preventDefault();this.enter(el,dir<0?'end':'start');}}
   }
-  destroy(){this.initialized=false;this.root.unmount();}
+  destroy(){if(!this.recoverySuspended)this.persist();this.initialized=false;this.unregisterDraftProducer?.();if(this.recoveryTimer!==undefined)clearTimeout(this.recoveryTimer);this.root.unmount();}
 }

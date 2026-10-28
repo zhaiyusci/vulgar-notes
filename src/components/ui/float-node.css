@@ -1,0 +1,8 @@
+.document-float{position:relative;display:block;margin:1.25em 0;min-width:0;max-width:100%}
+.document-float>div[data-slate-node="element"]{max-width:100%}
+.document-float [data-slate-node="element"]>figure>figcaption{display:none}
+.document-float-caption{position:relative;min-height:1.5em;margin:.45em auto 0;text-align:center;font-size:.92em;line-height:1.5;white-space:pre-wrap}
+.document-float[data-float-kind="table"] .document-float-caption{margin-top:0;margin-bottom:.45em}
+.document-float-caption[data-caption-empty="true"]::after{content:attr(data-caption-placeholder);color:var(--muted-foreground);pointer-events:none}
+.document-float-number{color:inherit;user-select:none}
+.float-label-anchor{position:absolute;right:0;bottom:0;width:0;height:0;overflow:visible}

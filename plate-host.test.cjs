@@ -8,9 +8,21 @@ test('Plate document / independent MathJax mount integration',async t=>{
  window.document.write('<!doctype html><html><body></body></html>');
  for(const key of ['innerWidth','innerHeight','window','document','navigator','sessionStorage','localStorage','Node','Element','HTMLElement','HTMLInputElement','HTMLTextAreaElement','Document','DocumentFragment','MutationObserver','ResizeObserver','DOMParser','Range','Event','CustomEvent','KeyboardEvent','ClipboardEvent','DOMRect','HTMLDivElement','HTMLSpanElement','NodeFilter','ShadowRoot'])Object.defineProperty(globalThis,key,{value:key==='window'?window:window[key],configurable:true});
  globalThis.getComputedStyle=window.getComputedStyle.bind(window);globalThis.requestAnimationFrame=window.requestAnimationFrame.bind(window);globalThis.cancelAnimationFrame=window.cancelAnimationFrame.bind(window);
- await build({entryPoints:['src/plate-host.tsx'],bundle:true,platform:'node',format:'cjs',outfile:'.plate-test.cjs',loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'test-kit',setup(b){b.onLoad({filter:/components[\\/]editor[\\/]editor-kit\.tsx$/},()=>({contents:`import {ParagraphPlugin} from 'platejs/react';import {TrailingBlockPlugin} from 'platejs';import {MathKit} from './plugins/math-kit';import {MarkdownKit} from './plugins/markdown-kit';import {ReferenceKit} from './plugins/reference-kit';import {FootnoteKit} from './plugins/footnote-kit';export const EditorKit=[ParagraphPlugin,...MathKit,...ReferenceKit,TrailingBlockPlugin,...MarkdownKit,...FootnoteKit];`,loader:'tsx',resolveDir:require('node:path').resolve('src/components/editor')}))}}]});
- const {PlateMathHost}=require('./.plate-test.cjs');fs.unlinkSync('.plate-test.cjs');
+ await build({stdin:{contents:"export {PlateMathHost} from './src/plate-host';export {flushDocumentDraftStore} from './src/document-draft-store';",resolveDir:__dirname,loader:'ts'},bundle:true,platform:'node',format:'cjs',outfile:'.plate-test.cjs',loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'test-kit',setup(b){b.onLoad({filter:/components[\\/]editor[\\/]editor-kit\.tsx$/},()=>({contents:`import {ParagraphPlugin} from 'platejs/react';import {TrailingBlockPlugin} from 'platejs';import {MathKit} from './plugins/math-kit';import {MarkdownKit} from './plugins/markdown-kit';import {ReferenceKit} from './plugins/reference-kit';import {FootnoteKit} from './plugins/footnote-kit';export const EditorKit=[ParagraphPlugin,...MathKit,...ReferenceKit,TrailingBlockPlugin,...MarkdownKit,...FootnoteKit];`,loader:'tsx',resolveDir:require('node:path').resolve('src/components/editor')}))}}]});
+ const {PlateMathHost,flushDocumentDraftStore}=require('./.plate-test.cjs');fs.unlinkSync('.plate-test.cjs');
  const tick=()=>new Promise(resolve=>setTimeout(resolve,10));
+ // Hold only the host's recovery batch timer. React, Slate and test ticks keep
+ // their real scheduling, so assertions do not race a wall-clock deadline.
+ async function withRecoveryClock(operation){
+  const originalSet=globalThis.setTimeout,originalClear=globalThis.clearTimeout,pending=new Map();
+  globalThis.setTimeout=(callback,delay,...args)=>{
+   if(delay!==250)return originalSet(callback,delay,...args);
+   const id={recovery:true};pending.set(id,()=>callback(...args));return id;
+  };
+  globalThis.clearTimeout=id=>{if(!pending.delete(id))originalClear(id);};
+  try{return await operation({pending});}
+  finally{globalThis.setTimeout=originalSet;globalThis.clearTimeout=originalClear;}
+ }
  // Tests that exercise an existing mixed document seed their own fixture. New
  // production documents must remain blank, with no built-in example content.
  function setup({blank=false}={}){
@@ -173,6 +185,97 @@ test('Plate document / independent MathJax mount integration',async t=>{
   const saved=flow.serializeDocument();flow.markDocumentSaved(saved);assert.equal(flow.hasUnsavedChanges(),false);
   editor.tf.insertText('more');await tick();flow.markDocumentSaved(saved);assert.equal(flow.hasUnsavedChanges(),true);
   flow.destroy();
+ });
+ await t.test('math input and cursor movement avoid whole-document serialization and cursor undo rewrites',async()=>{
+  await withRecoveryClock(async({pending})=>{
+   const {flow,editor}=setup();const entry=flow.entries()[0];
+   try{
+    entry.model.replaceInput(0,0,'x');flow.persist();await tick();
+    flow.markDocumentSaved(flow.serializeDocument());const baselineLatex=entry.model.exportLatex();flow.enter(entry.element,'end');await tick();flow.persist();
+    const beforeValue=editor.children,beforeNode=editor.children[0].children.find(node=>node.id===entry.element.dataset.mathId),beforeSnapshot=beforeNode.snapshot;
+    const beforeUndos=editor.history.undos.length;
+    let wholeDocumentSerializations=0,documentExportCalls=0;const stringify=JSON.stringify;
+    const exportLatex=flow.exportLatex.bind(flow),exportMarkdown=flow.exportMarkdown.bind(flow);
+    flow.exportLatex=(...args)=>{documentExportCalls++;return exportLatex(...args);};
+    flow.exportMarkdown=(...args)=>{documentExportCalls++;return exportMarkdown(...args);};
+    JSON.stringify=function(value,...args){
+     if(value&&value.version===1&&Array.isArray(value.value))wholeDocumentSerializations++;
+     return stringify.call(this,value,...args);
+    };
+    try{
+     for(let i=0;i<4;i++){
+      entry.model.setCursor(entry.model.root.id,i%2);flow.syncMath();
+      assert.equal(flow.hasUnsavedChanges(),false);await tick();
+     }
+     assert.equal(editor.children,beforeValue,'a cursor move must not rewrite the Slate document');
+     assert.equal(editor.children[0].children.find(node=>node.id===entry.element.dataset.mathId).snapshot,beforeSnapshot);
+     assert.equal(editor.history.undos.length,beforeUndos,'cursor changes must not add document undo entries');
+     for(let i=0;i<3;i++){
+      entry.model.setCursor(entry.model.root.id,entry.model.root.items.length);
+      entry.model.replaceInput(entry.model.cursor.offset,entry.model.cursor.offset,'z');flow.syncMath();
+      assert.equal(flow.hasUnsavedChanges(),true);await tick();
+     }
+     assert.equal(wholeDocumentSerializations,0,'input and dirty checks must not serialize embedded image payloads');
+     assert.equal(documentExportCalls,0,'input and cursor updates must not generate whole-document exports');
+     assert.equal(pending.size,1,'recovery should be one bounded batch, not one timer per keystroke');
+    }finally{JSON.stringify=stringify;}
+    const latest=entry.model.exportLatex();flow.persist();
+    assert.equal(pending.size,0,'forced persistence must flush its pending batch');
+    const saved=JSON.parse(flow.serializeDocument()),draft=JSON.parse(window.localStorage.getItem('math-plate-document-v1'));
+    for(const value of [saved,draft])assert.equal(value.value[0].children.find(node=>node.id===entry.element.dataset.mathId).texExpression,latest);
+    for(let i=0;i<3;i++){editor.tf.undo();await tick();}
+    assert.equal(flow.entries()[0].model.exportLatex(),baselineLatex);
+    assert.equal(flow.hasUnsavedChanges(),false,'undoing all text edits must return to the saved content even after cursor changes');
+   }finally{flow.destroy();}
+  });
+ });
+ await t.test('explicit draft flush captures a pending math batch and does not recreate an already removed clean draft',async()=>{
+  await withRecoveryClock(async({pending})=>{
+   const {flow}=setup();const entry=flow.entries()[0];
+   try{
+    entry.model.replaceInput(0,0,'x');flow.persist();await tick();
+    const before=window.localStorage.getItem('math-plate-document-v1');
+    entry.model.setCursor(entry.model.root.id,entry.model.root.items.length);entry.model.replaceInput(entry.model.cursor.offset,entry.model.cursor.offset,'+q');const latest=entry.model.exportLatex();flow.syncMath();await tick();
+    assert.equal(window.localStorage.getItem('math-plate-document-v1'),before,'typing must defer full recovery serialization');
+    assert.equal(pending.size,1);
+    await flushDocumentDraftStore();
+    assert.equal(pending.size,0);
+    const saved=JSON.parse(window.localStorage.getItem('math-plate-document-v1'));
+    assert.equal(saved.value[0].children.find(node=>node.id===entry.element.dataset.mathId).texExpression,latest);
+    window.localStorage.removeItem('math-plate-document-v1');
+    await flushDocumentDraftStore();
+    assert.equal(window.localStorage.getItem('math-plate-document-v1'),null,'a producer with no pending work must not resurrect a removed recovery draft');
+   }finally{flow.destroy();}
+  });
+ });
+ await t.test('discard suspension survives queued changes and store flush; failed navigation can resume persistence',async()=>{
+  await withRecoveryClock(async({pending})=>{
+   // Saved documents restore a baseline on discard; unnamed documents remove
+   // their draft. Neither path may be undone by a queued React change/flush.
+   for(const restoreBaseline of [true,false]){
+    const {flow,editor}=setup();const entry=flow.entries()[0];let destroyed=false;
+    try{
+     flow.markDocumentSaved(flow.serializeDocument());const baseline=window.localStorage.getItem('math-plate-document-v1');
+     entry.model.setCursor(entry.model.root.id,entry.model.root.items.length);entry.model.replaceInput(entry.model.cursor.offset,entry.model.cursor.offset,'+discarded');flow.syncMath();
+     assert.equal(pending.size,1);
+     flow.cancelPendingRecovery();assert.equal(pending.size,0);
+     if(restoreBaseline)window.localStorage.setItem('math-plate-document-v1',baseline);else window.localStorage.removeItem('math-plate-document-v1');
+     editor.api.onChange();await tick();await flushDocumentDraftStore();
+     assert.equal(pending.size,0);
+     assert.equal(window.localStorage.getItem('math-plate-document-v1'),restoreBaseline?baseline:null,'queued notifications must not revive discarded content');
+     // If closing/navigation fails, the lifecycle explicitly persists the live
+     // document. Recovery must resume rather than remain silently suspended.
+     flow.persist();const resumed=JSON.parse(window.localStorage.getItem('math-plate-document-v1'));
+     assert.equal(resumed.value[0].children.find(node=>node.id===entry.element.dataset.mathId).texExpression,entry.model.exportLatex());
+     entry.model.setCursor(entry.model.root.id,entry.model.root.items.length);entry.model.replaceInput(entry.model.cursor.offset,entry.model.cursor.offset,'+resumed');flow.syncMath();await tick();
+     assert.equal(pending.size,1,'a failed departure must restore subsequent recovery batching');
+     flow.cancelPendingRecovery();
+     if(restoreBaseline)window.localStorage.setItem('math-plate-document-v1',baseline);else window.localStorage.removeItem('math-plate-document-v1');
+     flow.destroy();destroyed=true;await tick();await flushDocumentDraftStore();
+     assert.equal(window.localStorage.getItem('math-plate-document-v1'),restoreBaseline?baseline:null,'destroying a discarded host must not persist it again');
+    }finally{if(!destroyed)flow.destroy();}
+   }
+  });
  });
  await t.test('full BibTeX sources survive restart independently while native files and drafts capture only cited entries',async()=>{
   const {flow,editor}=setup();flow.markDocumentSaved(flow.serializeDocument());
@@ -457,7 +560,7 @@ test('Plate document / independent MathJax mount integration',async t=>{
   editor.tf.insertNodes({type:'p',children:[{text:''},{...formula,id:'earlier',texLabel:'eq:b'},{text:''}]},{at:[0]});await tick();
   assert.equal(flow.mount.querySelector('[role="link"]').textContent,'(2)');
   editor.tf.undo();await tick();assert.equal(flow.mount.querySelector('[role="link"]').textContent,'(1)');
-  const md=flow.exportMarkdown();assert.ok(md.includes('eqref'));assert.ok(md.includes('bibitem'));assert.ok(md.includes('eq:a'));
+  const md=flow.exportMarkdown();assert.ok(md.includes('[(1)](#eq:a)'));assert.ok(md.includes('bibitem'));assert.ok(md.includes('<a id="eq:a"></a>'));assert.doesNotMatch(md,/\\eqref\{/);
   const saved=flow.serializeDocument();flow.openDocument(saved);await tick();assert.equal(flow.mount.querySelector('[role="link"]').textContent,'(1)');
   editor.tf.setNodes({numbered:false},{at:[0,1]});await tick();assert.equal(flow.mount.querySelector('[role="link"]').textContent,'(??)');
   flow.destroy();

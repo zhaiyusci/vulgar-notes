@@ -2,12 +2,16 @@ import type {KEYS,TElement,Value} from 'platejs';
 import {parseBibLibraries,validCitationKey,type BibLibrary} from './bibtex';
 import {formatBibliography} from './bibliography-format';
 import type {BibliographyStyle,BibliographyRun} from './bibliography-style';
+import {documentOutline} from './document-outline';
+import {floatNumbers,floatCaption} from './document-floats';
+import {standaloneMathEnvironmentBounds} from './tex-display-environment';
+import {equationNumbering} from './math-equation-numbering';
 
 export const referenceKeyPattern=/^[A-Za-z][A-Za-z0-9:._-]*$/;
 export const validReferenceKey=(key:unknown):key is string=>typeof key==='string'&&referenceKeyPattern.test(key);
 export type ReferenceCommand='ref'|'eqref'|'cite';
 export type ReferenceNode=TElement & {command:ReferenceCommand;keys:string[]};
-export interface ReferenceTarget {node:TElement;path:number[];kind:'equation'|'heading'|'bibliography'|'anchor'|'endnote';key:string;number:string;description:string;runs?:BibliographyRun[];libraryId?:string;identifier?:string}
+export interface ReferenceTarget {node:TElement;path:number[];kind:'equation'|'heading'|'figure'|'table'|'bibliography'|'anchor'|'endnote';key:string;number:string;description:string;runs?:BibliographyRun[];libraryId?:string;identifier?:string}
 export type BibliographyItem=ReferenceTarget&{kind:'bibliography'|'endnote'};
 const textOf=(node:any):string=>typeof node.text==='string'?node.text:(node.children||[]).map(textOf).join('');
 // Keep this pure document query free of Plate runtime/browser side effects,
@@ -26,7 +30,8 @@ export function citedReferenceKeys(value:Value):string[]{
 
 function referenceIndex(value:Value,libraries:readonly BibLibrary[],style:BibliographyStyle='simple'){
   let equations=0,currentHeading='';
-  const headings=[0,0,0,0,0,0],result:ReferenceTarget[]=[],editable:BibliographyItem[]=[];
+  const headings=new Map(documentOutline(value,{includeEmpty:true}).map(item=>[item.node,item]));
+  const floats=floatNumbers(value),result:ReferenceTarget[]=[],editable:BibliographyItem[]=[];
   const citations=new Map<string,BibliographyItem[]>(),notes=new Map<string,BibliographyItem[]>();
   const add=(map:Map<string,BibliographyItem[]>,key:string,target:BibliographyItem)=>map.set(key,[...(map.get(key)||[]),target]);
   const walk=(nodes:any[],parent:number[])=>nodes.forEach((node,index)=>{
@@ -40,16 +45,26 @@ function referenceIndex(value:Value,libraries:readonly BibLibrary[],style:Biblio
       const target:BibliographyItem={node,path,kind:'endnote',key:'endnote:'+identifier,identifier,number:'',description:textOf(node)};
       result.push(target);editable.push(target);add(notes,identifier,target);
     }
-    if(/^h[1-3]$/.test(node.type)){
-      const level=Number(node.type[1]);headings[level-1]++;headings.fill(0,level);
-      currentHeading=headings.slice(0,level).join('.');
-      result.push({node,path,kind:'heading',key:node.texLabel||'',number:headings.slice(0,level).join('.'),description:textOf(node)});
+    const heading=headings.get(node);
+    if(heading){
+      currentHeading=heading.number;
+      result.push({node,path,kind:'heading',key:node.texLabel||'',number:heading.number,description:heading.title});
+    }
+    if(node.type==='float'){
+      const details=floats.get(node.id);
+      if(details)result.push({node,path,kind:details.kind,key:node.texLabel||'',number:details.number,description:textOf(floatCaption(node))});
     }
     if(node.type==='tex_label'){
       result.push({node,path,kind:'anchor',key:node.texLabel||'',number:currentHeading,description:node.texLabel||''});return;
     }
-    if((node.type==='equation'||node.type==='inline_equation'&&node.display)&&node.numbered!==false){
-      result.push({node,path,kind:'equation',key:node.texLabel||'',number:String(++equations),description:node.texExpression||''});
+    if(node.type==='equation'||node.type==='inline_equation'){
+      const source=String(node.texExpression??''),intrinsic=standaloneMathEnvironmentBounds(source);
+      const numbered=intrinsic?intrinsic.numbered!==false:(node.type==='equation'||node.display)&&node.numbered!==false;
+      if(numbered){
+        const numbering=intrinsic?equationNumbering(source):{count:1,referenceOffset:0,referenceSuffix:''};
+        if(numbering.count>0)result.push({node,path,kind:'equation',key:node.texLabel||'',number:String(equations+1+numbering.referenceOffset)+numbering.referenceSuffix,description:source});
+        equations+=numbering.count;
+      }
     }
     if(Array.isArray(node.children))walk(node.children,path);
   });
@@ -114,8 +129,27 @@ export function bibliographyItems(value:Value,libraries:readonly BibLibrary[]=[]
 export function referenceTargets(value:Value,libraries:readonly BibLibrary[]=[]):ReferenceTarget[]{
   return referenceIndex(value,libraries).targets;
 }
+export interface ReferenceRename {path:number[];keys:string[]}
+/** Rename references only when their old label identifies this one target. */
+export function planLabelRename(value:Value,targetPath:readonly number[],newKey:string):ReferenceRename[]{
+  if(!validReferenceKey(newKey))return [];
+  const labels=referenceTargets(value).filter(target=>target.kind!=='bibliography'&&target.kind!=='endnote');
+  const chosen=labels.find(target=>target.path.length===targetPath.length&&target.path.every((part,index)=>part===targetPath[index]));
+  if(!chosen||!validReferenceKey(chosen.key)||chosen.key===newKey||labels.filter(target=>target.key===chosen.key).length!==1)return [];
+  const result:ReferenceRename[]=[];
+  const walk=(nodes:any[],parent:number[])=>nodes.forEach((node,index)=>{
+    const path=[...parent,index];
+    if(node.type==='tex_reference'&&(node.command==='ref'||node.command==='eqref')&&Array.isArray(node.keys)&&node.keys.includes(chosen.key))
+      result.push({path,keys:node.keys.map((key:string)=>key===chosen.key?newKey:key)});
+    if(Array.isArray(node.children))walk(node.children,path);
+  });walk(value,[]);return result;
+}
 export function resolveReference(value:Value,reference:ReferenceNode,libraries:readonly BibLibrary[]=[],style:BibliographyStyle='simple'){
-  const targets=referenceIndex(value,libraries,reference.command==='cite'?style:'simple').targets,citation=reference.command==='cite';
+  return resolveReferenceTargets(referenceIndex(value,libraries,reference.command==='cite'?style:'simple').targets,reference);
+}
+/** Reuse one index when exporting many links from the same immutable document. */
+export function resolveReferenceTargets(targets:readonly ReferenceTarget[],reference:ReferenceNode){
+  const citation=reference.command==='cite';
   const matches=reference.keys.map(key=>targets.filter(target=>target.key===key&&(citation?target.kind==='bibliography':reference.command==='eqref'?target.kind==='equation':target.kind!=='bibliography'&&target.kind!=='endnote')));
   const invalid=matches.some(items=>items.length!==1||!items[0].number)||!matches.length;
   const numbers=matches.map(items=>items.length===1&&items[0].number?items[0].number:'??');

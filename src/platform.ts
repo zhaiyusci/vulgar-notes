@@ -1,6 +1,8 @@
 import {isTauri} from '@tauri-apps/api/core';
 import {t} from './i18n';
 import {recordRuntimeEvent} from './runtime-diagnostics';
+import {getDocumentDraftStorage} from './document-draft-store';
+export {initializeDocumentDraftStore,flushDocumentDraftStore,refreshDocumentDraftStore} from './document-draft-store';
 
 export interface DocumentFile {name: string; path?: string}
 export interface OpenedDocument extends DocumentFile {text: string}
@@ -200,7 +202,7 @@ export async function saveDocumentFile(text: string, target?: string|DocumentFil
 
 /** Recovery belongs to a document UUID, including after its tab/window closes. */
 export function draftStorage(): Storage {
-  return localStorage;
+  return getDocumentDraftStorage();
 }
 
 export async function saveExport(blob: Blob, filename: string): Promise<void> {

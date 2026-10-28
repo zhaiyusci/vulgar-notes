@@ -1,64 +1,44 @@
 'use client';
 
-import * as React from 'react';
+import type {PlateElementProps} from 'platejs/react';
+import {PlateElement,useEditorRef,useEditorSelector} from 'platejs/react';
+import {documentOutline,type DocumentOutlineEntry} from '@/document-outline';
+import {t} from '@/i18n';
 
-import type { PlateElementProps } from 'platejs/react';
-
-import { useTocElement, useTocElementState } from '@platejs/toc/react';
-import { cva } from 'class-variance-authority';
-import { PlateElement } from 'platejs/react';
-
-import { Button } from '@/components/ui/button';
-
-const headingItemVariants = cva(
-  'block h-auto w-full cursor-pointer truncate rounded-none px-0.5 py-1.5 text-left font-medium underline decoration-[0.5px] underline-offset-4',
-  {
-    variants: {
-      active: {
-        false: 'text-muted-foreground hover:bg-accent hover:text-foreground',
-        true: 'bg-accent text-foreground decoration-foreground',
-      },
-      depth: {
-        1: 'pl-0.5',
-        2: 'pl-[26px]',
-        3: 'pl-[50px]',
-      },
-    },
-  }
-);
-
-export function TocElement(props: PlateElementProps) {
-  const state = useTocElementState();
-  const { props: btnProps } = useTocElement(state);
-  const { activeContentId, headingList } = state;
-
-  return (
-    <PlateElement {...props} className="mb-1 p-0">
-      <div contentEditable={false}>
-        {headingList.length > 0 ? (
-          headingList.map((item) => (
-            <Button
-              key={item.id}
-              variant="ghost"
-              className={headingItemVariants({
-                active: item.id === activeContentId,
-                depth: item.depth as 1 | 2 | 3,
-              })}
-              onClick={(e) => btnProps.onClick(e, item, 'smooth')}
-              aria-current={
-                item.id === activeContentId ? 'location' : undefined
-              }
-            >
-              {item.title}
-            </Button>
-          ))
-        ) : (
-          <div className="text-gray-500 text-sm">
-            Create a heading to display the table of contents.
-          </div>
-        )}
-      </div>
-      {props.children}
-    </PlateElement>
-  );
+/** A generated view over the current tree. Navigation uses paths rather than optional node IDs. */
+export function TocElement(props:PlateElementProps){
+  const editor=useEditorRef();
+  const {outline,activePath}=useEditorSelector(current=>({
+    outline:documentOutline(current.children),
+    activePath:current.selection?.anchor.path,
+  }),[]);
+  const navigate=(item:DocumentOutlineEntry)=>{
+    const start=editor.api.start(item.path);
+    if(!start)return;
+    editor.tf.select(start);
+    editor.tf.focus();
+    // Native scrolling respects both the editor scroll container and CSS zoom.
+    const element=editor.api.toDOMNode(item.node);
+    element?.scrollIntoView({behavior:'smooth',block:'center',inline:'nearest'});
+  };
+  return <PlateElement {...props} className="document-toc">
+    <nav contentEditable={false} aria-label={t('Table of contents')}>
+      <div className="document-toc-title">{t('Table of contents')}</div>
+      {outline.length?<ol className="document-toc-list">
+        {outline.map(item=>{
+          const active=activePath&&item.path.every((part,index)=>activePath[index]===part);
+          return <li key={item.anchor}>
+            <button type="button" className="document-toc-link" style={{paddingInlineStart:(item.depth-1)*1.1+'rem'}}
+              data-heading-path={item.path.join('.')}
+              aria-current={active?'location':undefined}
+              onPointerDown={event=>{event.preventDefault();event.stopPropagation();}}
+              onClick={event=>{event.preventDefault();event.stopPropagation();navigate(item);}}>
+              <span className="document-toc-number">{item.number}</span><span>{item.title}</span>
+            </button>
+          </li>;
+        })}
+      </ol>:<div className="document-toc-empty">{t('Add headings to display the table of contents.')}</div>}
+    </nav>
+    {props.children}
+  </PlateElement>;
 }

@@ -6,7 +6,7 @@ const fs=require('node:fs');
 const fixedChildren=new Map([...fs.readFileSync('src/components/ui/fixed-toolbar-buttons.tsx','utf8').matchAll(/import\s*\{([^}]+)\}\s*from\s*['"](\.\/[^'"]+)['"]/g)].map(match=>[match[2],match[1].split(',').map(name=>name.trim()).filter(Boolean)]));
 
 const code=build({
- stdin:{contents:"export {CrossReferenceToolbarButton,CitationReferenceEditor} from './reference-toolbar-button';export {FixedToolbarButtons} from './fixed-toolbar-buttons';export {HostContext} from '@/plate-math-element';",resolveDir:path.resolve('src/components/ui'),loader:'tsx'},
+ stdin:{contents:"export {CrossReferenceToolbarButton,CitationReferenceEditor} from './reference-toolbar-button';export {LabelToolbarButton} from './label-toolbar-button';export {FixedToolbarButtons} from './fixed-toolbar-buttons';export {HostContext} from '@/plate-math-element';",resolveDir:path.resolve('src/components/ui'),loader:'tsx'},
  bundle:true,write:false,platform:'node',format:'cjs',target:'es2022',jsx:'automatic',external:['react','react/*','react-dom','react-dom/*'],
  plugins:[{name:'toolbar-adapters',setup(build){
   const adapters={
@@ -44,8 +44,8 @@ test('cross-reference and citation dialog interactions',async t=>{
   flushSync(()=>{setter.call(element,value);element.dispatchEvent(new window.Event('input',{bubbles:true}));element.dispatchEvent(new window.Event('change',{bubbles:true}));});
  };
  const change=(element,value)=>flushSync(()=>{element.value=value;element.dispatchEvent(new window.Event('change',{bubbles:true}));});
- function setup({host=true,selection=true,fallback=false,readOnly=false,fixedToolbar=false}={}){
-  const range={anchor:{path:[0,0],offset:0},focus:{path:[0,0],offset:0}},calls={prepare:0,insert:[],set:[],select:[],focus:0};
+ function setup({host=true,selection=true,fallback=false,readOnly=false,fixedToolbar=false,labelToolbar=false}={}){
+  const range={anchor:{path:[0,0],offset:0},focus:{path:[0,0],offset:0}},calls={prepare:0,insert:[],set:[],select:[],focus:0,batches:0};
   const ref={type:'tex_reference',id:'cross',command:'eqref',keys:['eq:sample'],children:[{text:''}]};
   const citation={type:'tex_reference',id:'citation',command:'cite',keys:['library'],children:[{text:''}]};
   const editor={children:[{type:'p',children:[{text:'Body'},ref,citation]},
@@ -53,16 +53,19 @@ test('cross-reference and citation dialog interactions',async t=>{
    {type:'h1',texLabel:'sec:sample',children:[{text:'A heading'}]},
    {type:'bibliography_entry',citeKey:'legacy',children:[{text:'Legacy Author. Kept title.'}]},
    {type:'footnoteDefinition',identifier:'note',children:[{type:'p',children:[{text:'Not a label or citation target'}]}]},
-  ],selection:selection?structuredClone(range):null,api:{isReadOnly:()=>readOnly},tf:{}};
-  editor.tf={withNewBatch:fn=>fn(),select:point=>{calls.select.push(point);editor.selection=point;},insertNodes:node=>{calls.insert.push(node);editor.children[0].children.push(node);},setNodes:(props,{at})=>{calls.set.push({props,at});let node=editor;for(const index of at)node=node.children[index];Object.assign(node,props);},move:()=>{},focus:()=>{calls.focus++;}};
+   {type:'float',kind:'figure',id:'figure',numbered:true,texLabel:'fig:sample',children:[{type:'img',url:'https://example.org/plot.png',children:[{text:''}]},{type:'float_caption',children:[{text:'A labelled figure'}]}]},
+   {type:'float',kind:'table',id:'table',numbered:true,texLabel:'tab:sample',children:[{type:'float_caption',children:[{text:'A labelled table'}]},{type:'table',children:[{type:'tr',children:[{type:'td',children:[{type:'p',children:[{text:'A'}]}]}]}]}]},
+  ],selection:selection?structuredClone(range):null,api:{isReadOnly:()=>readOnly,above:()=>undefined},tf:{}};
+  editor.tf={withNewBatch:fn=>{calls.batches++;return fn();},select:point=>{calls.select.push(point);editor.selection=point;},insertNodes:node=>{calls.insert.push(node);editor.children[0].children.push(node);},setNodes:(props,{at})=>{calls.set.push({props,at});let node=editor;for(const index of at)node=node.children[index];Object.assign(node,props);},unsetNodes:(key,{at})=>{let node=editor;for(const index of at)node=node.children[index];delete node[key];},move:()=>{},focus:()=>{calls.focus++;}};
   const state=globalThis.referenceToolbarTest={editor,libraries:[{id:'library',name:'Library.bib',source:'@book{library,author={Smith, Ann},title={A searchable book},year=2024}'}]};
   const hostValue=host?{prepareTextInsertion:()=>{calls.prepare++;if(fallback&&!editor.selection)editor.selection=structuredClone(range);}}:null;
   const mount=document.createElement('div');document.body.append(mount);const root=createRoot(mount);
-  const children=fixedToolbar?React.createElement(api.FixedToolbarButtons):React.createElement(React.Fragment,null,React.createElement(api.CrossReferenceToolbarButton),React.createElement(api.CitationReferenceEditor));
+  const children=labelToolbar?React.createElement(api.LabelToolbarButton):fixedToolbar?React.createElement(api.FixedToolbarButtons):React.createElement(React.Fragment,null,React.createElement(api.CrossReferenceToolbarButton),React.createElement(api.CitationReferenceEditor));
   flushSync(()=>root.render(React.createElement(api.HostContext.Provider,{value:hostValue},children)));
   const close=()=>{flushSync(()=>root.unmount());mount.remove();};
   const edit=id=>flushSync(()=>document.dispatchEvent(new window.CustomEvent('edit-tex-reference',{detail:id})));
-  return {mount,root,editor,ref,citation,calls,state,close,edit};
+  const editLabel=id=>flushSync(()=>document.dispatchEvent(new window.CustomEvent('edit-tex-label',{detail:id})));
+  return {mount,root,editor,ref,citation,calls,state,close,edit,editLabel};
  }
 
  await t.test('only cross-references have a standalone trigger while existing citations keep their own editor',async()=>{
@@ -71,6 +74,8 @@ test('cross-reference and citation dialog interactions',async t=>{
   assert.equal(cross.title,'Cross-reference');assert.equal(citation,null);
   click(cross);assert.equal(h.mount.querySelector('[role="dialog"] h2').textContent,'Cross-reference');
   assert.deepEqual([...h.mount.querySelector('select').options].map(option=>option.value),['ref','eqref']);
+  assert.equal(h.mount.querySelector('select').value,'ref');
+  assert.match(h.mount.querySelector('[role="dialog"]').textContent,/A labelled figure/);assert.match(h.mount.querySelector('[role="dialog"]').textContent,/A labelled table/);
   assert.equal(byText(h.mount,'Bibliography libraries'),undefined);
   assert.ok(h.mount.querySelector('input[aria-label="Label"]'));
   click(byText(h.mount,'Cancel'));h.edit('citation');
@@ -87,6 +92,8 @@ test('cross-reference and citation dialog interactions',async t=>{
 
  await t.test('double-click routes once and switching ref/eqref updates the original node',async()=>{
   const h=setup();await tick();h.edit('cross');
+  assert.equal(h.mount.querySelector('select').value,'eqref','editing an equation reference keeps its command');
+  assert.doesNotMatch(h.mount.querySelector('[role="dialog"]').textContent,/A labelled figure|A labelled table/);
   assert.equal(h.calls.prepare,1);assert.equal(h.mount.querySelectorAll('[role="dialog"]').length,1);
   assert.equal(h.mount.querySelector('input[aria-label="Label"]').value,'eq:sample');
   change(h.mount.querySelector('select'),'ref');
@@ -140,6 +147,23 @@ test('cross-reference and citation dialog interactions',async t=>{
  await t.test('read-only editors ignore toolbar and double-click editing requests',async()=>{
   const h=setup({readOnly:true});await tick();click(h.mount.querySelector('button[aria-label="Cross-reference"]'));h.edit('cross');h.edit('citation');
   assert.equal(h.mount.querySelector('[role="dialog"]'),null);assert.equal(h.calls.prepare,0);assert.equal(h.calls.insert.length,0);h.close();
+ });
+
+ await t.test('renaming one figure label updates all ref/eqref keys in the same edit batch and preserves citations',async()=>{
+  const h=setup({labelToolbar:true});await tick();
+  const ordinary={type:'tex_reference',command:'ref',keys:['fig:sample'],children:[{text:''}]},equation={type:'tex_reference',command:'eqref',keys:['fig:sample'],children:[{text:''}]},citation={type:'tex_reference',command:'cite',keys:['fig:sample'],children:[{text:''}]};
+  h.editor.children[0].children.push(ordinary,equation,citation);h.editLabel('figure');
+  input(h.mount.querySelector('input'),'fig:renamed');click(byText(h.mount,'Apply'));
+  assert.equal(h.editor.children.find(node=>node.id==='figure').texLabel,'fig:renamed');assert.deepEqual(ordinary.keys,['fig:renamed']);assert.deepEqual(equation.keys,['fig:renamed']);assert.deepEqual(citation.keys,['fig:sample']);assert.equal(h.calls.batches,1);assert.equal(h.calls.set.length,3);
+  h.editLabel('figure');input(h.mount.querySelector('input'),'');click(byText(h.mount,'Apply'));
+  assert.equal(h.editor.children.find(node=>node.id==='figure').texLabel,undefined);assert.deepEqual(ordinary.keys,['fig:renamed'],'removing a label keeps the dangling reference visible');h.close();
+ });
+
+ await t.test('renaming a duplicate label repairs only the chosen object without retargeting ambiguous references',async()=>{
+  const h=setup({labelToolbar:true});await tick();const table=h.editor.children.find(node=>node.id==='table');table.texLabel='fig:sample';
+  const reference={type:'tex_reference',command:'ref',keys:['fig:sample'],children:[{text:''}]};h.editor.children[0].children.push(reference);
+  h.editLabel('figure');input(h.mount.querySelector('input'),'fig:one');click(byText(h.mount,'Apply'));
+  assert.deepEqual(reference.keys,['fig:sample']);assert.equal(table.texLabel,'fig:sample');assert.equal(h.calls.set.length,1);h.close();
  });
  await window.happyDOM.abort();
 });

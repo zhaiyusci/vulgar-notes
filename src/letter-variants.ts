@@ -60,6 +60,10 @@ export function registerLetterVariants(catalog:Definition[],symbols:Definition[]
     const add=(key:string,label:string,tex:string,extra:Partial<Definition>={})=>{
       const def={...base,type:base.type+'--'+key,label:base.label+' · '+label,variantLabel:label,command:'',tex,commandCandidate:false,...extra};symbols.push(def);return def;
     };
+    // Preserve the original command on imported individual letters. boldsymbol
+    // is not an alias for mathbf: it keeps e.g. a Latin variable's italic shape.
+    const boldSymbol='\\boldsymbol{'+base.tex!.trim()+'}';
+    add('boldsymbol','\\boldsymbol',boldSymbol,{exportTex:boldSymbol,equivalentTex:[boldSymbol],fontCommand:'\\boldsymbol',hidden:true});
     for(const style of styles){
       if(style.command==='\\symnormal'||style.command==='\\symrm'||style.command==='\\symbb')continue;
       const unsupported=!!fontDiagnostic(style.command,base.letter!);

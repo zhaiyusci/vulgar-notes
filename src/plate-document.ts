@@ -5,18 +5,25 @@ import {EditorModel} from './editor-model';
 import {referenceTex,validReferenceKey,type ReferenceNode} from './references';
 import {parseBibLibraries,validateBibLibraries,validCitationKey,type BibLibrary} from './bibtex';
 import {isBibliographyStyle,type BibliographyStyle} from './bibliography-style';
-import {t} from './i18n';
+import {parseDocumentMetadata,isDocumentMetadataEmpty,migrateDocumentMetadata,normalizeMetadataLayout,normalizeDocumentTitles,validMetadataEntry,metadataIndex,metadataNoteSymbol,metadataOrderedIds,type MetadataEntry,type DocumentMetadata} from './document-metadata';
+import {validFloatNode,floatLatex,floatMarkdown,floatNumbers,tableLatex} from './document-floats';
+import {documentOutline,tocMarkdown,outlineHeadingText} from './document-outline';
+import {locale,t} from './i18n';
 
 const sessionId=documentSessionId();
 /** A newly opened document owns its draft, even when the browser copies opener storage. */
 export const documentStorageKey='math-plate-document-v1'+(sessionId?':'+sessionId:'');
 export function documentContentKey(source:string):string {
-  return JSON.stringify(JSON.parse(source), (key,value)=>{
+  const saved=JSON.parse(source);
+  // Compare a legacy saved baseline with the same migrated content shown by the editor.
+  if(saved.metadata!==undefined){saved.value=migrateDocumentMetadata(saved.value,parseDocumentMetadata(saved.metadata));delete saved.metadata;}
+  saved.value=normalizeMetadataLayout(normalizeDocumentTitles(saved.value));
+  return JSON.stringify(saved, (key,value)=>{
     if(key==='snapshot'&&typeof value==='string')return JSON.parse(value).root;
     return value;
   });
 }
-export interface DocumentEnvelope {version:1;value:Value;bibliographyLibraries:BibLibrary[];bibliographyStyle?:BibliographyStyle}
+export interface DocumentEnvelope {version:1;value:Value;bibliographyLibraries:BibLibrary[];bibliographyStyle?:BibliographyStyle;metadata?:DocumentMetadata}
 export class DocumentFormatError extends Error {
   readonly name='DocumentFormatError';
   constructor(readonly code:'invalid-json'|'invalid-document'){
@@ -25,9 +32,9 @@ export class DocumentFormatError extends Error {
     super(t('This file is not a valid Vulgar Notes document.'));
   }
 }
-export function isBlankDocument(value:Value,style:BibliographyStyle='simple'):boolean{
+export function isBlankDocument(value:Value,style:BibliographyStyle='simple',metadata?:DocumentMetadata):boolean{
   const node=value[0],leaf=node?.children?.[0];
-  return style==='simple'&&value.length===1&&node.type==='p'&&Object.keys(node).every(key=>['type','children','id'].includes(key))&&node.children.length===1&&leaf?.text===''&&Object.keys(leaf).every(key=>key==='text');
+  return (!metadata||isDocumentMetadataEmpty(metadata))&&style==='simple'&&value.length===1&&node.type==='p'&&Object.keys(node).every(key=>['type','children','id'].includes(key))&&node.children.length===1&&leaf?.text===''&&Object.keys(leaf).every(key=>key==='text');
 }
 /** Validate both text and its attached source libraries before replacing a document. */
 export function parseDocumentEnvelope(source:string):DocumentEnvelope {
@@ -39,9 +46,10 @@ export function parseDocumentEnvelope(source:string):DocumentEnvelope {
     if(saved.value.some((node:any)=>typeof node.type!=='string'||!Array.isArray(node.children)))throw Error('Invalid document root');
     const bibliographyLibraries=validateBibLibraries(saved.bibliographyLibraries);
     if(saved.bibliographyStyle!==undefined&&!isBibliographyStyle(saved.bibliographyStyle))throw Error('Invalid bibliography style');
+    const metadata=saved.metadata===undefined?undefined:parseDocumentMetadata(saved.metadata);
     // A paste can introduce a manual key already present in a source library.
     // Preserve both on reopen; reference resolution flags that ambiguity.
-    return {version:1,value:saved.value,bibliographyLibraries,...(saved.bibliographyStyle?{bibliographyStyle:saved.bibliographyStyle}:{})};
+    return {version:1,value:migrateDocumentMetadata(saved.value,metadata),bibliographyLibraries,...(saved.bibliographyStyle?{bibliographyStyle:saved.bibliographyStyle}:{})};
   }catch{throw new DocumentFormatError('invalid-document');}
 }
 export function parseDocumentFile(source:string):Value {return parseDocumentEnvelope(source).value;}
@@ -58,22 +66,66 @@ export function formulaNode(model:EditorModel,display=false):FormulaNode {
   return {type:'inline_equation',display,id:newId(),snapshot:model.snapshot(),texExpression:model.exportLatex(),numbered:true,children:[{text:''}]};
 }
 /** Markdown has block math only; adapt a copy, without splitting the editing tree. */
-export function markdownDisplayBlocks(nodes:Descendant[]):Descendant[]{
-  return nodes.flatMap(node=>{
-    if(!Array.isArray(node.children)||isFormula(node))return [node];
-    const children=node.children as Descendant[];
-    if(/^h[1-3]$/.test(String(node.type))&&validReferenceKey(node.texLabel))
-      return [{...node,children:[...markdownDisplayBlocks(children),{text:' {#'+node.texLabel+'}'}]}];
+export function markdownDisplayBlocks(nodes:Descendant[],renderFragment?:(nodes:Descendant[])=>string):Descendant[]{
+  nodes=normalizeMetadataLayout(normalizeDocumentTitles(nodes as Value));
+  const headings=new Map(documentOutline(nodes).map(item=>[item.node,item]));
+  const floats=floatNumbers(nodes);
+  const metadataBlocks=nodes.filter((node):node is TElement=>node.type==='document_metadata') as TElement[];
+  const metadata=metadataIndex(metadataBlocks);
+  const html=(source:string):TElement=>({type:'document_export_html',source,children:[{text:''}]});
+  const metadataAnchor=(id:string)=>'vn-metadata-'+id;
+  const escapeHtml=(source:string)=>source.replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]!));
+  const metadataContent=(entry:MetadataEntry):Descendant[]=>{
+    const content=visit(entry.children as Descendant[]);
+    const owner=metadataBlocks.find(block=>block.children.includes(entry));
+    const local=new Map((owner?.children??[]).filter(validMetadataEntry).map(item=>[item.id,item.role]));
+    const number=entry.role==='affiliation'?metadata.affiliationNumbers.get(entry.id):entry.role==='note'?metadata.noteNumbers.get(entry.id):undefined;
+    const markers:Descendant[]=[];
+    const add=(ids:readonly string[],kind:'affiliation'|'note')=>{
+      for(const id of metadataOrderedIds(ids,kind==='affiliation'?metadata.affiliationNumbers:metadata.noteNumbers)){
+        const n=local.get(id)===kind?(kind==='affiliation'?metadata.affiliationNumbers:metadata.noteNumbers).get(id):undefined;
+        if(markers.length)markers.push({text:', '});
+        markers.push(n?{type:'a',url:'#'+encodeURIComponent(metadataAnchor(id)),children:[{text:kind==='note'?metadataNoteSymbol(n,metadata.noteNumbers.size):String(n)}]}:{text:'??'});
+      }
+    };
+    if(entry.role==='author')add(entry.affiliationIds??[],'affiliation');
+    if(entry.role==='title'||entry.role==='author')add(entry.noteIds??[],'note');
+    if(markers.length)markers.unshift(html('<sup>'));
+    if(markers.length)markers.push(html('</sup>'));
+    let decorated=false;
+    const result=content.map(node=>{
+      if(typeof node.text==='string'||!Array.isArray(node.children))return node;
+      if(decorated)return node;decorated=true;
+      const prefix=number?[{text:(entry.role==='note'?metadataNoteSymbol(number,metadata.noteNumbers.size):String(number))+' '}]:[];
+      return {...node,...(entry.role==='title'?{type:'h1'}:{}),children:[...prefix,...node.children,...markers]};
+    });
+    return [...((entry.role==='note'||entry.role==='affiliation')?[html('<a id="'+escapeHtml(metadataAnchor(entry.id))+'"></a>')]:[]),...result];
+  };
+  const visit=(items:Descendant[]):Descendant[]=>items.flatMap(node=>{
+    if(node.type==='toc')return [html('## Contents\n\n'+tocMarkdown(nodes)+'\n')];
+    if(node.type==='document_metadata')return visit(node.children as Descendant[]);
+    if(node.type==='metadata_entry'&&validMetadataEntry(node))return metadataContent(node);
+    if(node.type==='tex_label'&&validReferenceKey(node.texLabel))return [html('<a id="'+node.texLabel+'"></a>')];
+    if(node.type==='float'&&validFloatNode(node)){
+      const number=floats.get(node.id)?.number,label=t(node.kind==='figure'?'Figure':'Table');
+      const prefix=number?(locale==='zh-CN'?label+number+'　':label+' '+number+'. '):'';
+      return [html(floatMarkdown(node,children=>renderFragment?renderFragment([...children]):children.map(outlineHeadingText).join(''),prefix))];
+    }
+    if(isFormula(node))return [...((node.type==='equation'||node.display===true)&&node.numbered!==false&&validReferenceKey(node.texLabel)?[html('<a id="'+node.texLabel+'"></a>')]:[]),node];
+    if(!Array.isArray(node.children))return [node];
+    const children=node.children as Descendant[],heading=headings.get(node as TElement);
+    const prefix=heading?[html('<a id="'+heading.anchor+'"></a>'),...(validReferenceKey(node.texLabel)?[html('<a id="'+node.texLabel+'"></a>')]:[])]:[];
     if(!children.some(child=>isFormula(child)&&child.display===true))
-      return [{...node,children:markdownDisplayBlocks(children)}];
-    const result:Descendant[]=[];let run:Descendant[]=[];
+      return [...prefix,{...node,children:visit(children)}];
+    const result:Descendant[]=[...prefix];let run:Descendant[]=[];
     const flush=()=>{if(run.some(child=>!('text' in child)||child.text!==''))result.push({...node,children:run});run=[];};
     for(const child of children){
-      if(isFormula(child)&&child.display===true){flush();result.push({...child,type:'equation'} as TElement);}
+      if(isFormula(child)&&child.display===true){flush();result.push(...visit([{...child,type:'equation'} as TElement]));}
       else run.push(child);
     }
     flush();return result;
   });
+  return visit(nodes);
 }
 /** One-way migration only. Earlier storage keys are never modified. */
 export function fromTiptap(doc:JSONContent):Value {
@@ -118,7 +170,7 @@ export function restoreDocumentEnvelope(initial:EditorModel):DocumentEnvelope {
   return {version:1,value:[{type:'p',children:[{text:''}]}],bibliographyLibraries:[]};
 }
 export function restoreDocument(initial:EditorModel):Value {return restoreDocumentEnvelope(initial).value;}
-export function validate(nodes:unknown[]):void {
+export function validate(nodes:unknown[],parentType?:string):void {
   for(const raw of nodes){
     if(!raw||typeof raw!=='object'||Array.isArray(raw))throw Error('Invalid document node');
     const n=raw as TElement & {text?:string;snapshot?:string};
@@ -132,8 +184,11 @@ export function validate(nodes:unknown[]):void {
     if(n.type==='tex_label'&&!validReferenceKey(n.texLabel))throw Error('Invalid label');
     if(n.type==='tex_reference')referenceTex(n as ReferenceNode);
     if(n.type==='bibliography_entry'&&!validCitationKey(n.citeKey))throw Error('Invalid citation key');
-    if(isFormula(n)&&n.snapshot)new EditorModel().restore(n.snapshot);
-    validate(n.children);
+    if(String(n.type)==='float'&&!validFloatNode(n))throw Error('Invalid figure or table');
+    if(n.type==='document_metadata'&&n.children.some(child=>typeof child.type!=='string'))throw Error('Invalid metadata block');
+    if(n.type==='metadata_entry'&&(parentType!=='document_metadata'||!validMetadataEntry(n)))throw Error('Invalid metadata entry');
+    if(isFormula(n)&&typeof n.snapshot==='string'&&n.snapshot)new EditorModel().restore(n.snapshot);
+    validate(n.children,n.type);
   }
 }
 /** Check fields consumed by the installed renderer, leaving other metadata intact. */
@@ -149,7 +204,7 @@ function validateNodeFields(n:Record<string,unknown>):void {
   field('id',string);
   // The editor is extensible. An unknown node's metadata is not necessarily a
   // built-in mark, even when it happens to share a field name such as `code`.
-  const knownElement=typeof n.type==='string'&&['p','h1','h2','h3','h4','h5','h6','blockquote','hr','a','date','mention','mention_input','tag','code_block','code_line','code_drawing','callout','img','audio','video','file','media_embed','placeholder','column','column_group','table','tr','td','th','toggle','toc','excalidraw','footnoteReference','footnoteDefinition','footnoteInput','equation','inline_equation','tex_label','tex_reference','bibliography_entry','ul','ol','li','lic'].includes(n.type);
+  const knownElement=typeof n.type==='string'&&['p','h1','h2','h3','h4','h5','h6','document_metadata','metadata_entry','blockquote','hr','a','date','mention','mention_input','tag','code_block','code_line','code_drawing','callout','img','audio','video','file','media_embed','placeholder','column','column_group','table','tr','td','th','toggle','toc','float','float_caption','excalidraw','footnoteReference','footnoteDefinition','footnoteInput','equation','inline_equation','tex_label','tex_reference','bibliography_entry','ul','ol','li','lic'].includes(n.type);
   if(typeof n.text==='string'||knownElement){
     for(const name of ['color','backgroundColor','fontFamily','className','align','textAlign','listStyleType'])field(name,string);
     for(const name of ['fontSize','fontWeight','lineHeight','textIndent'])field(name,cssSize);
@@ -212,15 +267,22 @@ function validateNodeFields(n:Record<string,unknown>):void {
   }
 }
 /** Keep the established LaTeX prose exporter independent of the document engine. */
-export function plateLatex(value:Value,formatMath?:(source:string)=>string):string {
-  const read=(n:any):JSONContent=>{
+export function plateLatex(value:Value,formatMath?:(source:string)=>string,renderImage?:(image:any)=>string,renderMetadata?:(block:TElement)=>string,inMetadataContext=false):string {
+  const childrenLatex=(children:readonly any[])=>plateLatex([...children] as Value,formatMath,renderImage,renderMetadata,inMetadataContext);
+  const read=(n:any,inMetadata=false):JSONContent=>{
+    if(n.type==='document_metadata'&&renderMetadata)return {type:'latexFragment',text:renderMetadata(n)};
+    if(n.type==='document_metadata')return {type:'metadata',content:n.children.map((child:any)=>read(child,true))};
+    if(n.type==='metadata_entry')return {type:'metadata',content:n.children.map((child:any)=>read(child,true))};
+    if(inMetadata&&/^h[1-6]$/.test(n.type))return {type:'metadataHeading',attrs:{level:Number(n.type[1]),align:n.align},content:n.children.map((child:any)=>read(child,true))};
+    if(n.type==='float'&&validFloatNode(n))return {type:'latexFragment',text:floatLatex(n,childrenLatex,renderImage??(image=>'\\textit{'+documentLatex({type:'text',text:image.alt||'Embedded image'})+'}'))};
+    if(n.type==='table')return {type:'latexFragment',text:tableLatex(n,childrenLatex)};
     if(n.type==='tex_label')return {type:'texLabel',attrs:{texLabel:n.texLabel}};
     if(n.type==='tex_reference')return {type:'texReference',attrs:{command:n.command,keys:n.keys}};
-    if(n.type==='bibliography_entry')return {type:'bibliographyEntry',attrs:{citeKey:n.citeKey},content:n.children?.map(read)};
+    if(n.type==='bibliography_entry')return {type:'bibliographyEntry',attrs:{citeKey:n.citeKey},content:n.children?.map((child:any)=>read(child,inMetadata))};
     if(typeof n.text==='string')return {type:'text',text:n.text,marks:Object.keys(n).filter(k=>k!=='text'&&n[k]===true).map(type=>({type:type==='strikethrough'?'strike':type}))};
     if(isFormula(n))return {type:n.type==='equation'||n.display?'displayMath':'inlineMath',attrs:n};
     const type=/^h[1-6]$/.test(n.type)?'heading':({p:'paragraph',a:'text',code_block:'codeBlock',code_line:'paragraph',hr:'horizontalRule'} as Record<string,string>)[n.type]||n.type;
-    return {type,attrs:{level:Number(n.type[1]),language:n.lang,texLabel:n.texLabel},content:n.children?.map(read)};
+    return {type,attrs:{level:Number(n.type[1]),language:n.lang,texLabel:n.texLabel,align:n.align},content:n.children?.map((child:any)=>read(child,inMetadata))};
   };
-  return documentLatex({type:'doc',content:value.map(read)},formatMath).trim();
+  return documentLatex({type:'doc',content:value.map(node=>read(node,inMetadataContext))},formatMath).trim();
 }

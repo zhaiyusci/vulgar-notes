@@ -3,6 +3,9 @@
 @import "./themes.css";
 @import "./themes-catppuccin.css";
 @import "./themes-community.css";
+@import "./components/ui/metadata-node.css";
+@import "./components/ui/document-view.css";
+@import "./components/ui/float-node.css";
 @plugin "tailwind-scrollbar-hide";
 @source "./components";
 @source "./plate-host.tsx";
@@ -96,6 +99,8 @@ body[data-document-view="editor"] #documentHome { display:none; }
 .document-home-empty { margin:0; padding:16px 0; color:var(--app-muted,#64748b); }
 .document-home-status { margin:-20px 0 24px; color:var(--app-muted,#64748b); }
 .document-home-error { margin:0 0 24px; padding:10px 12px; border:1px solid var(--app-error,#b52c2c); border-radius:5px; color:var(--app-error,#b52c2c); overflow-wrap:anywhere; }
+.document-storage-warning { position:fixed; bottom:8px; left:12px; z-index:80; max-width:calc(100vw - 32px); margin:0; padding:8px 12px; border:1px solid var(--app-error,#b52c2c); border-radius:5px; background:var(--app-surface,#fff); color:var(--app-error,#b52c2c); font:12px/1.5 system-ui,sans-serif; }
+.document-storage-warning[hidden] { display:none; }
 @media (max-width:540px) { .document-home-header { margin-bottom:28px; } .document-home-title { font-size:23px; } .document-home-file { flex-wrap:wrap; gap:8px 10px; } .document-home-date { flex-basis:100%; margin-left:30px; } .document-home-actions { margin-bottom:30px; } }
 @media print { .document-home { display:none; } }
 
@@ -103,6 +108,10 @@ body[data-document-view="editor"] #documentHome { display:none; }
 .document-unsaved-dialog::backdrop { background:var(--app-backdrop,rgb(23 36 59 / 33%)); }
 .document-unsaved-dialog :is(h2,h3) { margin:0 0 12px; color:inherit; font-size:18px; font-weight:600; line-height:1.4; }
 .document-unsaved-dialog p { margin:0 0 24px; color:var(--app-muted,#64748b); overflow-wrap:anywhere; }
+.formula-source-dialog { width:min(720px,calc(100vw - 32px)); }
+.formula-source-dialog textarea { display:block; box-sizing:border-box; width:100%; min-height:220px; max-height:55dvh; resize:vertical; margin:0 0 20px; padding:12px; border:1px solid var(--app-border); border-radius:5px; background:var(--app-surface); color:var(--app-ink); font:14px/1.6 ui-monospace,monospace; tab-size:2; }
+#formulaSourceButton { border:1px solid var(--app-border); border-radius:4px; padding:2px 6px; background:var(--app-surface); color:var(--app-ink); font-size:11px; cursor:pointer; }
+#formulaSourceButton:disabled { opacity:.45; cursor:default; }
 .document-unsaved-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:8px; }
 .document-unsaved-actions button { min-height:36px; padding:6px 12px; border:1px solid var(--app-border,#d8dfe8); border-radius:5px; background:var(--app-surface,#fff); color:var(--app-ink,#202124); font:inherit; cursor:pointer; }
 .document-unsaved-actions button:hover:not(:disabled) { background:var(--app-hover,#e8eff9); border-color:var(--app-hover-border,#bed0e8); }

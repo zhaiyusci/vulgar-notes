@@ -33,7 +33,7 @@ export function ExportToolbarButton(props: DropdownMenuProps) {
       const mime = {markdown: 'text/markdown', latex: 'application/x-tex'}[format];
       await saveExport(new Blob([content], {type: `${mime};charset=utf-8`}), `document.${extension}`);
     } catch (error) {
-      toast.error(t('Export failed'), {description: String(error)});
+      toast.error(t('Export failed'), {description: t(error instanceof Error?error.message:String(error))});
     }
   };
 

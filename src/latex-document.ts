@@ -1,4 +1,4 @@
-import type {Value} from 'platejs';
+import type {TElement,Value} from 'platejs';
 import {plateLatex} from './plate-document';
 import {unicodeMathPreamble,blackboardPreamble} from './letter-preamble';
 import {mhchemParser} from 'mhchemparser';
@@ -6,9 +6,16 @@ import {citedBibLibraries,parseBibLibraries,validateBibLibraries,validCitationKe
 import {bibliographyItems} from './references';
 import {documentLatex} from './document-format';
 import type {BibliographyRun,BibliographyStyle} from './bibliography-style';
+import {migrateDocumentMetadata,type DocumentMetadata} from './document-metadata';
+import {collectFloatImageAssets} from './document-floats';
+import {buildMetadataAuthblk} from './metadata-authblk';
+import {adaptMathJaxLatex,analyzeMathJaxLatex,optionalMathPackages} from './mathjax-latex-packages';
 
 /** MathJax's physical-unit shorthand is not a LaTeX mhchem command. */
 export function portableMath(source:string):string {
+  source=adaptMathJaxLatex(source);
+  const issue=analyzeMathJaxLatex([source]).issues[0];
+  if(issue)throw Error('Cannot export \\'+issue.command+' to LaTeX without changing its meaning. '+issue.reason+' '+issue.suggestion);
   let result='',offset=0;
   const command=/\\[a-zA-Z]+|\\[^a-zA-Z]/g;
   for(let match; (match=command.exec(source));){
@@ -54,7 +61,9 @@ function formattedBibliographyTex(runs:readonly BibliographyRun[]):string {
   }).join('');
 }
 
-function referenceDocument(value:Value,libraries:readonly BibLibrary[],style:BibliographyStyle):{resources:string;setup:string;body:string;biblatex:boolean} {
+function referenceDocument(value:Value,libraries:readonly BibLibrary[],style:BibliographyStyle,renderImage:(image:any)=>string):{resources:string;setup:string;body:string;biblatex:boolean} {
+  const metadataBodies=new Map<TElement,string>();
+  const serialize=(nodes:Value)=>plateLatex(nodes,portableMath,renderImage,block=>metadataBodies.get(block)??'');
   const checked=validateBibLibraries(libraries),keys=new Set(parseBibLibraries(checked).map(entry=>entry.key));
   const identifiers=new Set<string>();
   const validate=(nodes:any[])=>nodes.forEach(node=>{
@@ -89,27 +98,30 @@ function referenceDocument(value:Value,libraries:readonly BibLibrary[],style:Bib
     ...item,key:item.kind==='endnote'?noteKey(item.identifier!):item.key,
   }));
   const bodyNodes=transform(value);
+  const metadata=buildMetadataAuthblk(bodyNodes.filter(node=>node.type==='document_metadata') as TElement[],children=>plateLatex([...children] as Value,portableMath,renderImage,undefined,true));
+  for(const [block,body] of metadata.bodyByBlock)metadataBodies.set(block,body);
+  const setup=(bibliographySetup:string)=>metadata.packages+bibliographySetup+metadata.setup;
   if(style!=='simple'){
     // The editor owns the shared note/citation order and numbers. Preformatted
     // CSL bodies preserve the chosen format exactly, without re-sorting or
     // reformatting entries through a different BibLaTeX implementation.
     const bibliography=rows.map(row=>{
       const body=row.libraryId&&row.runs?formattedBibliographyTex(row.runs):
-        plateLatex(transform(row.node.children) as Value,portableMath);
+        serialize(transform(row.node.children) as Value);
       return '\\bibitem{'+row.key+'} '+body;
     }).join('\n');
-    return {resources:'',setup:rows.length?'\\renewcommand{\\refname}{Notes and references}\n':'',
-      body:plateLatex(bodyNodes,portableMath)+(rows.length?'\n\n\\begin{thebibliography}{'+rows.length+'}\n'+bibliography+'\n\\end{thebibliography}':''),biblatex:false};
+    return {resources:'',setup:setup(rows.length?'\\renewcommand{\\refname}{Notes and references}\n':''),
+      body:serialize(bodyNodes)+(rows.length?'\n\n\\begin{thebibliography}{'+rows.length+'}\n'+bibliography+'\n\\end{thebibliography}':''),biblatex:false};
   }
   const retained=citedBibLibraries(checked,rows.filter(row=>row.libraryId).map(row=>row.key));
   if(!retained.length){
     const definitions=rows.map(row=>({type:'bibliography_entry',citeKey:row.key,children:transform(row.node.children)}));
-    return {resources:'',setup:rows.length?'\\renewcommand{\\refname}{Notes and references}\n':'',
-      body:plateLatex([...bodyNodes,...definitions],portableMath),biblatex:false};
+    return {resources:'',setup:setup(rows.length?'\\renewcommand{\\refname}{Notes and references}\n':''),
+      body:serialize([...bodyNodes,...definitions]),biblatex:false};
   }
   const sources=retained.map(library=>library.source);
   const custom=rows.filter(row=>!row.libraryId).map(row=>{
-    const note=plateLatex(transform(row.node.children) as Value,portableMath).replace(/\n{2,}/g,'\\par\n');
+    const note=serialize(transform(row.node.children) as Value).replace(/\n{2,}/g,'\\par\n');
     return '@misc{'+row.key+',\n  note = {'+note+'}\n}';
   });
   if(custom.length)sources.push(custom.join('\n\n'));
@@ -118,35 +130,49 @@ function referenceDocument(value:Value,libraries:readonly BibLibrary[],style:Bib
   return {
     resources:sources.map((source,index)=>embeddedBibliography(names[index],source)).join('\n'),
     // Dependency records can supply fields without becoming numbered entries.
-    setup:'\\usepackage[backend=biber,style=numeric,sorting=none,defernumbers=true]{biblatex}\n'+
+    setup:setup('\\usepackage[backend=biber,style=numeric,sorting=none,defernumbers=true]{biblatex}\n'+
       names.map(name=>'\\addbibresource{'+name+'}').join('\n')+'\n'+
       '\\DeclareBibliographyCategory{vulgarCited}\n'+
-      '\\addtocategory{vulgarCited}{'+printedKeys.join(',')+'}\n',
+      '\\addtocategory{vulgarCited}{'+printedKeys.join(',')+'}\n'),
     // Seed the shared body-reference order before notes' internal references
     // are expanded by biblatex while printing their content.
-    body:'\\nocite{'+printedKeys.join(',')+'}\n'+plateLatex(bodyNodes,portableMath)+
+    body:'\\nocite{'+printedKeys.join(',')+'}\n'+serialize(bodyNodes)+
       '\n\n\\printbibliography[category=vulgarCited,title={Notes and references}]',
     biblatex:true,
   };
 }
 
-export function latexDocument(value:Value,libraries:readonly BibLibrary[]=[],style:BibliographyStyle='simple'):string {
-  const bibliography=referenceDocument(value,libraries,style),body=bibliography.body;
+export function latexDocument(value:Value,libraries:readonly BibLibrary[]=[],style:BibliographyStyle='simple',metadata?:DocumentMetadata):string {
+  value=migrateDocumentMetadata(value,metadata);
+  const images=collectFloatImageAssets(value);
+  const bibliography=referenceDocument(value,libraries,style,images.renderImage),body=bibliography.body;
   const instructions=bibliography.biblatex?
     '% Compile: LuaLaTeX, Biber, LuaLaTeX, LuaLaTeX (TeX Live).\n% Run Biber on the document basename, without the .tex extension.\n':
-    '% Compile with LuaLaTeX or XeLaTeX (TeX Live).\n% Run twice to resolve cross-references and citations.\n';
+    (images.resources?'% Compile with LuaLaTeX (TeX Live) to decode embedded images.\n':'% Compile with LuaLaTeX or XeLaTeX (TeX Live).\n')+'% Rerun LaTeX until cross-references, contents and citations are stable.\n';
+  let deepestHeading=0,hasContents=false;
+  const sectionDepth=(nodes:readonly any[])=>{for(const node of nodes){if(node.type==='document_metadata')continue;if(/^h[1-6]$/.test(String(node.type)))deepestHeading=Math.max(deepestHeading,Number(node.type[1]));if(node.type==='toc')hasContents=true;if(Array.isArray(node.children))sectionDepth(node.children);}};
+  sectionDepth(value);
+  const sectioning=(deepestHeading>3?'\\setcounter{secnumdepth}{6}\n':'')+(hasContents?'\\setcounter{tocdepth}{6}\n':'')+(deepestHeading===6?String.raw`\makeatletter
+\newcounter{subsubparagraph}[subparagraph]
+\renewcommand\thesubsubparagraph{\thesubparagraph.\arabic{subsubparagraph}}
+\newcommand\subsubparagraph[1]{\par\addvspace{1.5ex}\refstepcounter{subsubparagraph}\NR@gettitle{#1}\noindent{\normalfont\normalsize\bfseries\thesubsubparagraph\quad #1}\par\nobreak\addcontentsline{toc}{subsubparagraph}{\protect\numberline{\thesubsubparagraph}#1}}
+\newcommand\l@subsubparagraph{\@dottedtocline{6}{12em}{6em}}
+\providecommand\toclevel@subsubparagraph{6}
+\makeatother
+`:'');
   return String.raw`% !TeX program = lualatex
-${instructions}${bibliography.resources}\documentclass[UTF8,fontset=fandol,scheme=plain]{ctexart}
+${instructions}${bibliography.resources}${images.resources}\documentclass[UTF8,fontset=fandol,scheme=plain]{ctexart}
 \usepackage{mathtools}
 \usepackage{amssymb}
-\usepackage{extarrows}
+${optionalMathPackages([body])}\usepackage{extarrows}
 \usepackage{cancel}
 ${unicodeMathPreamble}\setmathfont{NewCMMath-Regular.otf}
 \setmathfont{NewCMMath-Bold.otf}[version=bold]
 \usepackage{physics}
 \usepackage[version=4]{mhchem}
 ${blackboardPreamble}
-${bibliography.setup}\usepackage[hidelinks]{hyperref}
+${bibliography.setup}${images.setup}
+${sectioning}\usepackage[hidelinks]{hyperref}
 
 \begin{document}
 ${body}

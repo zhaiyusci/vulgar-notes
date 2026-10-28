@@ -2,7 +2,8 @@ import {initLocale} from './i18n';
 import {mountMathEditor} from './editor-ui';
 import {PlateMathHost} from './plate-host';
 import {initPreferences} from './preferences';
-import {documentSessionId} from './platform';
+import {documentSessionId,initializeDocumentDraftStore,flushDocumentDraftStore,refreshDocumentDraftStore} from './platform';
+import {DOCUMENT_DRAFT_STORAGE_ERROR,DOCUMENT_DRAFT_STORAGE_RESTORED} from './document-draft-store';
 import {mountDocumentHome} from './document-home';
 import {listRecentDocuments,removeRecentDocument} from './recent-documents';
 import {prepareDocumentRecovery,listRecoverableDocuments} from './document-recovery';
@@ -11,7 +12,15 @@ import {t} from './i18n';
 import {recordRuntimeEvent} from './runtime-diagnostics';
 initLocale();
 initPreferences();
-initDocumentLifecycle();
+
+// Keep recovery failures separate from the formula renderer's transient status.
+const recoveryWarning=document.createElement('p');
+recoveryWarning.className='document-storage-warning';recoveryWarning.hidden=true;
+recoveryWarning.setAttribute('role','status');recoveryWarning.setAttribute('aria-live','polite');
+recoveryWarning.textContent=t('Local document recovery is unavailable. Your changes remain in this window. Please save the document to a file.');
+document.body.append(recoveryWarning);
+window.addEventListener(DOCUMENT_DRAFT_STORAGE_ERROR,()=>{recoveryWarning.hidden=false;});
+window.addEventListener(DOCUMENT_DRAFT_STORAGE_RESTORED,()=>{recoveryWarning.hidden=true;});
 
 function navigate(documentId?:string){
   const url=new URL(window.location.href);url.hash='';
@@ -48,14 +57,23 @@ window.addEventListener('vulgar-document-render-error',()=>{void recordRuntimeEv
 
 async function start(){
   let recoveryError='';
-  try{const remapped=await prepareDocumentRecovery();if(remapped){navigate(remapped);return;}}catch{recoveryError=t('Local recovery storage could not be read. Existing data has been kept.');}
+  let draftsReady=false;
+  try{await initializeDocumentDraftStore();draftsReady=true;}catch{recoveryError=t('Local recovery storage could not be read. Existing data has been kept.');}
+  try{const remapped=await prepareDocumentRecovery();await flushDocumentDraftStore();if(remapped){navigate(remapped);return;}}catch{recoveryError=t('Local recovery storage could not be read. Existing data has been kept.');}
+  initDocumentLifecycle();
   const homeContainer=document.getElementById('documentHome')!;
   if(documentSessionId()){
+    // An unreadable IDB draft is not a blank document. Never let an empty or
+    // stale localStorage fallback replace the same document's latest edits.
+    if(!draftsReady){showDocumentFailure();return;}
     document.body.dataset.documentView='editor';homeContainer.hidden=true;
     mountMathEditor((mount,initial,hooks)=>{
       const host=new PlateMathHost(mount,initial,{...hooks,change:()=>{hooks.change();refreshDocumentState();}});
       detachActiveHost=attachDocumentHost(host);return host;
     });
+    // Persist first-open normalization, including the cleared pendingOpen flag.
+    // A cache failure must leave the mounted editor available for a real Save.
+    try{await flushDocumentDraftStore();}catch{/* The recovery warning remains visible. */}
     return;
   }
   const home=mountDocumentHome(homeContainer,{
@@ -68,7 +86,8 @@ async function start(){
     home.refresh({recentDocuments:listRecentDocuments(),recoveries:listRecoverableDocuments(),...(recoveryError?{error:recoveryError}:{})});
   }
   refreshHome();
-  window.addEventListener('storage',refreshHome);
-  window.addEventListener('focus',refreshHome);
+  const refreshStoredHome=()=>{void refreshDocumentDraftStore().then(refreshHome,refreshHome);};
+  window.addEventListener('storage',refreshStoredHome);
+  window.addEventListener('focus',refreshStoredHome);
 }
 void start().then(()=>recordRuntimeEvent('frontend-ready')).catch(()=>{void recordRuntimeEvent('frontend-start-error');showDocumentFailure();});

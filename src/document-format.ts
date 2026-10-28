@@ -2,6 +2,8 @@ export interface JSONContent { type?:string; text?:string; attrs?:Record<string,
 import {EditorModel} from './editor-model';
 import {referenceTex,validReferenceKey,type ReferenceNode} from './references';
 import {validCitationKey} from './bibtex';
+import {standaloneMathEnvironmentBounds} from './tex-display-environment';
+import {equationLabelInsertionOffset,normalizeEquationTrailingRowSeparator} from './math-equation-numbering';
 
 export const isMath=(type?:string)=>type==='inlineMath'||type==='displayMath';
 export function mathSource(snapshot:string):string {
@@ -56,6 +58,9 @@ const escapeText=(text:string)=>text.replace(/[\\{}$%#&_~^]/g,c=>({
 
 /** LaTeX is an additional export; Markdown is serialized by Tiptap itself. */
 export function documentLatex(node:JSONContent,formatMath:(source:string)=>string=source=>source):string {
+  // This fragment is produced only by the Plate-to-TeX adapter, never stored.
+  if(node.type==='latexFragment')return node.text||'';
+  if(node.type==='toc')return '\\tableofcontents\n\n';
   if(node.type==='texReference')return referenceTex(node.attrs as ReferenceNode);
   if(node.type==='bibliographyEntry')return '';
   const body=(node.content||[]).map(child=>documentLatex(child,formatMath)).join('');
@@ -73,7 +78,13 @@ export function documentLatex(node:JSONContent,formatMath:(source:string)=>strin
     return body+(entries.length?'\n\\begin{thebibliography}{'+String(entries.length)+'}\n'+bibliography+'\n\\end{thebibliography}\n':'');
   }
   if(isMath(node.type)){
-    const source=formatMath(node.attrs!.snapshot?mathSource(node.attrs!.snapshot):node.attrs!.texExpression||''),env=node.attrs!.numbered===false?'equation*':'equation';
+    const source=normalizeEquationTrailingRowSeparator(formatMath(node.attrs!.snapshot?mathSource(node.attrs!.snapshot):node.attrs!.texExpression||'')),env=node.attrs!.numbered===false?'equation*':'equation';
+    const standalone=standaloneMathEnvironmentBounds(source);
+    if(standalone){
+      const label=standalone.numbered!==false?labelTex:'';
+      const insertion=equationLabelInsertionOffset(source)??standalone.bodyEnd;
+      return '\n'+source.slice(0,insertion)+label+source.slice(insertion)+'\n';
+    }
     return node.type==='displayMath'?`\n\\begin{${env}}\n${node.attrs!.numbered!==false?labelTex:''}${source}\n\\end{${env}}\n`:'\\('+source+'\\)';
   }
   if(node.type==='text')return (node.marks||[]).reduce((text,mark)=>{
@@ -81,10 +92,19 @@ export function documentLatex(node:JSONContent,formatMath:(source:string)=>strin
     return command[mark.type]?`\\${command[mark.type]}{${text}}`:text;
   },escapeText(node.text||''));
   if(node.type==='hardBreak')return '\\\\\n';
-  if(node.type==='paragraph')return body+'\n\n';
+  if(node.type==='metadata')return '\\begingroup\n'+body+'\\endgroup\n\n';
+  if(node.type==='metadataHeading'){
+    const heading='{\\'+(['LARGE','Large','large','normalsize','normalsize','normalsize'][Math.max(0,Math.min(5,(node.attrs?.level||1)-1))])+'\\bfseries '+body+'\\par}\n';
+    const env=({left:'flushleft',right:'flushright',center:'center'} as Record<string,string>)[node.attrs?.align];
+    return env?'\\begin{'+env+'}\n'+heading+'\\end{'+env+'}\n\n':heading+'\n';
+  }
+  if(node.type==='paragraph'){
+    const alignment=node.attrs?.align,env=alignment==='left'?'flushleft':alignment==='right'?'flushright':alignment==='center'?'center':undefined;
+    return env?'\\begin{'+env+'}\n'+body+'\n\\end{'+env+'}\n\n':body+'\n\n';
+  }
   if(node.type==='heading'){
     const level=node.attrs?.level||1;
-    return level<=3?`\\${['section','subsection','subsubsection'][level-1]}{${body}}${labelTex}\n\n`:`\\paragraph*{${body}}\n\n`;
+    return `\\${['section','subsection','subsubsection','paragraph','subparagraph','subsubparagraph'][Math.max(0,Math.min(5,level-1))]}{${body}}${labelTex}\n\n`;
   }
   if(node.type==='listItem')return '\\item '+body.trim()+'\n';
   const env:Record<string,string>={bulletList:'itemize',orderedList:'enumerate',blockquote:'quote'};

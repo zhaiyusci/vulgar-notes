@@ -5,7 +5,7 @@ const vm=require('node:vm');
 const crypto=require('node:crypto').webcrypto;
 const compiled=build({entryPoints:['src/document-recovery.ts'],bundle:true,write:false,platform:'node',format:'cjs',plugins:[{name:'recovery-adapters',setup(build){
  build.onResolve({filter:/^(\.\/platform|\.\/i18n)$/},args=>({path:args.path,namespace:'recovery-test'}));
- build.onLoad({filter:/.*/,namespace:'recovery-test'},args=>({contents:args.path.endsWith('platform')?'export const draftStorage=()=>localStorage;export const documentSessionId=()=>activeId;':'export const t=value=>value;'}));
+ build.onLoad({filter:/.*/,namespace:'recovery-test'},args=>({contents:args.path.endsWith('platform')?'export const draftStorage=()=>localStorage;export const documentSessionId=()=>activeId;':"export const locale='en';export const t=value=>value;"}));
 }}]}).then(result=>result.outputFiles[0].text);
 function storage(){const entries=new Map();return {get length(){return entries.size},key:i=>[...entries.keys()][i]??null,getItem:key=>entries.get(key)??null,setItem:(key,value)=>entries.set(key,String(value)),removeItem:key=>entries.delete(key)};}
 async function load(localStorage=storage(),sessionStorage=storage(),activeId=null){

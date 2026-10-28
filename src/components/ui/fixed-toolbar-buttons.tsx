@@ -27,6 +27,9 @@ import { FontColorToolbarButton } from './font-color-toolbar-button';
 import { FontSizeToolbarButton } from './font-size-toolbar-button';
 import { RedoToolbarButton, UndoToolbarButton } from './history-toolbar-button';
 import { DocumentFileToolbarButtons } from './document-file-toolbar-buttons';
+import { MetadataToolbarButton } from './metadata-toolbar-button';
+import { DocumentViewToolbarButtons } from './document-view-toolbar-buttons';
+import { InsertFloatToolbarButton } from './insert-float-toolbar-button';
 import {
   IndentToolbarButton,
   OutdentToolbarButton,
@@ -67,6 +70,11 @@ export function FixedToolbarButtons() {
           </ToolbarGroup>
 
           <ToolbarGroup>
+            <MetadataToolbarButton />
+            <DocumentViewToolbarButtons />
+          </ToolbarGroup>
+
+          <ToolbarGroup>
             <InsertToolbarButton />
             <TurnIntoToolbarButton />
             <FontSizeToolbarButton />
@@ -74,6 +82,7 @@ export function FixedToolbarButtons() {
 
           <ToolbarGroup>
             <InsertMathToolbarButtons />
+            <InsertFloatToolbarButton />
           </ToolbarGroup>
 
           <ToolbarGroup>
@@ -139,7 +148,6 @@ export function FixedToolbarButtons() {
           </ToolbarGroup>
 
           <ToolbarGroup>
-            <MediaToolbarButton nodeType={KEYS.img} />
             <MediaToolbarButton nodeType={KEYS.video} />
             <MediaToolbarButton nodeType={KEYS.audio} />
             <MediaToolbarButton nodeType={KEYS.file} />
