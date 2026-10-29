@@ -4,3 +4,4 @@ buildSync({...shared,entryPoints:['src/editor-model.ts'],format:'iife',globalNam
 buildSync({...shared,entryPoints:{'editor-ui':'src/app.tsx'},conditions:['production'],minify:true,format:'esm',splitting:true,outdir:'dist',chunkNames:'chunks/[name]-[hash]',define:{'process.env.NODE_ENV':'"production"'},alias:{path:'path-browserify'},loader:{'.woff2':'dataurl','.woff':'dataurl','.ttf':'dataurl'}});
 require('node:child_process').execFileSync(process.execPath,['node_modules/@tailwindcss/cli/dist/index.mjs','--input','src/styles.css','--output','plate.css','--minify'],{stdio:'inherit'});
 buildSync({...shared,entryPoints:['src/mathjax-config.ts'],format:'iife',outfile:'mathjax-config.js'});
+buildSync({...shared,entryPoints:['src/mathjax-export-config.ts'],format:'iife',outfile:'mathjax-export-config.js'});

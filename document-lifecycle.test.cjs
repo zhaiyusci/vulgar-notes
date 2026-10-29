@@ -11,6 +11,7 @@ const source=build({entryPoints:['src/document-lifecycle.ts'],bundle:true,write:
    export const flushDocumentDraftStore=async()=>{const s=globalThis.lifecycleTest;s.flushes++;if(s.flushPending&&(!s.flushPendingAt||s.flushPendingAt===s.flushes))await s.flushPending;if(s.flushError&&(!s.flushErrorAt||s.flushErrorAt===s.flushes))throw Error(s.flushError);};
    export const newDocumentWindow=async()=>{const s=globalThis.lifecycleTest;s.newWindows++;if(s.newError)throw Error(s.newError);if(s.newPending)await s.newPending;};
    export const openDocumentFile=async()=>{const s=globalThis.lifecycleTest;s.pickers++;if(s.openError)throw Error(s.openError);if(s.openPending)await s.openPending;return s.openResult;};
+   export const takeSystemDocumentFile=async()=>{const s=globalThis.lifecycleTest;s.systemTakes=(s.systemTakes??0)+1;if(s.systemError)throw Error(s.systemError);const file=s.systemResult??null;s.systemResult=null;return file;};
    export const saveDocumentFile=async(source,target,name)=>{const s=globalThis.lifecycleTest;s.saves.push({source,target,name});if(s.saveError)throw Error(s.saveError);if(s.savePending)await s.savePending;return s.saveResult;};`,
   './recent-documents':`export const rememberRecentDocument=async file=>{const s=globalThis.lifecycleTest;s.remembered.push(file);if(s.rememberPending)await s.rememberPending;return {id:s.recentId};};export const openRecentDocument=async id=>{const s=globalThis.lifecycleTest;s.openedRecent.push(id);if(s.openPending)await s.openPending;return s.openResult;};export const getRecentDocumentTarget=async id=>{const s=globalThis.lifecycleTest;s.restored.push(id);if(s.restorePending)await s.restorePending;return s.restoredTarget;};`,
  };
@@ -50,6 +51,45 @@ test('home opens a validated file with its own prepared draft, baseline and rece
  const metadata=JSON.parse(h.storage.getItem(h.api.documentMetadataKey(start.documentId)));
  assert.equal(metadata.baseline,saved);assert.equal(metadata.name,file.name);assert.equal(metadata.recentId,'recent-test');assert.equal(metadata.pendingOpen,true);
  assert.equal(h.state.remembered[0],file);assert.equal(h.api.getDocumentState().active,false);
+});
+
+test('system-open prepares a normal document and keeps the original path for direct Save',async t=>{
+ const h=await harness(t,{desktop:true,home:true});
+ const file=h.state.systemResult={name:'量子 笔记.vulgar',path:'C:\\论文 文件\\量子 笔记.vulgar',text:saved};
+ assert.equal(await h.api.openSystemDocumentCommand(),true);assert.equal(h.state.pickers,0);assert.equal(h.events.start.length,1);
+ const started=h.events.start[0],metadata=JSON.parse(h.storage.getItem(h.api.documentMetadataKey(started.documentId)));
+ assert.equal(h.storage.getItem(h.api.documentDraftKey(started.documentId)),saved);
+ assert.equal(metadata.path,file.path);assert.equal(metadata.baseline,saved);assert.equal(metadata.pendingOpen,true);
+ assert.equal(h.state.remembered[0],file);
+ h.window.location.href='http://localhost/vulgar-notes/?document='+started.documentId;
+ h.host.content=saved;h.reattach();await h.tick();
+ assert.equal(h.api.getDocumentState().dirty,false);assert.equal(h.api.getDocumentState().name,file.name);
+ assert.equal(await h.api.openSystemDocumentCommand(),false,'the new document navigation must not open it again');
+ h.host.content=edited;h.state.saveResult={name:file.name,path:file.path};
+ await h.api.runDocumentCommand('save');
+ assert.equal(h.state.saves[0].target.path,file.path);assert.equal(h.state.saves[0].source,edited);
+ assert.equal(h.events.errors.length,0);
+});
+
+test('invalid or unreadable system documents report Open errors without replacing recoveries or recent entries',async t=>{
+ const h=await harness(t,{desktop:true,home:true});const original=h.storage.getItem(h.api.documentDraftKey(id));
+ h.state.systemError='File not found: missing.vulgar';
+ assert.equal(await h.api.openSystemDocumentCommand(),false);h.state.systemError=null;
+ for(const source of ['not JSON',JSON.stringify({settings:{language:'en'}})]){
+  h.state.systemResult={name:'invalid.vulgar',path:'C:\\notes\\invalid.vulgar',text:source};
+  assert.equal(await h.api.openSystemDocumentCommand(),false);
+ }
+ assert.equal(h.events.errors.length,3);assert.ok(h.events.errors.every(error=>error.action==='open'));
+ assert.equal(h.events.start.length,0);assert.equal(h.state.remembered.length,0);assert.equal(h.state.pickers,0);
+ assert.equal(h.storage.getItem(h.api.documentDraftKey(id)),original);assert.equal(h.api.getDocumentState().busy,false);
+});
+
+test('system-open cannot bypass unsaved changes if an editor is already attached',async t=>{
+ const h=await harness(t,{desktop:true,metadata:{name:'original.vulgar',baseline:saved}});
+ h.state.systemResult={name:'other.vulgar',path:'C:\\notes\\other.vulgar',text:saved};
+ const pending=h.api.openSystemDocumentCommand();await h.tick();h.prompt('cancel');
+ assert.equal(await pending,false);assert.equal(h.events.start.length,0);assert.equal(h.host.content,edited);
+ assert.equal(h.storage.getItem(h.api.documentDraftKey(id)),edited);assert.equal(h.state.remembered.length,0);
 });
 
 test('reload restores a saved baseline without marking recovered edits as saved',async t=>{

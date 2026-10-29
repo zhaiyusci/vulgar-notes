@@ -30,7 +30,7 @@ function prepareWebAssets(workspace = path.resolve(__dirname, '..')) {
   html = html.replace(configScript, '$&<script src="web-mathjax.js"></script>');
 
   // Fail before replacing a previously prepared site if the build is missing.
-  for (const file of ['dist/editor-ui.js', 'dist/editor-ui.css', 'plate.css', 'mathjax-config.js', 'node_modules/mathjax/tex-chtml.js', 'node_modules/mathjax/LICENSE', ...licenseFiles]) {
+  for (const file of ['dist/editor-ui.js', 'dist/editor-ui.css', 'plate.css', 'mathjax-config.js', 'mathjax-export-config.js', 'node_modules/mathjax/tex-chtml.js', 'node_modules/mathjax/LICENSE', ...licenseFiles]) {
     if (!fs.statSync(path.join(root, file)).isFile()) throw Error('Missing web build input: ' + file);
   }
   for (const [pkg] of vendorPackages) fs.accessSync(path.join(root, 'node_modules', pkg));
@@ -39,7 +39,7 @@ function prepareWebAssets(workspace = path.resolve(__dirname, '..')) {
   fs.rmSync(out, {recursive: true, force: true});
   fs.mkdirSync(out, {recursive: true});
   fs.cpSync(path.join(root, 'dist'), out, {recursive: true, filter: browserAsset});
-  for (const name of ['plate.css', 'mathjax-config.js']) fs.copyFileSync(path.join(root, name), path.join(out, name));
+  for (const name of ['plate.css', 'mathjax-config.js', 'mathjax-export-config.js']) fs.copyFileSync(path.join(root, name), path.join(out, name));
   fs.writeFileSync(path.join(out, 'index.html'), html);
   fs.writeFileSync(path.join(out, '.nojekyll'), '');
   fs.writeFileSync(path.join(out, 'web-mathjax.js'), `

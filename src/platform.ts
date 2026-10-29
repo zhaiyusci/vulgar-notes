@@ -1,4 +1,4 @@
-import {isTauri} from '@tauri-apps/api/core';
+import {invoke,isTauri} from '@tauri-apps/api/core';
 import {t} from './i18n';
 import {recordRuntimeEvent} from './runtime-diagnostics';
 import {getDocumentDraftStorage} from './document-draft-store';
@@ -142,6 +142,17 @@ export async function openDocumentFile(expected?:DocumentFile):Promise<OpenedDoc
   }
   const file=await openTextFile(['vulgar','json'],'Vulgar Notes document','.vulgar,.json,application/json','Please choose a Vulgar Notes document (.vulgar or legacy .json).');
   if(file)checkDocumentName(file.name,expected?.name);return file;
+}
+
+/** The native host binds a one-time OS-open request to this window, never a URL path. */
+export async function takeSystemDocumentFile():Promise<OpenedDocument|null> {
+  if(!isTauri())return null;
+  const file=await invoke<OpenedDocument|null>('take_system_document');
+  if(file==null)return null;
+  if(typeof file.name!=='string'||typeof file.path!=='string'||typeof file.text!=='string')
+    throw Error(t('The system-open request is invalid.'));
+  checkDocumentName(file.name);
+  return file;
 }
 
 /** Adding a bibliography source is separate from opening a native document. */

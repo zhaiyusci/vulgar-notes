@@ -28,6 +28,7 @@ function fixture(t) {
   write('dist/editor-ui.css');
   write('plate.css');
   write('mathjax-config.js');
+  write('mathjax-export-config.js');
   write('licenses/third-party.txt');
   for (const name of licenseFiles) write(name, 'Original contents of ' + name + '\n');
   write('node_modules/mathjax/tex-chtml.js');

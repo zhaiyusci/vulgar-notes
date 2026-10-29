@@ -1,16 +1,17 @@
 'use client';
 
-import { EquationPlugin, InlineEquationPlugin } from '@platejs/math/react';
+import {toPlatePlugin} from 'platejs/react';
+import {BaseEquationPlugin,BaseInlineEquationPlugin} from '@/plate-math-plugins';
 
 import { MathEquationElement as EquationElement, MathEquationElement as InlineEquationElement } from '@/plate-math-element';
 
 export const MathKit = [
-  InlineEquationPlugin.configure({
+  toPlatePlugin(BaseInlineEquationPlugin).configure({
     node: {
       component: InlineEquationElement,
     },
   }),
-  EquationPlugin.configure({
+  toPlatePlugin(BaseEquationPlugin).configure({
     node: {
       component: EquationElement,
     },

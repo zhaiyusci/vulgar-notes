@@ -10,7 +10,7 @@ import { insertExcalidraw } from '@platejs/excalidraw';
 import { insertEndnote } from './insert-endnote';
 import { insertColumnGroup, toggleColumnGroup } from '@platejs/layout';
 import { triggerFloatingLink } from '@platejs/link/react';
-import { insertEquation, insertInlineEquation } from '@platejs/math';
+import { insertEquation, insertInlineEquation } from '@/plate-math-plugins';
 import {
   insertAudioPlaceholder,
   insertFilePlaceholder,

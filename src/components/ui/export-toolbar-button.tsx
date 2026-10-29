@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ToolbarButton } from './toolbar';
 
-type ExportFormat = 'markdown' | 'latex';
+type ExportFormat = 'html' | 'markdown' | 'latex';
 
 export function ExportToolbarButton(props: DropdownMenuProps) {
   const editor = useEditorRef();
@@ -26,11 +26,13 @@ export function ExportToolbarButton(props: DropdownMenuProps) {
 
   const exportDocument = async (format: ExportFormat) => {
     try {
-      const content = format === 'markdown'
+      const content = format === 'html'
+          ? await host!.exportHtml()
+          : format === 'markdown'
           ? host?.exportMarkdown()??editor.getApi(MarkdownPlugin).markdown.serialize()
           : latexDocument(editor.children,libraries,style);
-      const extension = {markdown: 'md', latex: 'tex'}[format];
-      const mime = {markdown: 'text/markdown', latex: 'application/x-tex'}[format];
+      const extension = {html:'html', markdown: 'md', latex: 'tex'}[format];
+      const mime = {html:'text/html', markdown: 'text/markdown', latex: 'application/x-tex'}[format];
       await saveExport(new Blob([content], {type: `${mime};charset=utf-8`}), `document.${extension}`);
     } catch (error) {
       toast.error(t('Export failed'), {description: t(error instanceof Error?error.message:String(error))});
@@ -46,6 +48,7 @@ export function ExportToolbarButton(props: DropdownMenuProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         <DropdownMenuGroup>
+          <DropdownMenuItem disabled={!host} onSelect={() => void exportDocument('html')}>HTML (.html)</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => void exportDocument('markdown')}>Markdown (.md)</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => void exportDocument('latex')}>LaTeX (.tex)</DropdownMenuItem>
         </DropdownMenuGroup>

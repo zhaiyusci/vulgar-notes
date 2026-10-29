@@ -1,6 +1,6 @@
 import {isTauri} from '@tauri-apps/api/core';
 import {parseDocumentFile,documentContentKey} from './plate-document';
-import {defaultDocumentName,documentSessionId,draftStorage,flushDocumentDraftStore,newDocumentWindow,openDocumentFile,saveDocumentFile,type DocumentFile,type OpenedDocument} from './platform';
+import {defaultDocumentName,documentSessionId,draftStorage,flushDocumentDraftStore,newDocumentWindow,openDocumentFile,saveDocumentFile,takeSystemDocumentFile,type DocumentFile,type OpenedDocument} from './platform';
 import {getRecentDocumentTarget,openRecentDocument,rememberRecentDocument} from './recent-documents';
 import {t} from './i18n';
 import {recordRuntimeEvent} from './runtime-diagnostics';
@@ -201,6 +201,17 @@ export async function openRecentDocumentCommand(id:string):Promise<void> {
     const decision=await mayLeave();if(decision==='cancel')return;
     const authorization=leaveAuthorization();const file=await openRecentDocument(id);if(!file)return;parseDocumentFile(file.text);await startOpenedDocument(file,decision==='discard',authorization);
   });
+}
+/** Called once after native startup: use the same validation, recovery and Save target as Open. */
+export async function openSystemDocumentCommand():Promise<boolean> {
+  let started=false;
+  await exclusive('open',async()=>{
+    const file=await takeSystemDocumentFile();if(!file)return;
+    const decision=await mayLeave();if(decision==='cancel')return;
+    const authorization=leaveAuthorization();
+    await startOpenedDocument(file,decision==='discard',authorization);started=true;
+  });
+  return started;
 }
 /** Install once, including on the home screen where no editor is attached. */
 export function initDocumentLifecycle():()=>void {

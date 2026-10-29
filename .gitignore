@@ -2,6 +2,7 @@ node_modules/
 editor-model.js
 editor-ui.js
 mathjax-config.js
+mathjax-export-config.js
 plate.css
 editor-ui.css
 editor-ui.css.map

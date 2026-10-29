@@ -10,13 +10,13 @@ function prepareDesktopAssets(workspace = path.resolve(__dirname, '..')) {
   // Only generated assets in this project's dedicated output directory are replaced.
   if (path.dirname(out) !== root || path.basename(out) !== 'desktop-dist') throw Error('Invalid output path');
   // Check the distributable license/source files before replacing a previous build.
-  for (const file of ['dist/editor-ui.js', 'dist/editor-ui.css', 'plate.css', 'mathjax-config.js', 'node_modules/mathjax/tex-chtml.js', 'node_modules/mathjax/LICENSE', ...licenseFiles]) {
+  for (const file of ['dist/editor-ui.js', 'dist/editor-ui.css', 'plate.css', 'mathjax-config.js', 'mathjax-export-config.js', 'node_modules/mathjax/tex-chtml.js', 'node_modules/mathjax/LICENSE', ...licenseFiles]) {
     if (!fs.statSync(path.join(root, file)).isFile()) throw Error('Missing desktop build input: ' + file);
   }
   fs.rmSync(out, {recursive: true, force: true});
   fs.mkdirSync(out, {recursive: true});
   fs.cpSync(path.join(root, 'dist'), out, {recursive: true, filter: file => !file.endsWith('.map')});
-  for (const name of ['plate.css', 'mathjax-config.js']) fs.copyFileSync(path.join(root, name), path.join(out, name));
+  for (const name of ['plate.css', 'mathjax-config.js', 'mathjax-export-config.js']) fs.copyFileSync(path.join(root, name), path.join(out, name));
   let html = fs.readFileSync(path.join(root, 'mathjax4_editor_prototype_document_typeset.html'), 'utf8');
   html = html.replace('https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-chtml.js', 'vendor/mathjax/tex-chtml.js');
   html = html.replace('<script src="mathjax-config.js"></script>', '<script src="mathjax-config.js"></script><script src="desktop-mathjax.js"></script>');

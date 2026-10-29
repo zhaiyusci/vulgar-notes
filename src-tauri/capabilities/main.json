@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "Create local document windows and open or save documents only at paths selected through native dialogs.",
+  "description": "Create local document windows and open or save documents only at exact paths selected through native dialogs or system file-open requests.",
   "windows": [
     "main",
     "document-*"

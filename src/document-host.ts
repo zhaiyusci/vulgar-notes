@@ -6,6 +6,8 @@ export interface MathHostHooks {
   activate(element:HTMLElement,model:EditorModel,edge:'start'|'end'):void;
   leave():void;
   change():void;
+  /** Wait for the current formula repaint only when explicitly exporting. */
+  renderForExport?():Promise<void>;
 }
 export interface DocumentHost {
   readonly readOnly:boolean;
@@ -17,6 +19,7 @@ export interface DocumentHost {
   persist():void;
   exportLatex():string;
   exportMarkdown():string;
+  exportHtml?():Promise<string>;
   isDisplay(element:HTMLElement):boolean;
   isNumbered(element:HTMLElement):boolean;
   setNumbered(element:HTMLElement,numbered:boolean):void;

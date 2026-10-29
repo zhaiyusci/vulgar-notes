@@ -8,7 +8,11 @@ const platformAdapters={name:'platform-test-adapters',setup(b){
   b.onLoad({filter:/.*/,namespace:'platform-test'},({path})=>({contents:path==='i18n'
    ?'export const t=value=>value;'
    :path.endsWith('/core')
-    ?'export const isTauri=()=>globalThis.platformTest.desktop;export const invoke=async()=>{};'
+    ?`export const isTauri=()=>globalThis.platformTest.desktop;export const invoke=async command=>{
+       const s=globalThis.platformTest;if(command!=='take_system_document')return;
+       s.systemTakes=(s.systemTakes??0)+1;if(s.systemError)throw Error(s.systemError);
+       const file=s.systemFile??null;s.systemFile=null;return file;
+      };`
     :path.endsWith('/plugin-dialog')
      ?`export const open=async options=>{const s=globalThis.platformTest;s.opens.push(options);return s.openPath;};
        export const save=async options=>{const s=globalThis.platformTest;s.saves.push(options);return s.savePath;};
@@ -93,6 +97,25 @@ test('desktop cancellation and unrelated extensions never read document data',as
   h.state.openPath=path;await assert.rejects(h.api.openDocumentFile());
  }
  assert.equal(h.state.reads.length,0);
+});
+
+test('a native system-open request uses its window-bound file without a second picker',async t=>{
+ const h=await harness(t),file={name:'量子 笔记.VULGAR',path:'C:\\论文 文件\\量子 笔记.VULGAR',text:'{"version":1,"value":[]}'};
+ h.state.systemFile=file;
+ assert.deepEqual(JSON.parse(JSON.stringify(await h.api.takeSystemDocumentFile())),file);
+ assert.equal(await h.api.takeSystemDocumentFile(),null,'navigation cannot reopen an already claimed request');
+ assert.equal(h.state.systemTakes,2);assert.equal(h.state.opens.length,0);assert.equal(h.state.reads.length,0);
+ const web=await harness(t,false);web.state.systemFile=file;
+ assert.equal(await web.api.takeSystemDocumentFile(),null);assert.equal(web.state.systemTakes,undefined);
+});
+
+test('native system-open failures and invalid payloads remain ordinary open errors',async t=>{
+ const h=await harness(t);h.state.systemError='File not found: missing.vulgar';
+ await assert.rejects(h.api.takeSystemDocumentFile(),/File not found/);h.state.systemError=null;
+ for(const file of [{name:'note.vulgar',text:'{}'},{name:'note.vulgar',path:'C:\\note.vulgar',text:3},{name:'note.md',path:'C:\\note.md',text:'{}'}]){
+  h.state.systemFile=file;await assert.rejects(h.api.takeSystemDocumentFile());
+ }
+ assert.equal(h.state.opens.length,0);assert.equal(h.state.reads.length,0);
 });
 
 test('browser opens native and legacy files with their actual JSON contents',async t=>{

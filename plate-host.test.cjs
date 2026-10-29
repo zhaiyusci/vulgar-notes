@@ -8,7 +8,10 @@ test('Plate document / independent MathJax mount integration',async t=>{
  window.document.write('<!doctype html><html><body></body></html>');
  for(const key of ['innerWidth','innerHeight','window','document','navigator','sessionStorage','localStorage','Node','Element','HTMLElement','HTMLInputElement','HTMLTextAreaElement','Document','DocumentFragment','MutationObserver','ResizeObserver','DOMParser','Range','Event','CustomEvent','KeyboardEvent','ClipboardEvent','DOMRect','HTMLDivElement','HTMLSpanElement','NodeFilter','ShadowRoot'])Object.defineProperty(globalThis,key,{value:key==='window'?window:window[key],configurable:true});
  globalThis.getComputedStyle=window.getComputedStyle.bind(window);globalThis.requestAnimationFrame=window.requestAnimationFrame.bind(window);globalThis.cancelAnimationFrame=window.cancelAnimationFrame.bind(window);
- await build({stdin:{contents:"export {PlateMathHost} from './src/plate-host';export {flushDocumentDraftStore} from './src/document-draft-store';",resolveDir:__dirname,loader:'ts'},bundle:true,platform:'node',format:'cjs',outfile:'.plate-test.cjs',loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'test-kit',setup(b){b.onLoad({filter:/components[\\/]editor[\\/]editor-kit\.tsx$/},()=>({contents:`import {ParagraphPlugin} from 'platejs/react';import {TrailingBlockPlugin} from 'platejs';import {MathKit} from './plugins/math-kit';import {MarkdownKit} from './plugins/markdown-kit';import {ReferenceKit} from './plugins/reference-kit';import {FootnoteKit} from './plugins/footnote-kit';export const EditorKit=[ParagraphPlugin,...MathKit,...ReferenceKit,TrailingBlockPlugin,...MarkdownKit,...FootnoteKit];`,loader:'tsx',resolveDir:require('node:path').resolve('src/components/editor')}))}}]});
+ const originalFetch=globalThis.fetch;
+ globalThis.fetch=(input,options)=>String(input).endsWith('/mathjax-export-config.js')?Promise.resolve(new Response('/* native MathJax export configuration */',{status:200})):originalFetch(input,options);
+ t.after(()=>{globalThis.fetch=originalFetch;});
+ await build({stdin:{contents:"export {PlateMathHost} from './src/plate-host';export {flushDocumentDraftStore} from './src/document-draft-store';",resolveDir:__dirname,loader:'ts'},bundle:true,platform:'node',format:'cjs',outfile:'.plate-test.cjs',loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'test-kit',setup(b){b.onLoad({filter:/components[\\/]editor[\\/]editor-kit\.tsx$/},()=>({contents:`import {ParagraphPlugin} from 'platejs/react';import {H1Plugin} from '@platejs/basic-nodes/react';import {H1Element} from '../ui/heading-node';import {TrailingBlockPlugin} from 'platejs';import {MathKit} from './plugins/math-kit';import {MarkdownKit} from './plugins/markdown-kit';import {ReferenceKit} from './plugins/reference-kit';import {FootnoteKit} from './plugins/footnote-kit';export const EditorKit=[ParagraphPlugin,H1Plugin.withComponent(H1Element),...MathKit,...ReferenceKit,TrailingBlockPlugin,...MarkdownKit,...FootnoteKit];`,loader:'tsx',resolveDir:require('node:path').resolve('src/components/editor')}))}}]});
  const {PlateMathHost,flushDocumentDraftStore}=require('./.plate-test.cjs');fs.unlinkSync('.plate-test.cjs');
  const tick=()=>new Promise(resolve=>setTimeout(resolve,10));
  // Hold only the host's recovery batch timer. React, Slate and test ticks keep
@@ -624,6 +627,94 @@ test('Plate document / independent MathJax mount integration',async t=>{
   assert.equal(entry.element.closest('[data-formula-selected]').dataset.formulaSelected,'true');
   flow.keyDown({key:'Backspace',repeat:false,nativeEvent:{isComposing:false},preventDefault(){}});await tick();
   assert.equal(flow.entries().length,before-1);flow.destroy();
+ });
+ await t.test('HTML export waits for the latest formula DOM and preserves literal prose, live view and selections',async()=>{
+  const {flow,editor}=setup();const entry=flow.entries()[0];let release;
+  const rendered=new Promise(resolve=>{release=resolve;});
+  let renderStarted=false,finished=false,expectedDom;
+  try{
+   flow.markDocumentSaved(flow.serializeDocument());
+   const literal=' **literal, not Markdown** [still text](https://example.invalid/)';
+   editor.tf.select(editor.api.end([]));editor.tf.insertText(literal);await tick();flow.persist();
+   const stale=document.createElement('mjx-container');stale.textContent='stale formula';entry.element.replaceChildren(stale);
+   const nativeSelection=window.getSelection(),range=document.createRange();
+   const prose=flow.mount.querySelector('[data-slate-string]').firstChild;
+   range.setStart(prose,1);range.collapse(true);nativeSelection.removeAllRanges();nativeSelection.addRange(range);
+   const before={source:flow.serializeDocument(),dirty:flow.hasUnsavedChanges(),selection:JSON.stringify(editor.selection),
+    anchorNode:nativeSelection.anchorNode,anchorOffset:nativeSelection.anchorOffset,focusNode:nativeSelection.focusNode,focusOffset:nativeSelection.focusOffset};
+   assert.equal(before.dirty,true);
+   flow.exportMarkdown=()=>{throw Error('HTML must not pass through Markdown export');};
+   flow.exportLatex=()=>{throw Error('HTML must not pass through LaTeX export');};
+   flow.hooks.renderForExport=async()=>{
+    renderStarted=true;await rendered;
+    const latest=document.createElement('mjx-container');
+    latest.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" data-rendered="latest"><defs><path id="html-test-glyph" d="M0 0 L10 10" /></defs><use href="#html-test-glyph" /></svg>';
+    entry.element.replaceChildren(latest);expectedDom=flow.mount.innerHTML;
+   };
+   const exported=flow.exportHtml().then(html=>{finished=true;return html;});
+   try{
+    await tick();assert.equal(renderStarted,true);assert.equal(finished,false,'the snapshot must wait for a pending MathJax repaint');
+    release();const html=await exported;
+    const output=new window.DOMParser().parseFromString(html,'text/html');
+    assert.ok(output.querySelector('mjx-container svg[data-rendered="latest"]'));
+    assert.equal(output.querySelector('mjx-container use').getAttribute('href'),'#html-test-glyph');
+    assert.ok(output.getElementById('html-test-glyph'),'SVG glyph definitions remain available without MathJax scripts');
+    assert.doesNotMatch(output.body.textContent,/stale formula/);
+    assert.ok(output.body.textContent.includes(literal));
+    assert.equal(output.querySelector('a[href="https://example.invalid/"]'),null,'literal Markdown-looking prose must not become a link');
+    assert.equal(flow.mount.innerHTML,expectedDom,'export cleanup must operate on a clone');
+    assert.equal(entry.element.firstChild.localName,'mjx-container');
+    assert.equal(flow.serializeDocument(),before.source);assert.equal(flow.hasUnsavedChanges(),before.dirty);
+    assert.equal(JSON.stringify(editor.selection),before.selection);
+    for(const key of ['anchorNode','anchorOffset','focusNode','focusOffset'])assert.equal(nativeSelection[key],before[key],key+' must not change during export');
+   }finally{release();await exported.catch(()=>{});}
+  }finally{release();flow.destroy();}
+ });
+ await t.test('HTML exports real destinations for section refs, eqrefs, citations and endnotes without changing the document',async()=>{
+  const {flow,editor}=setupBlank();
+  try{
+   const model=new EditorModel();model.replaceInput(0,0,'x^2');
+   const formula={type:'inline_equation',id:'html-numbered-equation',display:true,numbered:true,texLabel:'eq:one',snapshot:model.snapshot(),texExpression:model.exportLatex(),children:[{text:''}]};
+   const reference=(command,key)=>({type:'tex_reference',command,keys:[key],children:[{text:''}]});
+   const value=[
+    {type:'h1',texLabel:'sec:one',children:[{text:'Referenced section'}]},
+    {type:'p',children:[{text:'Equation '},reference('eqref','eq:one'),{text:'; section '},reference('ref','sec:one'),{text:'; source '},reference('cite','paper'),{text:'; note '},{type:'footnoteReference',identifier:'note-one',children:[{text:''}]},{text:'.'}]},
+    {type:'p',children:[{text:''},formula,{text:''}]},
+    {type:'footnoteDefinition',identifier:'note-one',children:[{type:'p',children:[{text:'Tail note destination'}]}]},
+   ];
+   flow.openDocument(JSON.stringify({version:1,value}));
+   flow.setBibliographyLibraries([{id:'html-papers',name:'papers.bib',source:'@book{paper,title={Bibliography destination},author={Doe, Jane},year={2026}}'}]);await tick();
+   const math=flow.entries()[0].element;math.innerHTML='<mjx-container><svg xmlns="http://www.w3.org/2000/svg" data-equation="one"><path d="M0 0 L4 4" /></svg></mjx-container>';
+   flow.markDocumentSaved(flow.serializeDocument());editor.tf.select({path:[1,0],offset:2});await tick();
+   const before={source:flow.serializeDocument(),dom:flow.mount.innerHTML,selection:JSON.stringify(editor.selection),dirty:flow.hasUnsavedChanges()};
+   assert.equal(before.dirty,false);
+   const html=await flow.exportHtml(),output=new window.DOMParser().parseFromString(html,'text/html');
+   const links=[...output.querySelectorAll('a.tex-reference-content')];assert.equal(links.length,4);
+   const destination=text=>{
+    const link=links.find(link=>link.textContent===text);assert.ok(link,'reference '+text+' remains visible as a real HTML link');
+    const href=link.getAttribute('href');assert.ok(href?.startsWith('#'),'reference '+text+' has a fragment destination');
+    const target=output.getElementById(decodeURIComponent(href.slice(1)));assert.ok(target,'reference '+text+' resolves to an existing exported element');return target;
+   };
+   const equationTarget=destination('(1)'),headingTarget=destination('1'),citationTarget=destination('[1]'),noteTarget=destination('[2]');
+   assert.ok(equationTarget.querySelector('mjx-container svg[data-equation="one"]'));
+   assert.equal(headingTarget.tagName,'H1');assert.match(headingTarget.textContent,/Referenced section/);
+   assert.match(citationTarget.textContent,/Bibliography destination/);assert.match(noteTarget.textContent,/Tail note destination/);
+   assert.equal(new Set([equationTarget.id,headingTarget.id,citationTarget.id,noteTarget.id]).size,4,'different reference kinds must not collapse onto the same target');
+   assert.equal(flow.mount.innerHTML,before.dom);assert.equal(flow.serializeDocument(),before.source);
+   assert.equal(JSON.stringify(editor.selection),before.selection);assert.equal(flow.hasUnsavedChanges(),false);
+  }finally{flow.destroy();}
+ });
+ await t.test('HTML export reports a failed current formula repaint instead of exporting a stale snapshot',async()=>{
+  const {flow,editor}=setup();
+  try{
+   const entry=flow.entries()[0];entry.element.innerHTML='<mjx-container>old formula</mjx-container>';
+   editor.tf.select(editor.api.end([]));await tick();flow.markDocumentSaved(flow.serializeDocument());
+   const before={source:flow.serializeDocument(),dom:flow.mount.innerHTML,selection:JSON.stringify(editor.selection)};
+   flow.hooks.renderForExport=async()=>{await Promise.resolve();throw Error('Current MathJax render failed');};
+   await assert.rejects(flow.exportHtml(),/Current MathJax render failed/);
+   assert.equal(flow.mount.innerHTML,before.dom);assert.equal(flow.serializeDocument(),before.source);
+   assert.equal(JSON.stringify(editor.selection),before.selection);assert.equal(flow.hasUnsavedChanges(),false);
+  }finally{flow.destroy();}
  });
  await window.happyDOM.abort();
 });

@@ -7,7 +7,7 @@ import {DOCUMENT_DRAFT_STORAGE_ERROR,DOCUMENT_DRAFT_STORAGE_RESTORED} from './do
 import {mountDocumentHome} from './document-home';
 import {listRecentDocuments,removeRecentDocument} from './recent-documents';
 import {prepareDocumentRecovery,listRecoverableDocuments} from './document-recovery';
-import {attachDocumentHost,initDocumentLifecycle,refreshDocumentState,runDocumentCommand,openRecentDocumentCommand} from './document-lifecycle';
+import {attachDocumentHost,initDocumentLifecycle,refreshDocumentState,runDocumentCommand,openRecentDocumentCommand,openSystemDocumentCommand} from './document-lifecycle';
 import {t} from './i18n';
 import {recordRuntimeEvent} from './runtime-diagnostics';
 initLocale();
@@ -59,8 +59,11 @@ async function start(){
   let recoveryError='';
   let draftsReady=false;
   try{await initializeDocumentDraftStore();draftsReady=true;}catch{recoveryError=t('Local recovery storage could not be read. Existing data has been kept.');}
-  try{const remapped=await prepareDocumentRecovery();await flushDocumentDraftStore();if(remapped){navigate(remapped);return;}}catch{recoveryError=t('Local recovery storage could not be read. Existing data has been kept.');}
   initDocumentLifecycle();
+  // OS requests survive frontend loading in the native host. Claim only after
+  // error handling and recovery storage are ready; navigation consumes it once.
+  if(await openSystemDocumentCommand())return;
+  try{const remapped=await prepareDocumentRecovery();await flushDocumentDraftStore();if(remapped){navigate(remapped);return;}}catch{recoveryError=t('Local recovery storage could not be read. Existing data has been kept.');}
   const homeContainer=document.getElementById('documentHome')!;
   if(documentSessionId()){
     // An unreadable IDB draft is not a blank document. Never let an empty or

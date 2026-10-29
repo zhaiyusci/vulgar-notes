@@ -1,4 +1,4 @@
-import { BaseEquationPlugin, BaseInlineEquationPlugin } from '@platejs/math';
+import { BaseEquationPlugin, BaseInlineEquationPlugin } from '@/plate-math-plugins';
 
 import {
   EquationElementStatic,

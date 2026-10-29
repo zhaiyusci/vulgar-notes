@@ -18,7 +18,7 @@ import {EditorModel,type MathItem} from './editor-model';
 import type {DocumentHost,MathHostHooks,FormulaEntry} from './document-host';
 import {documentStorageKey,formulaNode,isFormula,newId,plateLatex,restoreDocumentEnvelope,parseDocumentEnvelope,validateDocumentLibraries,isBlankDocument,type FormulaNode} from './plate-document';
 import {convertMath} from './tex-convert';
-import {bibliographyItems,citedReferenceKeys,validReferenceKey} from './references';
+import {bibliographyItems,citedReferenceKeys,referenceTargets,resolveReferenceTargets,validReferenceKey,type ReferenceNode} from './references';
 import {citedBibLibraries,validateBibLibraries,validCitationKey,type BibLibrary} from './bibtex';
 import {bibliographyMarkdown} from './bibliography-markdown';
 import {readLibraryCache,writeLibraryCache,restoreLibraryAttachments} from './bibliography-library-store';
@@ -29,6 +29,9 @@ import {DocumentContentComparison} from './document-content-comparison';
 import {registerDocumentDraftProducer} from './document-draft-store';
 import {hasNativeClipboard,readNativeClipboard,writeNativeClipboard,nativeClipboardHtml,captureDocumentFragment,cloneDocumentFragment} from './native-clipboard';
 import {documentClipboardHtml,documentClipboardText,prepareClipboardHtml,restoreClipboardMath} from './document-clipboard-format';
+import {documentOutline} from './document-outline';
+import {exportRenderedHtml} from './html-export';
+import {standaloneMathEnvironmentBounds} from './tex-display-environment';
 
 export class PlateMathHost implements DocumentHost {
   readonly editor:PlateEditor;
@@ -453,6 +456,49 @@ export class PlateMathHost implements DocumentHost {
   }
   exportMarkdown(){
     return bibliographyMarkdown(this.editor.children,this.bibliographyLibraries,value=>this.editor.getApi(MarkdownPlugin).markdown.serialize({value}),this.bibliographyStyle);
+  }
+  async exportHtml():Promise<string> {
+    // Flush mounted React content and await only the current math repaint.
+    // HTML export never reinterprets the document through Markdown or TeX.
+    flushSync(()=>this.syncMath());
+    await this.hooks.renderForExport?.();
+    const root=this.mount.querySelector<HTMLElement>('.document-zoom-surface');
+    if(!root)throw Error(t('The document is not ready to export.'));
+    const value=this.editor.children,index=referenceTargets(value,this.bibliographyLibraries);
+    const targets=new Map<Element,string>(),links:{element:Element;href:string}[]=[],formulas:{element:Element;source:string;typesetSource:string}[]=[];
+    const mark=(element:Element|undefined|null,id:string):string|undefined=>{
+      if(!element||!root.contains(element))return;
+      if(!targets.has(element))targets.set(element,id);return targets.get(element);
+    };
+    for(const entry of documentOutline(value))mark(this.editor.api.toDOMNode(entry.node),entry.anchor);
+    const references=new Map<typeof index[number],string>();
+    const rows=[...root.querySelectorAll<HTMLElement>('[data-bibliography-key]')];
+    index.forEach((target,order)=>{
+      const element=target.libraryId?rows.find(row=>row.dataset.bibliographyKey===target.key):this.editor.api.toDOMNode(target.node);
+      const anchor=mark(element,'vn-target-'+order);if(anchor)references.set(target,anchor);
+    });
+    for(const [node] of NodeApi.nodes(this.editor)){
+      if(isFormula(node)){
+        const formula=node as FormulaNode,element=this.mounts.get(formula.id),source=String(formula.texExpression??'');
+        if(element&&source.trim()){
+          const display=formula.type==='equation'||formula.display===true;
+          const typesetSource=standaloneMathEnvironmentBounds(source)?source:display
+            ?formula.numbered!==false?'\\begin{equation}'+source+'\\end{equation}':'\\['+source+'\\]'
+            :'\\('+source+'\\)';
+          formulas.push({element,source,typesetSource});
+        }
+        continue;
+      }
+      if(!('type' in node)||node.type!=='tex_reference'&&node.type!==KEYS.footnoteReference)continue;
+      const element=this.editor.api.toDOMNode(node)?.querySelector('.tex-reference-content');if(!element)continue;
+      const matches=node.type==='tex_reference'
+        ?resolveReferenceTargets(index,node as ReferenceNode)
+        :(()=>{const items=index.filter(item=>item.kind==='endnote'&&item.identifier===node.identifier);return {invalid:items.length!==1||!items[0].number,targets:items};})();
+      const anchor=!matches.invalid&&references.get(matches.targets[0]);
+      if(anchor)links.push({element,href:'#'+anchor});
+    }
+    const title=root.querySelector('[data-metadata-role="title"] .metadata-entry-body')?.textContent?.trim()||undefined;
+    return exportRenderedHtml(root,{title,lang:document.documentElement.lang,targets:[...targets].map(([element,id])=>({element,id})),links,formulas});
   }
   get activeFormulaId(){return this.activeFormula?.dataset.mathId;}
   getFormulaSource(element:HTMLElement):string|undefined {

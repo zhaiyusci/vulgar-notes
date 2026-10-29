@@ -1,4 +1,4 @@
-import {t,locale,mathLabel} from './i18n';
+import {t,locale,mathLabel,mathRegionLabel} from './i18n';
 import {elementById, eventElement} from './dom';
 import {fontPresentation} from './font-diagnostics';
 import {textNormal,preferredMathCommand} from './letter-variants';
@@ -20,7 +20,8 @@ try {
   const saved=sessionStorage.getItem(mathStateKey) || (!documentSession ? document.getElementById('recoveredEditorState')?.textContent : null);
   if(saved)model.restore(saved);
 } catch { /* An incompatible saved draft must not prevent the editor opening. */ }
-let revision = 0, rendering = false, scheduled = false;
+let revision = 0, rendering:Promise<void>|undefined, scheduled = false;
+let lastRenderFailure:unknown;
 let formula = elementById('formula', HTMLElement);
 const preview = elementById('preview', HTMLElement);
 let flow:DocumentHost|undefined;
@@ -50,7 +51,7 @@ function syncCommands(){
     const option=document.createElement('div');option.id=`command-option-${i}`;option.dataset.command=entry.name;
     option.setAttribute('role','option');option.setAttribute('aria-selected',String(i===commandChoice));
     const name=document.createElement('code');name.textContent='\\'+entry.name;
-    const label=document.createElement('span');label.textContent=locale==='en'?t(entry.category):(entry.label===entry.name?entry.category:entry.label);
+    const label=document.createElement('span');label.textContent=locale==='en'||entry.label===entry.name?t(entry.category):mathLabel(entry);
     option.append(name,label);commandMenu.append(option);
   });
   const selected=commandMenu.children[commandChoice] as HTMLElement;
@@ -163,7 +164,7 @@ function syncInput() {
   const start = toNative(Math.min(offset, anchor)), end = toNative(Math.max(offset, anchor));
   const direction = offset < anchor ? 'backward' : 'forward';
   if (input.selectionStart !== start || input.selectionEnd !== end || (start !== end && input.selectionDirection !== direction)) input.setSelectionRange(start, end, direction);
-  input.setAttribute('aria-label',t('Edit')+' '+(locale==='en'?'formula':model.current.label));
+  input.setAttribute('aria-label',t('Edit')+' '+mathRegionLabel(model.current.label));
 }
 function update(sync = true) {
   syncCommands();
@@ -260,17 +261,16 @@ function buildBoard() {
     }
     visible.filter(entry=>categoryOf(entry)===category && (!entry.variantOf || entry.variantOf===entry.type)).forEach(entry=>{
       const card=document.createElement('button');card.dataset.insert=entry.type;card.className='structure-card';card.setAttribute('aria-label',t('Insert')+' '+mathLabel(entry));
-      card.title=mathLabel(entry)+' · '+(entry.command?entry.command+' · ':'')+(entry.font?'选区应用字体；无选区时在此字体中输入':(entry.labels||[]).join(' / '));
-      if(entry.letter)card.title=mathLabel(entry)+' · 插入此字母；右击选择可用字形';
+      card.title=mathLabel(entry)+' · '+(entry.command?entry.command+' · ':'')+(entry.font?t('Apply this style to the selection, or type in this style'):(entry.labels||[]).map(mathRegionLabel).join(' / '));
+      if(entry.letter)card.title=mathLabel(entry)+' · '+t('Insert this letter; right-click for available styles');
       const coverage=entry.font?fontPresentation(entry.command)?.coverage:undefined;
       if(coverage)card.title+=' · '+coverage;
-      if(entry.operator)card.title=mathLabel(entry)+' · \\'+entry.operatorCommand+' · 插入符号；^ / _ 或右击添加上下限';
+      if(entry.operator)card.title=mathLabel(entry)+' · \\'+entry.operatorCommand+' · '+t('Insert the operator; use ^ / _ or right-click to add limits');
       if(entry.atom || entry.font || entry.category==='函数名称')card.classList.add('compact-card');
-      if(locale==='en')card.title=mathLabel(entry)+' · '+t('Right-click for variants');
       if(entry.variantOf){card.title+=' · '+t('Right-click for variants');card.setAttribute('aria-haspopup','menu');card.setAttribute('aria-expanded','false');}
       const sample=entry.atom?entry.tex:entry.render(entry.previewArgs||entry.labels.map(()=>placeholderTex));
       const preview=document.createElement('span');preview.className='structure-preview';preview.setAttribute('aria-hidden','true');preview.textContent='\\(\\displaystyle '+sample+'\\)';
-      const label=document.createElement('span');label.className='structure-label';label.textContent=entry.label;card.append(preview,label);
+      const label=document.createElement('span');label.className='structure-label';label.textContent=mathLabel(entry);card.append(preview,label);
       if(category==='化学与单位'){
         card.classList.add('chemical-card');
         const command=document.createElement('code');command.textContent=entry.command+'{…}';card.append(command);
@@ -280,8 +280,8 @@ function buildBoard() {
     board.append(panel);
   });
   const textButton=document.createElement('button');textButton.dataset.insert='text-normal';textButton.className='insert-text';textButton.textContent=t('Aa Text');textButton.title=t('Insert descriptive text')+' · \\textnormal{…}';textButton.setAttribute('aria-label',t('Insert descriptive text'));nav.append(textButton);
-  elementById('structureCount', HTMLElement).textContent='右击按钮选择变体 · '+categories.length+' 个分类';
-  document.querySelectorAll<HTMLElement>('[data-count-category]').forEach(cell=>{cell.textContent=catalog.filter(entry=>entry.category===cell.dataset.countCategory).length+' 种预设；悬停查看确切语法'});
+  elementById('structureCount', HTMLElement).textContent=t('Right-click for variants · {count} categories',{count:categories.length});
+  document.querySelectorAll<HTMLElement>('[data-count-category]').forEach(cell=>{cell.textContent=t('{count} presets; hover for exact syntax',{count:catalog.filter(entry=>entry.category===cell.dataset.countCategory).length});});
   showCategory(categories[0]);
 }
 const variantMenu = document.createElement('div');
@@ -335,7 +335,7 @@ function openVariantMenu(button:HTMLElement,x:number,y:number,node:MathNode|null
   const entries=palette.filter(entry=>!entry.hidden && !entry.legacy && entry.variantOf===(node?definition?.variantOf:button.dataset.insert) && entry.variantOf && !(node && entry.type==='matrix3'));
   if(!entries.length && !definition?.matrixEnvironment && !definition?.rowEnvironment && !definition?.operator)return;
   closeVariantMenu();variantTrigger=button;variantNodeId=node?.id;MathJax.typesetClear([variantMenu]);variantMenu.replaceChildren();
-  variantMenu.setAttribute('aria-label',locale==='en'?'Formula variants':node?'切换'+definition!.label+'的变体':button.getAttribute('aria-label')+'的变体');
+  variantMenu.setAttribute('aria-label',t('Formula variants'));
   if(node && definition?.operator){
     definition.scriptSlots!.forEach((slot,i)=>{
       const option=document.createElement('button');option.type='button';option.setAttribute('role','menuitem');
@@ -349,7 +349,7 @@ function openVariantMenu(button:HTMLElement,x:number,y:number,node:MathNode|null
     if(!cell)return;
     variantCellId=node.regions[cell.index].id;
     const heading=document.createElement('div');heading.className='menu-heading';
-    heading.textContent=locale==='en'?`${node.rows} rows · row ${cell.row+1}, column ${cell.column+1}`:matrix?`${node.rows} × ${node.columns} 矩阵 · 第 ${cell.row+1} 行，第 ${cell.column+1} 列`:`${node.rows} 行 · 当前第 ${cell.row+1} 行`;variantMenu.append(heading);
+    heading.textContent=t(matrix?'Matrix {rows} × {columns} · row {row}, column {column}':'{rows} rows · current row {row}',{rows:node.rows!,columns:node.columns!,row:cell.row+1,column:cell.column+1});variantMenu.append(heading);
     for(const [action,label] of [['rowBefore','在此行上方插入行'],['rowAfter','在此行下方插入行'],['columnBefore','在此列左侧插入列'],['columnAfter','在此列右侧插入列'],['deleteRow','删除此行'],['deleteColumn','删除此列']]){
       if(!matrix && action.toLowerCase().includes('column'))continue;
       const option=document.createElement('button');option.type='button';option.setAttribute('role','menuitem');
@@ -409,7 +409,7 @@ function appendNumberingMenu(owner:HTMLElement,x:number,y:number){
   else {const divider=document.createElement('div');divider.setAttribute('role','separator');variantMenu.append(divider);}
   for(const [value,label] of [['true','编号'],['false','不编号']]){
     const option=document.createElement('button');option.type='button';option.dataset.numbered=value;
-    option.dataset.formulaId=owner.dataset.mathId;option.textContent=label;option.setAttribute('role','menuitemradio');
+    option.dataset.formulaId=owner.dataset.mathId;option.textContent=t(label);option.setAttribute('role','menuitemradio');
     option.setAttribute('aria-checked',String(flow.isNumbered(owner)===(value==='true')));variantMenu.append(option);
   }
   variantMenu.hidden=false;const rect=variantMenu.getBoundingClientRect();
@@ -467,13 +467,17 @@ function positionInput() {
   input.style.top = (rect.top - box.top - preview.clientTop + preview.scrollTop) + 'px';
   positionCommands();
 }
-async function render() {
-  if (!window.ready || rendering) return;
-  rendering = true;
+function render():Promise<void> {
+  if (!window.ready) return Promise.resolve();
+  // Exports share the in-flight repaint rather than snapshotting stale math.
+  return rendering??=renderCurrent().finally(()=>{rendering=undefined;});
+}
+async function renderCurrent() {
   const stage = document.createElement('div'); stage.id = 'renderStage'; stage.setAttribute('aria-hidden', 'true');
   stage.style.fontSize=getComputedStyle(elementById('textFlow',HTMLElement)).fontSize;
   document.body.append(stage);
   try {
+    lastRenderFailure=undefined;
     // ES modules can finish loading after MathJax's initial page scan.
     boardTypeset??=MathJax.typesetPromise([...document.querySelectorAll<HTMLElement>('.structure-preview')].filter(el=>!el.querySelector('mjx-container')));
     await boardTypeset;
@@ -508,8 +512,8 @@ async function render() {
     error.textContent = [...chemicalStates].some(([node,state])=>isChemical(node)&&!state.valid)?t('化学语法尚未完整，已保留源码；点击该区域可继续编辑。'):'';
     preview.querySelectorAll<HTMLElement>('.math-source-region').forEach(element=>{element.title=t('Click to edit this fragment’s LaTeX source');});
     annotateFontWarnings(); positionInput();
-  } catch (err) { error.textContent = t('公式排版失败：') + String(err); }
-  finally { MathJax.typesetClear([stage]); stage.remove(); rendering = false; }
+  } catch (err) { lastRenderFailure=err;error.textContent = t('公式排版失败：') + String(err); }
+  finally { MathJax.typesetClear([stage]); stage.remove(); }
 }
 const renderedSources=new WeakMap<HTMLElement,string>();
 
@@ -755,7 +759,19 @@ flow=createHost(elementById('textFlow',HTMLElement),model,{
     if(editor!==model||element!==formula){finish();formula.removeAttribute('id');formula=element;formula.id='formula';model=editor;}
     begin(model.root.id,edge==='start'?0:model.root.items.length);
   },
-  leave:()=>finish(),change:()=>update()
+  leave:()=>finish(),change:()=>update(),
+  renderForExport:async()=>{
+    flow?.syncMath?.();
+    await Promise.resolve();
+    if(!flow?.entries().length)return;
+    if(!window.ready)await new Promise<void>((resolve,reject)=>{
+      const ready=()=>{clearTimeout(timeout);resolve();};
+      const timeout=setTimeout(()=>{window.removeEventListener('mathjax-ready',ready);reject(Error(t('MathJax is not ready. Please try exporting again after the formulas load.')));},10000);
+      window.addEventListener('mathjax-ready',ready,{once:true});
+    });
+    await render();
+    if(lastRenderFailure!==undefined)throw lastRenderFailure;
+  }
 });
 const initial=flow.entries()[0];if(initial){formula=initial.element;formula.id='formula';model=initial.model;}
 elementById('formulaLayout',HTMLSelectElement).addEventListener('change',event=>{
