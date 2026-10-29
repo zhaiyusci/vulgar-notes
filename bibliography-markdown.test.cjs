@@ -5,16 +5,16 @@ const {buildSync}=require('esbuild');
 
 // Exercise the actual MarkdownKit, including its rich-text and math rules.
 const source=buildSync({stdin:{contents:`
-import {createPlateEditor,ParagraphPlugin} from 'platejs/react';
+import {createPlateEditor,ParagraphPlugin,toPlatePlugin} from 'platejs/react';
 import {BoldPlugin,ItalicPlugin} from '@platejs/basic-nodes/react';
-import {EquationPlugin,InlineEquationPlugin} from '@platejs/math/react';
+import {BaseEquationPlugin,BaseInlineEquationPlugin} from './src/plate-math-plugins';
 import {MarkdownPlugin} from '@platejs/markdown';
 import {MarkdownKit} from './src/components/editor/plugins/markdown-kit';
 import {bibliographyMarkdown} from './src/bibliography-markdown';
 export {createFigure,createTableFloat,floatCaption} from './src/document-floats';
 export {plateLatex} from './src/plate-document';
 export {planLabelRename} from './src/references';
-const editor=createPlateEditor({plugins:[ParagraphPlugin,BoldPlugin,ItalicPlugin,EquationPlugin,InlineEquationPlugin,...MarkdownKit]});
+const editor=createPlateEditor({plugins:[ParagraphPlugin,BoldPlugin,ItalicPlugin,toPlatePlugin(BaseEquationPlugin),toPlatePlugin(BaseInlineEquationPlugin),...MarkdownKit]});
 export const serialize=(value)=>editor.getApi(MarkdownPlugin).markdown.serialize({value});
 export const exportMarkdown=(value,libraries=[],style='simple')=>bibliographyMarkdown(value,libraries,serialize,style);
 `,loader:'ts',resolveDir:path.resolve('.')},bundle:true,format:'cjs',write:false,platform:'node',loader:{'.css':'empty'}}).outputFiles[0].text;
