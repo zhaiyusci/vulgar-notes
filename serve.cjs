@@ -8,6 +8,7 @@ const files = {
   '/plate.css': ['plate.css', 'text/css'],
   '/editor-ui.css': ['dist/editor-ui.css', 'text/css'],
   '/mathjax-config.js': ['mathjax-config.js', 'text/javascript'],
+  '/mathjax-export-config.js': ['mathjax-export-config.js', 'text/javascript'],
   '/editor-model.js.map': ['editor-model.js.map', 'application/json'],
   '/editor-ui.js.map': ['dist/editor-ui.js.map', 'application/json'],
   '/mathjax-config.js.map': ['mathjax-config.js.map', 'application/json']

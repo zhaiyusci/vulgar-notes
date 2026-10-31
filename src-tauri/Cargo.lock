@@ -1976,7 +1976,7 @@ dependencies = [
 
 [[package]]
 name = "math-document-editor"
-version = "0.1.40"
+version = "0.1.41-dev.2"
 dependencies = [
  "serde",
  "tauri",

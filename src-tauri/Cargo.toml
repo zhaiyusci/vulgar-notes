@@ -1,6 +1,6 @@
 [package]
 name = "math-document-editor"
-version = "0.1.40"
+version = "0.1.41-dev.2"
 description = "Rich text and in-place mathematics editor"
 authors = ["Yu Zhai <me@zhaiyusci.net>"]
 license = "GPL-3.0-or-later"

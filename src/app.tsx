@@ -10,6 +10,7 @@ import {prepareDocumentRecovery,listRecoverableDocuments} from './document-recov
 import {attachDocumentHost,initDocumentLifecycle,refreshDocumentState,runDocumentCommand,openRecentDocumentCommand,openSystemDocumentCommand} from './document-lifecycle';
 import {t} from './i18n';
 import {recordRuntimeEvent} from './runtime-diagnostics';
+import {prepareCollaborationInvitation} from './collaboration-navigation';
 initLocale();
 initPreferences();
 
@@ -56,6 +57,9 @@ function showDocumentFailure(){
 window.addEventListener('vulgar-document-render-error',()=>{void recordRuntimeEvent('frontend-render-error');showDocumentFailure();});
 
 async function start(){
+  let collaborationInvite:ReturnType<typeof prepareCollaborationInvitation>=null;
+  try{collaborationInvite=prepareCollaborationInvitation();if(collaborationInvite?.redirected)return;}
+  catch(error){window.dispatchEvent(new CustomEvent('vulgar-document-error',{detail:{message:t('Unable to join collaboration'),error:error instanceof Error?error.message:String(error)}}));}
   let recoveryError='';
   let draftsReady=false;
   try{await initializeDocumentDraftStore();draftsReady=true;}catch{recoveryError=t('Local recovery storage could not be read. Existing data has been kept.');}
@@ -72,6 +76,7 @@ async function start(){
     document.body.dataset.documentView='editor';homeContainer.hidden=true;
     mountMathEditor((mount,initial,hooks)=>{
       const host=new PlateMathHost(mount,initial,{...hooks,change:()=>{hooks.change();refreshDocumentState();}});
+      if(collaborationInvite)void host.startCollaboration(collaborationInvite.invite).catch(error=>window.dispatchEvent(new CustomEvent('vulgar-document-error',{detail:{message:t('Unable to join collaboration'),error:error instanceof Error?error.message:String(error)}})));
       detachActiveHost=attachDocumentHost(host);return host;
     });
     // Persist first-open normalization, including the cleared pendingOpen flag.

@@ -71,6 +71,7 @@ function positionCommands(){
 }
 commandMenu.addEventListener('pointerdown',event=>event.preventDefault());
 commandMenu.addEventListener('click',event=>{
+  if(flow?.readOnly||!editing){commandMenu.hidden=true;return;}
   const option=eventElement(event).closest<HTMLElement>('[data-command]');if(!option)return;
   model.commitCommand(true,option.dataset.command);inputEdit=null;input.focus({preventScroll:true});update();
 });
@@ -206,6 +207,7 @@ function begin(id:string, offset:number, anchor = offset) {
   input.hidden = false; syncInput(); input.focus({preventScroll:true}); update();
 }
 function finish(cancel = false) {
+  closeVariantMenu();
   if (!editing) return;
   // A host-driven switch can hide the textarea before its native blur or
   // compositionend arrives. Commit to the old model before activating another.
@@ -213,7 +215,7 @@ function finish(cancel = false) {
   inputEdit = null;
   editing = false;
   model.pendingFont=undefined;
-  if (cancel && sessionStart) { model.record(); model.restore(sessionStart); }
+  if (cancel && sessionStart && !flow?.isCollaborating?.()) { model.record(); model.restore(sessionStart); }
   sessionStart = null; input.hidden = true; update();
 }
 function insertStructure(type:string) {
@@ -309,6 +311,7 @@ function openFormulaSource(owner=formula){
 sourceCancel.addEventListener('click',()=>sourceDialog.close());
 sourceDialog.addEventListener('close',()=>{if(sourceOwner?.isConnected){if(flow)flow.enter(sourceOwner,'end');else begin(model.root.id,model.root.items.length);}sourceOwner=undefined;});
 sourceApply.addEventListener('click',()=>{
+  if(flow?.readOnly){sourceDialog.close();return;}
   if(!sourceOwner?.isConnected)return;
   if(flow?.replaceFormulaSource)flow.replaceFormulaSource(sourceOwner,sourceInput.value);
   else{model.record();model.restore(convertMath(sourceInput.value).snapshot());}
@@ -417,6 +420,7 @@ function appendNumberingMenu(owner:HTMLElement,x:number,y:number){
   variantMenu.style.top=Math.max(8,Math.min(y,innerHeight-rect.height-8))+'px';
 }
 variantMenu.addEventListener('click',event=>{
+  if(flow?.readOnly){closeVariantMenu();return;}
   const source=eventElement(event).closest<HTMLButtonElement>('[data-edit-formula-source]');
   if(source){const owner=flow?.entries().find(e=>e.element.dataset.mathId===source.dataset.editFormulaSource)?.element??formula;openFormulaSource(owner);return;}
   const numbering=eventElement(event).closest<HTMLButtonElement>('[data-numbered]');
@@ -605,6 +609,7 @@ preview.addEventListener('keydown', event => {
   if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); flow?.enter(target,'end'); }
 });
 input.addEventListener('keydown', event => {
+  if(flow?.readOnly){event.preventDefault();return;}
   if (event.isComposing || event.keyCode === 229) return;
   if(!commandMenu.hidden && !event.ctrlKey && !event.metaKey && !event.altKey){
     if(event.key==='Escape'){event.preventDefault();dismissedCommand=commandKey;syncCommands();return;}
@@ -644,6 +649,7 @@ input.addEventListener('keydown', event => {
 });
 let inputEdit:{region:string;start:number;end:number}|null = null;
 input.addEventListener('beforeinput', event => {
+  if(flow?.readOnly){event.preventDefault();return;}
   if (!editing || composing) return;
   let start = Array.from(input.value.slice(0, input.selectionStart)).length;
   let end = Array.from(input.value.slice(0, input.selectionEnd)).length;
@@ -652,6 +658,7 @@ input.addEventListener('beforeinput', event => {
   inputEdit = {region: model.cursor.region, start, end};
 });
 function acceptInput() {
+  if(flow?.readOnly){inputEdit=null;syncInput();return;}
   if (!editing || composing) return;
   const before = Array.from(model.projection()), after = Array.from(input.value);
   const edit = inputEdit; inputEdit = null;
@@ -671,14 +678,30 @@ function acceptInput() {
   model.replaceInput(start, before.length - suffix, after.slice(start, after.length - suffix).join(''));
   update();
 }
+/** Preserve an IME draft before permission/connection loss without publishing it. */
+function pendingMathSnapshot(){
+  if(!editing||input.value===model.projection()||!formula.dataset.mathId)return undefined;
+  const draft=new EditorModel();draft.restore(model.snapshot());
+  const before=Array.from(draft.projection()),after=Array.from(input.value),edit=inputEdit;
+  if(edit?.region===draft.cursor.region){
+    const length=after.length-before.length+edit.end-edit.start;
+    if(length>=0){draft.replaceInput(edit.start,edit.end,after.slice(edit.start,edit.start+length).join(''));return {formulaId:formula.dataset.mathId,snapshot:draft.snapshot()};}
+  }
+  let start=0,suffix=0;
+  while(start<before.length&&start<after.length&&before[start]===after[start])start++;
+  while(suffix<before.length-start&&suffix<after.length-start&&before[before.length-1-suffix]===after[after.length-1-suffix])suffix++;
+  draft.replaceInput(start,before.length-suffix,after.slice(start,after.length-suffix).join(''));
+  return {formulaId:formula.dataset.mathId,snapshot:draft.snapshot()};
+}
 input.addEventListener('input', acceptInput);
 input.addEventListener('compositionstart', () => {
+  if(flow?.readOnly)return;
   if (!editing) return;
   inputEdit = {region: model.cursor.region, start: model.range[0], end: model.range[1]};
   composing = true;
   syncCommands();
 });
-input.addEventListener('compositionend', () => { if (!composing) return; composing = false; acceptInput(); });
+input.addEventListener('compositionend', () => { if (!composing) return; composing = false; acceptInput();flow?.syncMath?.(); });
 document.addEventListener('selectionchange', () => {
   if (!editing || composing || document.activeElement !== input || input.value !== model.projection()) return;
   const start = Array.from(input.value.slice(0, input.selectionStart)).length;
@@ -759,7 +782,7 @@ flow=createHost(elementById('textFlow',HTMLElement),model,{
     if(editor!==model||element!==formula){finish();formula.removeAttribute('id');formula=element;formula.id='formula';model=editor;}
     begin(model.root.id,edge==='start'?0:model.root.items.length);
   },
-  leave:()=>finish(),change:()=>update(),
+  leave:()=>finish(),change:()=>update(),isComposing:()=>composing,pendingMathSnapshot,
   renderForExport:async()=>{
     flow?.syncMath?.();
     await Promise.resolve();

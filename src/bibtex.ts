@@ -209,6 +209,35 @@ function rawLibrary(library:BibLibrary):VerbatimLibrary {
   return cached.verbatim??=(verbatimSource(library.source,library.name));
 }
 
+/** Expanded grammar values retain raw TeX; no display/CSL normalization occurs. */
+export interface CitedBibRecord {
+  key:string;
+  type:string;
+  fields:Record<string,string>;
+  preambles:string[];
+  libraryId:string;
+  libraryName:string;
+}
+/** Cited-only records suitable for independent transport without @string clashes. */
+export function citedBibRecords(libraries:readonly BibLibrary[],keys:readonly string[]):CitedBibRecord[] {
+  const result:CitedBibRecord[]=[];
+  for(const library of citedBibLibraries(libraries,keys)){
+    const raw=rawLibrary(library);
+    const preambles=raw.preambles.map(preamble=>{
+      const scanner=scannerInput(`@misc{VN_PREAMBLE_PROBE,value=${preamble}}`);
+      const expanded=restoreFields(parseVerbatim(scanner.source,{strings:raw.strings}),scanner.restore);
+      const error=expanded.errors.find(item=>!item.error.startsWith('unresolved @string reference '));
+      const value=expanded.entries[0]?.fields.value;
+      if(error||typeof value!=='string')throw Error('Invalid BibTeX preamble in '+JSON.stringify(library.name));
+      return value;
+    });
+    for(const entry of raw.entries)result.push({key:entry.key,type:entry.type,
+      fields:Object.fromEntries(Object.entries(entry.fields).sort(([a],[b])=>a<b?-1:a>b?1:0)),
+      preambles:[...preambles],libraryId:library.id,libraryName:library.name});
+  }
+  return result;
+}
+
 /**
  * Runtime libraries retain the full attached sources for the citation picker.
  * Native document snapshots contain only cited raw records, their crossref/

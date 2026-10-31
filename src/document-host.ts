@@ -8,12 +8,17 @@ export interface MathHostHooks {
   change():void;
   /** Wait for the current formula repaint only when explicitly exporting. */
   renderForExport?():Promise<void>;
+  isComposing?():boolean;
+  /** Read a composing math draft without publishing it to a shared document. */
+  pendingMathSnapshot?():{formulaId:string;snapshot:string}|undefined;
 }
 export interface DocumentHost {
   readonly readOnly:boolean;
   entries():FormulaEntry[];
   /** Synchronize edited math without forcing full-document recovery storage. */
   syncMath?():void;
+  isCollaborating?():boolean;
+  isCollaborationGuest?():boolean;
   getFormulaSource?(element:HTMLElement):string|undefined;
   replaceFormulaSource?(element:HTMLElement,source:string):void;
   persist():void;

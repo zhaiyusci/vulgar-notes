@@ -1,4 +1,4 @@
-import {documentSessionId,draftStorage} from './platform';
+import {documentSessionId,draftStorage,saveDocumentFile} from './platform';
 import {t} from './i18n';
 import React from 'react';
 import {DisplayBoundaryText} from './display-boundary-text';
@@ -32,12 +32,168 @@ import {documentClipboardHtml,documentClipboardText,prepareClipboardHtml,restore
 import {documentOutline} from './document-outline';
 import {exportRenderedHtml} from './html-export';
 import {standaloneMathEnvironmentBounds} from './tex-display-environment';
+import {inactiveCollaboration,type CollaborationState,type CollaborationRemoteCursor} from './collaboration-types';
+import {createHostedInvite,collaborationInviteUrl,type CollaborationInvite} from './collaboration-invite';
+import {CollaborationCursors} from './components/ui/collaboration-cursors';
+import {rememberCollaborationInvite,forgetCollaborationInvite} from './collaboration-navigation';
+import type {DocumentCollaborationSession} from './collaboration-session';
+import type {CollaborativeMathStore,MathCursorHandle} from './collaboration-math';
+
+function CollaborationPlate({host,children,onChange}:{host:PlateMathHost;children:React.ReactNode;onChange:()=>void}){
+  const state=React.useSyncExternalStore(host.subscribeCollaboration,host.getCollaborationState,host.getCollaborationState);
+  return <Plate editor={host.editor} readOnly={state.active&&!state.writable} onChange={onChange}>{children}</Plate>;
+}
 
 export class PlateMathHost implements DocumentHost {
   readonly editor:PlateEditor;
   readonly models=new Map<string,EditorModel>();
   readonly mounts=new Map<string,HTMLElement>();
   readonly root:Root;
+  private collaboration:DocumentCollaborationSession|undefined;
+  private collaborationApplying=false;
+  private collaborationState:CollaborationState=inactiveCollaboration;
+  private collaborationListeners=new Set<()=>void>();
+  private sharedBibliography='';
+  private collaborationAttempt=0;
+  private deferredMath=new Set<string>();
+  private deferredMathCursors=new Map<string,MathCursorHandle>();
+  private collaborationRecoveries:{createdAt:number;source:string}[]=[];
+  getCollaborationState=()=>this.collaborationState;
+  subscribeCollaboration=(listener:()=>void)=>{this.collaborationListeners.add(listener);return ()=>{this.collaborationListeners.delete(listener);};};
+  isCollaborating=()=>this.collaborationState.active;
+  isCollaborationGuest=()=>this.collaborationState.active&&this.collaborationState.role==='guest';
+  getCollaborationCursors=():readonly CollaborationRemoteCursor[]=>this.collaboration?.remoteCursors()??[];
+  canUndoCollaboration=()=>this.collaborationState.writable&&this.collaborationState.ready&&!!this.collaboration?.prose.undoManager.undoStack.length;
+  canRedoCollaboration=()=>this.collaborationState.writable&&this.collaborationState.ready&&!!this.collaboration?.prose.undoManager.redoStack.length;
+  undoCollaboration=()=>this.collaboration?.undo();
+  redoCollaboration=()=>this.collaboration?.redo();
+  private updateCollaboration=(state:CollaborationState)=>{
+    const previous=this.collaborationState;
+    this.collaborationState={...state,recoveryAvailable:this.collaborationRecoveries.length>0,recoveryCopies:this.collaborationRecoveries.map(({createdAt})=>({createdAt}))};
+    if(previous.active&&previous.role==='guest'&&previous.writable&&!state.writable){
+      if(this.hooks.pendingMathSnapshot?.())this.captureCollaborationRecovery();
+      this.activeFormula=undefined;this.hooks.leave();
+    }
+    for(const listener of this.collaborationListeners)listener();
+  };
+  async startCollaboration(invitation?:CollaborationInvite):Promise<void>{
+    if(this.collaborationState.active)return;
+    this.persist();
+    const creator=!invitation;
+    const attempt=++this.collaborationAttempt;
+    this.updateCollaboration({...inactiveCollaboration,active:true,writable:false,role:creator?'host':'guest',status:'connecting',invite:invitation});
+    try{
+      const {invite,hostKey}=invitation?{invite:invitation,hostKey:undefined}:await createHostedInvite();
+      if(attempt!==this.collaborationAttempt)return;
+      const {DocumentCollaborationSession}=await import('./collaboration-session');
+      if(attempt!==this.collaborationAttempt)return;
+      const session=new DocumentCollaborationSession(invite,{
+        editor:this.editor,
+        data:()=>({value:this.editor.children,libraries:this.bibliographyLibraries,style:this.bibliographyStyle}),
+        snapshots:()=>new Map([...this.models].map(([id,model])=>[id,model.snapshot()])),
+        activeSnapshot:()=>{const id=this.activeFormula?.dataset.mathId,model=id?this.models.get(id):undefined;return id&&model?[id,model.snapshot()]:undefined;},
+        applying:value=>{this.collaborationApplying=value;},
+        replace:()=>{
+          if(this.hooks.pendingMathSnapshot?.())this.captureCollaborationRecovery();
+          this.updateCollaboration({...this.collaborationState,writable:false});
+          this.activeFormula=undefined;this.hooks.leave();this.models.clear();this.checkedFormulaSources.clear();
+          this.deferredMath.clear();this.deferredMathCursors.clear();
+        },
+        recover:()=>this.captureCollaborationRecovery(),
+        reconcile:(math,cursors,libraries,style,changedMath)=>this.applyCollaboration(math,cursors,libraries,style,changedMath),
+        state:this.updateCollaboration,
+      },{hostKey});
+      this.collaboration=session;
+      // The host's key exists only in this window. Reloading the main file ends
+      // its old session; it must never reopen as a guest or revive old leases.
+      if(!creator){rememberCollaborationInvite(invite);const url=new URL(location.href);url.hash=new URL(collaborationInviteUrl(invite,location.href)).hash;history.replaceState(null,'',url.href);}
+      await session.start(creator);
+    }catch(error){
+      if(attempt===this.collaborationAttempt){
+        this.collaboration?.destroy();this.collaboration=undefined;
+        this.updateCollaboration(creator?inactiveCollaboration:{...this.collaborationState,active:true,role:'guest',writable:false,hostConnected:false,pending:0,status:'offline'});
+      }
+      throw error;
+    }
+  }
+  setCollaborationName=(name:string)=>this.collaboration?.setName(name);
+  setCollaborationPermission=(peerId:string,permission:'view'|'edit')=>{
+    if(this.collaborationState.role!=='host')throw Error('Only the host can change editing permission.');
+    this.collaboration?.setPeerPermission(peerId,permission);
+  };
+  reconnectCollaboration=async()=>{
+    if(this.collaborationState.role!=='guest')return;
+    if(this.collaboration){this.collaboration.refresh();return;}
+    const invite=this.collaborationState.invite;if(!invite)return;
+    this.updateCollaboration(inactiveCollaboration);await this.startCollaboration(invite);
+  };
+  private captureCollaborationRecovery(){
+    const value=JSON.parse(JSON.stringify(this.editor.children)) as Value;
+    const pending=this.hooks.pendingMathSnapshot?.();
+    const visit=(nodes:Value)=>{for(const raw of nodes){
+      if(isFormula(raw)){
+        const node=raw as FormulaNode,model=this.models.get(node.id);
+        const snapshot=pending?.formulaId===node.id?pending.snapshot:model?.snapshot();
+        if(snapshot){const copy=new EditorModel();copy.restore(snapshot);node.snapshot=snapshot;node.texExpression=copy.exportLatex();}
+      }
+      if(Array.isArray(raw.children))visit(raw.children as Value);
+    }};visit(value);
+    const source=JSON.stringify({...this.envelope(),value});
+    if(this.collaborationRecoveries.some(copy=>copy.source===source))return;
+    this.collaborationRecoveries.push({createdAt:Date.now(),source});
+    try{draftStorage().setItem(documentStorageKey+'-collaboration-recovery',JSON.stringify(this.collaborationRecoveries));}
+    catch{toast.error(t('Recovery storage is full. Please save the document to a file.'));}
+    this.collaborationState={...this.collaborationState,recoveryAvailable:true,recoveryCopies:this.collaborationRecoveries.map(({createdAt})=>({createdAt}))};
+    for(const listener of this.collaborationListeners)listener();
+  }
+  downloadCollaborationRecovery=(index=0)=>{
+    const copy=this.collaborationRecoveries[index];if(!copy)return;
+    void saveDocumentFile(copy.source,undefined,'recovery-'+new Date(copy.createdAt).toISOString().replace(/[:.]/g,'-')+'.vulgar').catch(()=>toast.error(t('The recovery copy could not be saved.')));
+  };
+  detachCollaboration=()=>this.finishCollaboration(true);
+  leaveCollaboration=()=>{
+    this.finishCollaboration(false);
+  };
+  private finishCollaboration(independent:boolean){
+    if(!this.collaborationState.active)return;
+    const previous=this.collaborationState;
+    this.collaborationAttempt++;
+    this.persist();if(previous.role==='guest'&&(this.collaborationState.pending||this.hooks.pendingMathSnapshot?.()))this.captureCollaborationRecovery();
+    this.updateCollaboration({...this.collaborationState,writable:false});
+    this.activeFormula=undefined;this.hooks.leave();
+    this.collaboration?.destroy();this.collaboration=undefined;this.sharedBibliography='';
+    this.deferredMath.clear();this.deferredMathCursors.clear();
+    for(const model of this.models.values()){
+      model.undo=EditorModel.prototype.undo.bind(model);model.redo=EditorModel.prototype.redo.bind(model);model.undoStack=[];model.redoStack=[];
+    }
+    if(previous.role==='guest'&&!independent)this.updateCollaboration({...previous,writable:false,hostConnected:false,pending:0,peers:[],status:'offline'});
+    else{forgetCollaborationInvite();this.updateCollaboration(inactiveCollaboration);}
+    this.save();this.scheduleChange();
+  }
+  private applyCollaboration(math:CollaborativeMathStore,cursors:ReadonlyMap<string,MathCursorHandle>,libraries:readonly BibLibrary[],style:BibliographyStyle,changedMath?:ReadonlySet<string>):void {
+    const signature=JSON.stringify(libraries);
+    if(signature!==this.sharedBibliography){this.sharedBibliography=signature;this.restoreBibliography(libraries,this.editor.children);}
+    if(style!==this.bibliographyStyle){this.bibliographyStyle=style;for(const listener of this.bibliographyListeners)listener();}
+    this.editor.tf.withoutSaving(()=>{
+      for(const [raw,path] of NodeApi.nodes(this.editor)){
+        if(!isFormula(raw))continue;
+        const node=raw as FormulaNode;
+        if(node.snapshot&&changedMath&&!changedMath.has(node.id))continue;
+        if(this.activeFormula?.dataset.mathId===node.id&&this.hooks.isComposing?.()){
+          this.deferredMath.add(node.id);const cursor=cursors.get(node.id);if(cursor&&!this.deferredMathCursors.has(node.id))this.deferredMathCursors.set(node.id,cursor);continue;
+        }
+        let model=this.models.get(node.id);
+        const snapshot=math.read(node.id,model?.snapshot()??node.snapshot,cursors.get(node.id)??this.deferredMathCursors.get(node.id));if(!snapshot)continue;
+        this.deferredMath.delete(node.id);this.deferredMathCursors.delete(node.id);
+        if(!model){model=new EditorModel();this.models.set(node.id,model);}
+        model.restore(snapshot);model.undo=()=>this.collaboration?.undo();model.redo=()=>this.collaboration?.redo();
+        this.checkedFormulaSources.add(node.id);
+        const source=model.exportLatex();
+        if(node.snapshot!==snapshot||node.texExpression!==source)this.editor.tf.setNodes({snapshot,texExpression:source},{at:path});
+      }
+    });
+    this.save();this.scheduleChange();
+  }
   private renderFailure:unknown;
   private syncing=false;
   private initialized=false;
@@ -59,11 +215,12 @@ export class PlateMathHost implements DocumentHost {
   private clipboardCopySucceeded=false;
   getBibliographyStyle=():BibliographyStyle=>this.bibliographyStyle;
   setBibliographyStyle(style:BibliographyStyle):void {
+    if(this.readOnly)return;
     if(!isBibliographyStyle(style))throw Error('Invalid bibliography style');
     if(style===this.bibliographyStyle)return;
     this.bibliographyStyle=style;
     for(const listener of this.bibliographyListeners)listener();
-    this.save();this.scheduleChange();
+    this.collaboration?.publishSettings();this.collaboration?.publishPresence();this.save();this.scheduleChange();
   }
   private capturedLibraryIds=new Set<string>();
   private cacheLibraryIds:Record<string,string>=Object.create(null);
@@ -80,6 +237,7 @@ export class PlateMathHost implements DocumentHost {
   }
   /** Full sources live on this device; only cited entries belong to the document. */
   setBibliographyLibraries(libraries:readonly BibLibrary[],updatedLibraryIds?:readonly string[]):void {
+    if(this.readOnly)return;
     const next=validateBibLibraries(libraries);validateDocumentLibraries(this.editor.children,next);
     if(JSON.stringify(next)===JSON.stringify(this.bibliographyLibraries)&&!updatedLibraryIds?.length)return;
     const changed=new Set(updatedLibraryIds??next.filter(library=>!this.bibliographyLibraries.some(old=>old.id===library.id&&old.name===library.name&&old.source===library.source)).map(library=>library.id));
@@ -101,7 +259,7 @@ export class PlateMathHost implements DocumentHost {
     this.capturedLibraryIds=captured;
     this.cacheLibraryIds=origins;
     this.libraryNotices=[];
-    this.replaceBibliography(next);this.save();this.scheduleChange();
+    this.replaceBibliography(next);this.collaboration?.publishSettings();this.save();this.scheduleChange();
   }
   private restoreBibliography(captured:readonly BibLibrary[],value:Value){
     const cache=readLibraryCache();
@@ -115,8 +273,9 @@ export class PlateMathHost implements DocumentHost {
     const bibliographyLibraries=citedBibLibraries(this.bibliographyLibraries,citedReferenceKeys(this.editor.children));
     return {version:1,value:this.editor.children,...(bibliographyLibraries.length?{bibliographyLibraries}:{}),...(this.bibliographyStyle!=='simple'?{bibliographyStyle:this.bibliographyStyle}:{})};
   }
-  get readOnly(){return this.mount.querySelector('[data-slate-editor]')?.getAttribute('contenteditable')==='false';}
+  get readOnly(){return this.collaborationState.active?!this.collaborationState.writable:this.mount.querySelector('[data-slate-editor]')?.getAttribute('contenteditable')==='false';}
   constructor(readonly mount:HTMLElement,initial:EditorModel,private hooks:MathHostHooks){
+    try{const copies=JSON.parse(draftStorage().getItem(documentStorageKey+'-collaboration-recovery')??'[]');if(Array.isArray(copies))this.collaborationRecoveries=copies.filter(copy=>Number.isFinite(copy?.createdAt)&&typeof copy?.source==='string');}catch{/* An unreadable recovery must not prevent opening the document. */}
     const restored=restoreDocumentEnvelope(initial);this.bibliographyStyle=restored.bibliographyStyle??'simple';this.restoreBibliography(restored.bibliographyLibraries,restored.value);
     this.editor=createPlateEditor({plugins:EditorKit,value:restored.value});
     this.ensureFormulas();
@@ -142,16 +301,17 @@ export class PlateMathHost implements DocumentHost {
     this.root=createRoot(mount,{onUncaughtError:error=>{
       this.renderFailure=error;this.initialized=false;
       try{draftStorage().setItem(documentStorageKey+'-render-recovery',JSON.stringify(this.envelope()));}catch{}
-      queueMicrotask(()=>window.dispatchEvent(new CustomEvent('vulgar-document-render-error',{detail:{error:String(error)}})));
+      queueMicrotask(()=>window.dispatchEvent(new CustomEvent('vulgar-document-render-error',{detail:{error:String(error),stack:error instanceof Error?error.stack:undefined}})));
     }});
     const zoomDock=document.getElementById('documentZoomDock');
-    flushSync(()=>this.root.render(<HostContext.Provider value={this}><TooltipProvider><Plate editor={this.editor} onChange={()=>this.changed()}>
+    flushSync(()=>this.root.render(<HostContext.Provider value={this}><TooltipProvider><CollaborationPlate host={this} onChange={()=>this.changed()}>
       <EditorContainer><DocumentZoomSurface><Editor autoFocus={documentSessionId()!==null} renderText={props=><DisplayBoundaryText {...props} />} id="textFlow" aria-label={t("Body")} placeholder={t("Type here…")}
         onPointerDown={e=>{if(!(e.target as Element).closest('.inline-formula')){this.activeFormula=undefined;this.hooks.leave();}}}
         onFocus={()=>{this.activeFormula=undefined;this.hooks.leave();}}
         onKeyDownCapture={e=>this.handleObjectDelete(e)} onKeyDown={e=>this.keyDown(e)} onCut={e=>this.cut(e)} /><BibtexBibliography /></DocumentZoomSurface></EditorContainer>
       {zoomDock&&createPortal(<DocumentZoomControls />,zoomDock)}
-    </Plate><Toaster /></TooltipProvider></HostContext.Provider>));
+      <CollaborationCursors host={this} />
+    </CollaborationPlate><Toaster /></TooltipProvider></HostContext.Provider>));
     if(this.renderFailure!==undefined){this.root.unmount();throw this.renderFailure;}
     this.initialized=true;this.persist();
     this.unregisterDraftProducer=registerDocumentDraftProducer(()=>{
@@ -280,6 +440,8 @@ export class PlateMathHost implements DocumentHost {
       if(!('type' in raw)||!isFormula(raw))continue;
       const node=raw as FormulaNode;
       const id=node.id||newId();
+      if(this.collaboration?.ready&&!node.snapshot&&!this.collaboration.math.sharedRoot.has(id))continue;
+      if(this.collaboration?.ready&&node.snapshot&&!this.collaboration.math.sharedRoot.has(id))this.collaboration.ensureMath(id,node.snapshot);
       // Raw components are retried once per loaded/new formula, never for
       // every caret move or keystroke in a large document.
       if(node.snapshot&&this.checkedFormulaSources.has(id))continue;
@@ -309,6 +471,8 @@ export class PlateMathHost implements DocumentHost {
       const key=node.id||'path:'+path.join('.');
       this.formulaMigrations.set(key,[...(this.formulaMigrations.get(key)??[]),{before:node.snapshot,source:node.texExpression,after:snapshot,id,numbered:node.numbered!==false}]);
       this.models.set(id,model);
+      this.collaboration?.ensureMath(id,snapshot);
+      if(this.collaboration){model.undo=()=>this.collaboration?.undo();model.redo=()=>this.collaboration?.redo();}
       if(this.initialized&&!node.texExpression)this.pendingActivation.add(id);
       // This is a derived editing representation, not an edit to the source.
       this.editor.tf.withoutSaving(()=>this.editor.tf.setNodes({id,snapshot,numbered:node.numbered!==false},{at:path}));
@@ -320,6 +484,7 @@ export class PlateMathHost implements DocumentHost {
       let model=this.models.get(node.id);
       if(!model){model=new EditorModel();this.models.set(node.id,model);}
       if(model.snapshot()!==node.snapshot)model.restore(node.snapshot);
+      if(this.collaboration){model.undo=()=>this.collaboration?.undo();model.redo=()=>this.collaboration?.redo();}
       if(this.pendingActivation.delete(node.id))queueMicrotask(()=>{if(element.isConnected)this.enter(element,'start');});
     }else{
       // Unsupported imported TeX is retained verbatim, never silently rewritten.
@@ -335,7 +500,7 @@ export class PlateMathHost implements DocumentHost {
     queueMicrotask(()=>{this.pending=false;if(this.initialized)this.hooks.change();});
   }
   private changed(){
-    if(!this.initialized||this.syncing)return;
+    if(!this.initialized||this.syncing||this.collaborationApplying)return;
     this.ensureFormulas();
     // Document undo/redo is authoritative before the next math repaint.
     for(const [raw] of NodeApi.nodes(this.editor)){
@@ -345,7 +510,7 @@ export class PlateMathHost implements DocumentHost {
       // repaint must not restore an older cursor from the saved node snapshot.
       if(m&&n.snapshot&&this.snapshotContent(m.snapshot())!==this.snapshotContent(n.snapshot))m.restore(n.snapshot);
     }
-    this.save();this.scheduleChange();
+    this.collaboration?.publishSettings();this.collaboration?.publishPresence();this.save();this.scheduleChange();
   }
   entries():FormulaEntry[]{return [...this.mount.querySelectorAll<HTMLElement>('.inline-formula')].flatMap(element=>{
     const model=this.models.get(element.dataset.mathId!);return model?[{element,model}]:[];
@@ -385,7 +550,8 @@ export class PlateMathHost implements DocumentHost {
     return content;
   }
   private synchronizeMath(includeCursor:boolean):boolean {
-    if(this.syncing||!this.initialized)return false;this.syncing=true;
+    if(this.collaborationState.active&&!this.collaborationState.writable&&!this.collaborationApplying)return false;
+    if(this.syncing||!this.initialized||this.collaborationApplying)return false;this.syncing=true;
     let changed=false;
     try{
       for(const [raw,path] of NodeApi.nodes(this.editor)){
@@ -394,16 +560,20 @@ export class PlateMathHost implements DocumentHost {
         const snapshot=model.snapshot();if(snapshot===node.snapshot)continue;
         const contentChanged=!node.snapshot||this.snapshotContent(snapshot)!==this.snapshotContent(node.snapshot);
         if(!contentChanged&&!includeCursor)continue;
+        if(contentChanged&&this.collaboration?.ready){this.deferredMathCursors.delete(node.id);this.collaboration.publishMath(node.id,node.snapshot??snapshot,snapshot);}
         const set=()=>this.editor.tf.setNodes({snapshot,...(contentChanged?{texExpression:model.exportLatex()}:{})},{at:path});
         if(!contentChanged)this.editor.tf.withoutSaving(set);
         else this.editor.tf.withNewBatch(set);
         changed=true;
       }
     }finally{this.syncing=false;}
+    this.collaboration?.flush();
     return changed;
   }
   syncMath(){
     if(this.synchronizeMath(false))this.save();
+    if(this.deferredMath.size&&!this.hooks.isComposing?.())this.collaboration?.refreshMath(this.deferredMath);
+    this.collaboration?.publishPresence();
   }
   persist(){
     if(this.syncing||!this.initialized)return;
@@ -413,6 +583,7 @@ export class PlateMathHost implements DocumentHost {
   exportLatex(){return plateLatex(this.editor.children as Value);}
   serializeDocument(){this.persist();return this.serialized(true);}
   hasUnsavedChanges(){
+    if(this.isCollaborationGuest())return false;
     this.syncMath();
     this.savedContent??=new DocumentContentComparison(this.savedDocument);
     return !this.savedContent.isEqual(this.envelope());
@@ -436,6 +607,7 @@ export class PlateMathHost implements DocumentHost {
   }
   openDocument(source:string){
     const opened=parseDocumentEnvelope(source);
+    this.finishCollaboration(true);
     this.persist();
     draftStorage().setItem(documentStorageKey+'-before-open',this.serializeDocument());
     this.clipboardDocumentId=newId();
@@ -530,8 +702,9 @@ export class PlateMathHost implements DocumentHost {
   }
   isDisplay(element:HTMLElement){return element.dataset.display==='true';}
   isNumbered(element:HTMLElement){return element.dataset.numbered!=='false';}
-  setNumbered(element:HTMLElement,numbered:boolean){const entry=this.locate(element);if(entry)this.editor.tf.withNewBatch(()=>this.editor.tf.setNodes({numbered},{at:entry[1]}));}
+  setNumbered(element:HTMLElement,numbered:boolean){if(this.readOnly)return;const entry=this.locate(element);if(entry)this.editor.tf.withNewBatch(()=>this.editor.tf.setNodes({numbered},{at:entry[1]}));}
   setDisplay(element:HTMLElement,display:boolean){
+    if(this.readOnly)return;
     this.hooks.leave();this.persist();const entry=this.locate(element);if(!entry||this.isDisplay(element)===display)return;
     const [node,path]=entry;
     flushSync(()=>this.editor.tf.withNewBatch(()=>this.editor.tf.withoutNormalizing(()=>{
@@ -658,5 +831,5 @@ export class PlateMathHost implements DocumentHost {
     const above=this.editor.api.above({at:point,match:n=>'type' in n&&isFormula(n),voids:true});
     if(above){const el=this.mounts.get((above[0] as FormulaNode).id);if(el){event.preventDefault();this.enter(el,dir<0?'end':'start');}}
   }
-  destroy(){if(!this.recoverySuspended)this.persist();this.initialized=false;this.unregisterDraftProducer?.();if(this.recoveryTimer!==undefined)clearTimeout(this.recoveryTimer);this.root.unmount();}
+  destroy(){this.collaborationAttempt++;if(this.isCollaborationGuest()&&this.hooks.pendingMathSnapshot?.())this.captureCollaborationRecovery();if(!this.recoverySuspended)this.persist();this.collaboration?.destroy();this.collaboration=undefined;this.initialized=false;this.unregisterDraftProducer?.();if(this.recoveryTimer!==undefined)clearTimeout(this.recoveryTimer);this.root.unmount();}
 }

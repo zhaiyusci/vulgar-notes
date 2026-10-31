@@ -36,8 +36,21 @@ export interface FontWarning {region:string;index:number;message:string}
   // Saved/clipboard IDs are decimal strings. Keep their counter exact even
   // when an external document uses values beyond JavaScript's safe integers.
   let serial = 0n;
-  const region = (label:string, items:MathItem[] | string = []):Region => ({id: 'r' + ++serial, label, items: typeof items === 'string' ? Array.from(items) : items});
-  const structure = (type:string, regions:Region[]):MathNode => ({id: 'n' + ++serial, type, regions});
+  let distributedNamespace:bigint|undefined,distributedSerial=0n;
+  const distributedCounters=new Map<bigint,bigint>();
+  /** Opt in without changing saved IDs or importing any networking framework. */
+  export function setMathIdNamespace(namespace?:string):void {
+    if(namespace==='')throw Error('A math ID namespace must not be empty.');
+    const compact=namespace?.replaceAll('-','');
+    const next=namespace===undefined?undefined:BigInt('0x1'+(compact&&/^[0-9a-f]{32}$/i.test(compact)?compact:Array.from(namespace,character=>character.codePointAt(0)!.toString(16).padStart(6,'0')).join('')));
+    if(next!==distributedNamespace){
+      if(distributedNamespace!==undefined)distributedCounters.set(distributedNamespace,distributedSerial);
+      distributedNamespace=next;distributedSerial=next===undefined?0n:distributedCounters.get(next)??0n;
+    }
+  }
+  const nextSerial=()=>distributedNamespace===undefined?++serial:(distributedNamespace<<96n)+ ++distributedSerial;
+  const region = (label:string, items:MathItem[] | string = []):Region => ({id: 'r' + nextSerial(), label, items: typeof items === 'string' ? Array.from(items) : items});
+  const structure = (type:string, regions:Region[]):MathNode => ({id: 'n' + nextSerial(), type, regions});
   const frac = (a:MathItem[] | string, b:MathItem[] | string) => structure('frac', [region('分子', a), region('分母', b)]);
   const sqrt = (a:MathItem[] | string) => structure('sqrt', [region('根号内', a)]);
   // One registry drives the insertion board, editable arguments and export.
@@ -582,10 +595,10 @@ export interface FontWarning {region:string;index:number;message:string}
       if(!Array.isArray(source))throw Error('Invalid math fragment');
       const used=new Set<string>();
       const collect=(values:unknown[])=>{for(const value of values){if(!isObject(value))continue;if(typeof value.id==='string')used.add(value.id);if(Array.isArray(value.regions))for(const child of value.regions)if(isObject(child)){if(typeof child.id==='string')used.add(child.id);if(Array.isArray(child.items))collect(child.items);}}};
-      collect(source);const root=region('公式',source as MathItem[]);while(used.has(root.id))root.id='r'+ ++serial;
+      collect(source);const root=region('公式',source as MathItem[]);while(used.has(root.id))root.id='r'+nextSerial();
       if(!isSavedState({version:2,root,cursor:{region:root.id,offset:0,anchor:0}}))throw Error('Invalid math fragment');
-      const cloneRegion=(r:Region):Region=>({...r,id:'r'+ ++serial,items:r.items.map(cloneItem)});
-      const cloneItem=(item:MathItem):MathItem=>typeof item==='string'?item:{...item,id:'n'+ ++serial,regions:item.regions.map(cloneRegion)};
+      const cloneRegion=(r:Region):Region=>({...r,id:'r'+nextSerial(),items:r.items.map(cloneItem)});
+      const cloneItem=(item:MathItem):MathItem=>typeof item==='string'?item:{...item,id:'n'+nextSerial(),regions:item.regions.map(cloneRegion)};
       const cloned=root.items.map(cloneItem);
       if(this.rawInput){this.replace(...this.range,latex({id:'',label:'',items:cloned}));return;}
       this.record();this.pendingFont=undefined;
@@ -659,7 +672,7 @@ export interface FontWarning {region:string;index:number;message:string}
         if(!this.rawInput && (ch==='^' || ch==='_')){this.pendingFont=undefined;this.enterScript(ch);continue;}
         if(['\uFFFC','\r','\n'].includes(ch))continue;
         const variant=ch==='\\'||this.commandQuery()?undefined:this.styledLetter(ch);
-        const item:MathItem=variant?{id:'n'+ ++serial,type:variant.type,atom:true,regions:[]}:ch;
+        const item:MathItem=variant?{id:'n'+nextSerial(),type:variant.type,atom:true,regions:[]}:ch;
         const [a,b]=this.range;this.current.items.splice(a,b-a,item);this.setCursor(this.cursor.region,a+1);this.index();
       }
     }
@@ -691,7 +704,7 @@ export interface FontWarning {region:string;index:number;message:string}
       if(record)this.record();const [start,end]=this.range;
       const styled=this.styledLetter(symbolDefinitions.get(type)!.letter||'');
       if(styled)type=styled.type;
-      this.current.items.splice(start,end-start,{id:'n'+ ++serial,type,atom:true,regions:[]});
+      this.current.items.splice(start,end-start,{id:'n'+nextSerial(),type,atom:true,regions:[]});
       this.setCursor(this.cursor.region,start+1);this.index();
     }
     insertStructure(type:string,record=true) {
@@ -866,7 +879,7 @@ export interface FontWarning {region:string;index:number;message:string}
       if(!r||item===undefined||!target?.letter)return false;
       if(typeof item!=='string')return this.switchVariant(item.id,type);
       if(item!==target.letter)return false;
-      this.record();r.items[index]={id:'n'+ ++serial,type,atom:true,regions:[]};this.index();return true;
+      this.record();r.items[index]={id:'n'+nextSerial(),type,atom:true,regions:[]};this.index();return true;
     }
     fontWarnings():FontWarning[] {
       const warnings:FontWarning[]=[];

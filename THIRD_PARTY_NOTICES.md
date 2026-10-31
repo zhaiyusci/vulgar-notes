@@ -51,6 +51,8 @@ license texts govern; this index is not a replacement for them.
   [plate-MIT.txt](licenses/plate-MIT.txt) and
   [shadcn-MIT.txt](licenses/shadcn-MIT.txt).
 - **BibTeX parser:** retains its [MIT notice](licenses/bibtex-parser-MIT.txt).
+- **Yjs collaboration:** Yjs, y-protocols, lib0 and slate-yjs retain their upstream notices in
+  [licenses/collaboration](licenses/collaboration).
 - **Community color palettes:** retain the notices for
   [Catppuccin](licenses/catppuccin-MIT.txt),
   [Dracula](licenses/dracula-MIT.txt), [Nord](licenses/nord-MIT.txt),

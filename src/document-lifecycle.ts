@@ -7,6 +7,7 @@ import {recordRuntimeEvent} from './runtime-diagnostics';
 
 /** The controller does not depend on the rich-text editor or its UI framework. */
 export interface DocumentLifecycleHost {
+  isCollaborationGuest?():boolean;
   persist():void;
   cancelPendingRecovery?():void;
   serializeDocument():string;
@@ -102,6 +103,11 @@ function askToSave():Promise<'save'|'discard'|'cancel'> {
 }
 async function saveCurrent(saveAs=false):Promise<boolean> {
   const savingHost=host;if(!savingHost)return false;await restoringTarget;
+  if(savingHost.isCollaborationGuest?.()){
+    // A participant can save a detached snapshot, never overwrite the host's
+    // main file or bind a local path as if it were the shared document.
+    return !!await saveDocumentFile(savingHost.serializeDocument(),undefined,'shared-copy.vulgar');
+  }
   const source=savingHost.serializeDocument();const file=await saveDocumentFile(source,saveAs?undefined:currentFile,currentFile.name);if(!file)return false;
   // Retain the returned object: browser overwrite handles are private to it.
   currentFile=file;metadata={name:file.name,...(file.path?{path:file.path}:{}),baseline:source};

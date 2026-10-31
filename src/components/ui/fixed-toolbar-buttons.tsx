@@ -27,6 +27,7 @@ import { FontColorToolbarButton } from './font-color-toolbar-button';
 import { FontSizeToolbarButton } from './font-size-toolbar-button';
 import { RedoToolbarButton, UndoToolbarButton } from './history-toolbar-button';
 import { DocumentFileToolbarButtons } from './document-file-toolbar-buttons';
+import { CollaborationToolbarButton } from './collaboration-toolbar-button';
 import { MetadataToolbarButton } from './metadata-toolbar-button';
 import { DocumentViewToolbarButtons } from './document-view-toolbar-buttons';
 import { InsertFloatToolbarButton } from './insert-float-toolbar-button';
@@ -58,17 +59,17 @@ export function FixedToolbarButtons() {
     <div className="flex w-full">
       <CitationReferenceEditor />
       {!readOnly && (
+        <ToolbarGroup>
+          <UndoToolbarButton />
+          <RedoToolbarButton />
+        </ToolbarGroup>
+      )}
+      <ToolbarGroup>
+        {!readOnly&&<><DocumentFileToolbarButtons /><ExportToolbarButton /></>}
+        <CollaborationToolbarButton />
+      </ToolbarGroup>
+      {!readOnly && (
         <>
-          <ToolbarGroup>
-            <UndoToolbarButton />
-            <RedoToolbarButton />
-          </ToolbarGroup>
-
-          <ToolbarGroup>
-            <DocumentFileToolbarButtons />
-            <ExportToolbarButton />
-          </ToolbarGroup>
-
           <ToolbarGroup>
             <MetadataToolbarButton />
             <DocumentViewToolbarButtons />

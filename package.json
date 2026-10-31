@@ -5,7 +5,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && node build.cjs",
-    "test": "npm run build && node --test --test-concurrency=2 editor-model.test.cjs letter-variants.test.cjs text-flow.test.cjs plate-host.test.cjs plate-render-recovery.test.cjs paragraph-drag.test.cjs math-input.test.cjs platform.test.cjs plate-math-plugins.test.cjs math-panel-i18n.test.cjs html-export.test.cjs mathjax-export-config.test.cjs document-draft-store.test.cjs document-content-comparison.test.cjs large-document-storage.test.cjs new-document-toolbar.test.cjs document-lifecycle.test.cjs document-home.test.cjs document-recovery.test.cjs native-document-validation.test.cjs color-scheme.test.cjs community-palettes.test.cjs preferences-about.test.cjs bibtex.test.cjs bibtex-latex.test.cjs bibliography-markdown.test.cjs bibliography-library-store.test.cjs bibliography-format.test.cjs bibliography-source.test.cjs bibtex-libraries.test.cjs references-endnotes.test.cjs endnote-toolbar.test.cjs reference-toolbar.test.cjs web-package.test.cjs document-metadata.test.cjs metadata-authblk.test.cjs document-metadata-ui.test.cjs document-outline.test.cjs editor-zoom.test.cjs document-floats.test.cjs document-structure.test.cjs tex-import-safety.test.cjs native-clipboard.test.cjs body-clipboard.test.cjs math-clipboard.test.cjs math-fragment.test.cjs tex-import-environments.test.cjs tex-convert.test.cjs host-formula-conversion.test.cjs boldsymbol-input.test.cjs formula-source-dialog.test.cjs function-input.test.cjs function-convert.test.cjs text-symbols.test.cjs mathjax-extension-policy.test.cjs mathjax-commands.test.cjs cases-input.test.cjs tex-layout-structures.test.cjs tex-structure-grammar.test.cjs tex-sideset.test.cjs mathjax-latex-packages.test.cjs tex-display-environment.test.cjs math-equation-numbering.test.cjs mathjax-editor-render.test.cjs",
+    "test": "npm run build && node --test --test-concurrency=2 collaboration-transport.test.cjs collaboration-authority.test.cjs hosted-document.test.cjs collaboration-bootstrap.test.cjs collaboration-navigation.test.cjs collaboration-math.test.cjs collaboration-prose.test.cjs collaboration-bibliography.test.cjs collaboration-session.test.cjs editor-model.test.cjs letter-variants.test.cjs text-flow.test.cjs plate-host.test.cjs plate-render-recovery.test.cjs paragraph-drag.test.cjs math-input.test.cjs platform.test.cjs plate-math-plugins.test.cjs math-panel-i18n.test.cjs html-export.test.cjs mathjax-export-config.test.cjs document-draft-store.test.cjs document-content-comparison.test.cjs large-document-storage.test.cjs new-document-toolbar.test.cjs document-lifecycle.test.cjs document-home.test.cjs document-recovery.test.cjs native-document-validation.test.cjs color-scheme.test.cjs community-palettes.test.cjs preferences-about.test.cjs bibtex.test.cjs bibtex-latex.test.cjs bibliography-markdown.test.cjs bibliography-library-store.test.cjs bibliography-format.test.cjs bibliography-source.test.cjs bibtex-libraries.test.cjs references-endnotes.test.cjs endnote-toolbar.test.cjs reference-toolbar.test.cjs web-package.test.cjs document-metadata.test.cjs metadata-authblk.test.cjs document-metadata-ui.test.cjs document-outline.test.cjs editor-zoom.test.cjs document-floats.test.cjs document-structure.test.cjs tex-import-safety.test.cjs native-clipboard.test.cjs body-clipboard.test.cjs math-clipboard.test.cjs math-fragment.test.cjs tex-import-environments.test.cjs tex-convert.test.cjs host-formula-conversion.test.cjs boldsymbol-input.test.cjs formula-source-dialog.test.cjs function-input.test.cjs function-convert.test.cjs text-symbols.test.cjs mathjax-extension-policy.test.cjs mathjax-commands.test.cjs cases-input.test.cjs tex-layout-structures.test.cjs tex-structure-grammar.test.cjs tex-sideset.test.cjs mathjax-latex-packages.test.cjs tex-display-environment.test.cjs math-equation-numbering.test.cjs mathjax-editor-render.test.cjs",
     "dev": "npm run build && node serve.cjs",
     "web:prepare": "node scripts/prepare-web.cjs",
     "web:build": "npm run build && npm run web:prepare",
@@ -67,6 +67,7 @@
     "@radix-ui/react-popover": "^1.3.1",
     "@radix-ui/react-toolbar": "^1.2.1",
     "@retorquere/bibtex-parser": "12.1.13",
+    "@slate-yjs/core": "^1.0.2",
     "@tailwindcss/cli": "^4.3.3",
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-dialog": "^2.8.3",
@@ -85,6 +86,7 @@
     "dedent": "^1.0.0",
     "events": "^3.3.0",
     "html2canvas-pro": "^2.5.2",
+    "lib0": "^0.2.119",
     "lodash": "^4.18.1",
     "lowlight": "^3.3.0",
     "lucide-react": "^1.61.0",
@@ -115,6 +117,8 @@
     "tailwindcss": "^4.3.3",
     "tw-animate-css": "^1.4.0",
     "use-file-picker": "^2.1.2",
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.33",
     "zod": "^4.6.7"
   },
   "overrides": {
