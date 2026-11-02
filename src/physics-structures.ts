@@ -24,18 +24,19 @@ export function registerPhysicsStructures(catalog:Definition[]):void {
   for(const name of ['dv','pdv','fdv']){
     for(const star of ['', '*']){
       const suffix=star?'Flat':'',command=name+star;
-      add(name+'Operator'+suffix,command,['Variable'],r=>`\\${command}{${r[0]}}`,name,'Differential operator'+(star?' (flat)':''),true);
-      add(name+'Order'+suffix,command,['Function','Variable','Order'],r=>`\\${command}[${r[2]}]{${r[0]}}{${r[1]}}`,name,'Derivative with order'+(star?' (flat)':''),true);
+      add(name+'Operator'+suffix,command,['Variable'],r=>`\\${command}{${r[0]}}`,name,'Differential operator'+(star?' (flat)':''));
+      add(name+'OperatorOrder'+suffix,command,['Variable','Order'],r=>`\\${command}[${r[1]}]{${r[0]}}`,name,'Differential operator with order'+(star?' (flat)':''));
+      add(name+'Order'+suffix,command,['Function','Variable','Order'],r=>`\\${command}[${r[2]}]{${r[0]}}{${r[1]}}`,name,'Derivative with order'+(star?' (flat)':''));
     }
   }
   for(const star of ['', '*']){
     const suffix=star?'Flat':'',command='pdv'+star;
-    add('pdvMixed'+suffix,command,['Function','First variable','Second variable'],r=>`\\${command}{${r[0]}}{${r[1]}}{${r[2]}}`,'pdv','Mixed partial derivative'+(star?' (flat)':''),true);
+    add('pdvMixed'+suffix,command,['Function','First variable','Second variable'],r=>`\\${command}{${r[0]}}{${r[1]}}{${r[2]}}`,'pdv','Mixed partial derivative'+(star?' (flat)':''));
     // The actual physics grammar accepts [order] even with three arguments.
     // Preserve it exactly, irrespective of whether its renderer uses the order.
     add('pdvMixedOrder'+suffix,command,['Function','First variable','Second variable','Order'],r=>`\\${command}[${r[3]}]{${r[0]}}{${r[1]}}{${r[2]}}`,'pdv','Mixed partial derivative with order',true);
   }
-  for(const name of ['dd','var'])add(name+'Order',name,['Variable','Order'],r=>`\\${name}[${r[1]}]{${r[0]}}`,name,'Differential with order',true);
+  for(const name of ['dd','var'])add(name+'Order',name,['Variable','Order'],r=>`\\${name}[${r[1]}]{${r[0]}}`,name,'Differential with order');
   for(const name of ['vb','va','vu'])add(name+'Star',name+'*',['Content'],r=>`\\${name}*{${r[0]}}`,name,'Italic vector');
 
   for(const name of ['bra','ket','comm','acomm','pb','abs','norm','order','eval']){
@@ -43,9 +44,9 @@ export function registerPhysicsStructures(catalog:Definition[]):void {
     add(name+'Star',name+'*',[...base.labels],r=>`\\${name}*`+r.map(value=>'{'+value+'}').join(''),name,'Fixed size');
   }
   for(const name of ['braket','ketbra']){
-    add(name+'Self',name,['State'],r=>`\\${name}{${r[0]}}`,name,'Same state',true);
+    add(name+'Self',name,['State'],r=>`\\${name}{${r[0]}}`,name,'Same state');
     add(name+'Star',name+'*',['Left state','Right state'],r=>`\\${name}*{${r[0]}}{${r[1]}}`,name,'Fixed size');
-    add(name+'SelfStar',name+'*',['State'],r=>`\\${name}*{${r[0]}}`,name,'Same state (fixed size)',true);
+    add(name+'SelfStar',name+'*',['State'],r=>`\\${name}*{${r[0]}}`,name,'Same state (fixed size)');
   }
   // Bra looks ahead for a following ket. Keep that consuming pair in one
   // native component so rendering wrappers cannot interrupt its lookahead.
@@ -54,9 +55,11 @@ export function registerPhysicsStructures(catalog:Definition[]):void {
       r=>`\\bra${left}{${r[0]}}\\ket${right}{${r[1]}}`,'braket','Adjacent bra and ket',true);
   for(const stars of ['', '*','**']){
     const suffix=stars.length===0?'':stars.length===1?'Star':'DoubleStar';
-    if(stars)add('expval'+suffix,'expval'+stars,['Expression'],r=>`\\expval${stars}{${r[0]}}`,'expval',stars.length===1?'Fixed size':'Split delimiters',true);
-    add('expvalState'+suffix,'expval'+stars,['Expression','State'],r=>`\\expval${stars}{${r[0]}}{${r[1]}}`,'expval','Expectation in a state'+(stars?' ('+stars+')':''),true);
-    if(stars)add('mel'+suffix,'mel'+stars,['Left state','Operator','Right state'],r=>`\\mel${stars}{${r[0]}}{${r[1]}}{${r[2]}}`,'mel',stars.length===1?'Fixed size':'Split delimiters');
+    // With no state operand, physics treats ** exactly like *. Keep accepting
+    // that source spelling, but do not present it as a distinct GUI choice.
+    if(stars)add('expval'+suffix,'expval'+stars,['Expression'],r=>`\\expval${stars}{${r[0]}}`,'expval','Fixed size',stars.length===2);
+    add('expvalState'+suffix,'expval'+stars,['Expression','State'],r=>`\\expval${stars}{${r[0]}}{${r[1]}}`,'expval','Expectation in a state'+(stars?' ('+stars+')':''));
+    if(stars)add('mel'+suffix,'mel'+stars,['Left state','Operator','Right state'],r=>`\\mel${stars}{${r[0]}}{${r[1]}}{${r[2]}}`,'mel',stars.length===1?'Fixed size':'Automatic size');
   }
 
   // Quantity's literal delimiter is part of its grammar, not a math argument.
@@ -66,5 +69,30 @@ export function registerPhysicsStructures(catalog:Definition[]):void {
   for(const [name,description] of [['pqty','Parentheses'],['bqty','Brackets'],['Bqty','Braces'],['vqty','Absolute value']]){
     add(name,name,['Content'],r=>`\\${name}{${r[0]}}`,'qty',description,true);
     add(name+'Star',name+'*',['Content'],r=>`\\${name}*{${r[0]}}`,'qty',description+' (fixed size)',true);
+  }
+
+  // Variants with optional arguments must retain semantic operands, not their
+  // old array positions: the operator-only derivative contains the variable,
+  // and a third argument can be an order or a second differentiation variable.
+  const slots=(names:string[],roles:string[])=>{
+    for(const name of names){const entry=find(name);if(entry)entry.variantSlots=roles;}
+  };
+  for(const name of ['dv','pdv','fdv']){
+    slots([name,name+'Flat'],['function','variable']);
+    slots([name+'Operator',name+'OperatorFlat'],['variable']);
+    slots([name+'OperatorOrder',name+'OperatorOrderFlat'],['variable','order']);
+    slots([name+'Order',name+'OrderFlat'],['function','variable','order']);
+  }
+  slots(['pdvMixed','pdvMixedFlat'],['function','variable','secondVariable']);
+  slots(['pdvMixedOrder','pdvMixedOrderFlat'],['function','variable','secondVariable','order']);
+  for(const name of ['dd','var']){
+    slots([name],['variable']);slots([name+'Order'],['variable','order']);
+  }
+  slots(['expval','expvalStar','expvalDoubleStar'],['expression']);
+  slots(['expvalState','expvalStateStar','expvalStateDoubleStar'],['expression','state']);
+  for(const name of ['braket','ketbra']){
+    slots([name,name+'Star'],['leftState','rightState']);
+    // A same-state product is an insertion form, not a lossy conversion from
+    // two independent states. Its two sizing variants can switch each other.
   }
 }

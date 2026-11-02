@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+import {standaloneMathEnvironmentBounds} from './tex-display-environment';
 export interface EquationNumbering {
   readonly count:number;
   readonly referenceOffset:number;
@@ -48,7 +49,7 @@ function environmentTag(source:string,start:number):{kind:'begin'|'end';name:str
 const manualNumbering=new Set(['tag','notag','nonumber','tag*','numberwithin','setcounter','addtocounter','stepcounter','refstepcounter',
   'newcommand','renewcommand','providecommand','def','gdef','edef','xdef','let','newenvironment','renewenvironment']);
 const literalScanners=new Set(['verb','verbdef','lstinline']);
-const rowNumbered=new Set(['numcases','subnumcases','align','gather','alignat','flalign','eqnarray']);
+const rowNumbered=new Set(['numcases','subnumcases','align','gather','alignat','xalignat','xxalignat','flalign','eqnarray']);
 const oneNumbered=new Set(['equation','multline']);
 function bracket(source:string,start:number):Group|null {
   if(source[start]!=='[')return null;
@@ -82,6 +83,14 @@ function infer(source:string):InferredNumbering {
     }
   }
   let at=skipSpace(source,opening.next),effective=opening.name;
+  if(effective==='spreadlines'){
+    const bounds=standaloneMathEnvironmentBounds(source),spacing=group(source,at);
+    if(!bounds||!spacing)return fallback;
+    const inner=infer(source.slice(spacing.next,bounds.bodyEnd));
+    return {numbering:inner.numbering,labelOffset:inner.labelOffset===null?null:spacing.next+inner.labelOffset,
+      ...(inner.trailingCaseSeparator===undefined?{}:{trailingCaseSeparator:spacing.next+inner.trailingCaseSeparator})};
+  }
+  if(effective==='displaymath'&&standaloneMathEnvironmentBounds(source))return {numbering:Object.freeze({count:0,referenceOffset:0,referenceSuffix:''}),labelOffset:null};
   if(effective==='empheq'){
     if(source[at]==='['){const options=bracket(source,at);if(!options)return fallback;at=skipSpace(source,options.next);}
     const environment=group(source,at);if(!environment)return fallback;
@@ -89,12 +98,12 @@ function infer(source:string):InferredNumbering {
     if(!/^(?:align|gather|flalign|equation|multline)\*?$/.test(effective))return fallback;
     at=environment.next;
   }
-  const starred=effective.endsWith('*'),base=starred?effective.slice(0,-1):effective;
+  const starred=effective.endsWith('*')||effective==='xxalignat',base=effective.endsWith('*')?effective.slice(0,-1):effective;
   if(!rowNumbered.has(base)&&!oneNumbered.has(base))return fallback;
   if(starred&&(base==='numcases'||base==='subnumcases'))return fallback;
   if(base==='numcases'||base==='subnumcases'){
     const lhs=group(source,skipSpace(source,at));if(!lhs)return fallback;at=lhs.next;
-  }else if(base==='alignat'){
+  }else if(['alignat','xalignat','xxalignat'].includes(base)){
     const columns=group(source,skipSpace(source,at));if(!columns||!/^\s*[1-9]\d*\s*$/.test(columns.body))return fallback;at=columns.next;
   }
   let braces=0,separators=0,rowContent=false,lastSeparator=-1,lastSeparatorHadContent=false;

@@ -131,7 +131,7 @@ test('nested fences and environments remain inside the same delimiter body',()=>
 });
 
 test('unknown or mixed delimiter pairs stay intact for whole-fragment source fallback',()=>{
-  for(const source of [String.raw`\left(x\right]`,String.raw`\left.x\right.`,String.raw`\left\lmoustache x\right\rmoustache`,String.raw`\left\langle x\middle|y\right\rangle`]){
+  for(const source of [String.raw`\left(x\right]`,String.raw`\left.x\right.`,String.raw`\left\unknownleft x\right\unknownright`,String.raw`\left\langle x\middle|y\right\rangle`]){
     const bounds=api.scanTexDelimiter(source,0);assert.equal(bounds.next,source.length);
     assert.equal(api.parseTexDelimiter(source,0,raw,factory),null);
   }

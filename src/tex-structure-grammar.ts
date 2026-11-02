@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import {catalog,symbols,type Definition,type Region} from './editor-model';
-import {parseTexEnvironment,scanTexEnvironment,scanTexDelimiter,type ParseTexRegion,type CreateTexNode,type ParsedTexStructure} from './tex-import-environments';
+import {parseTexEnvironment,scanTexEnvironment,scanTexDelimiter,scanTexDelimiterToken,type ParseTexRegion,type CreateTexNode,type ParsedTexStructure} from './tex-import-environments';
+import {guiDelimiterPairs} from './gui-math-delimiters';
 
 interface Literal {kind:'literal';source:string}
 interface Argument {kind:'argument';slot:number;open:string;close:string;optional:boolean;atomic:boolean}
@@ -46,7 +47,7 @@ function literal(source:string,start:number,pattern:string):number|null {
 }
 
 function compile(definition:Definition):Template|null {
-  if(definition.font||definition.operator||definition.raw||definition.matrixEnvironment||definition.rowEnvironment||definition.legacy||definition.texOptionsKind||
+  if(definition.scope==='formula'||definition.font||definition.operator||definition.raw||definition.matrixEnvironment||definition.rowEnvironment||definition.legacy||definition.texOptionsKind||
     ['sqrt','nthroot','cfrac','cfracl','cfracr','tex-group','physics-auto-parens'].includes(definition.type))return null;
   const args=definition.labels.map((_,slot)=>marker(slot)),rendered=definition.render(args);
   const matches=[...rendered.matchAll(/VNCATALOGARG(\d+)END/g)];
@@ -113,8 +114,8 @@ function match(source:string,start:number,template:Template,parseRegion:ParseTex
 
 function fixedFence(source:string,start:number,parseRegion:ParseTexRegion,createNode:CreateTexNode):ParsedTexStructure|null {
   const first=control(source,start),names=['bigl','Bigl','biggl','Biggl'];if(!first||!names.includes(first.name))return null;
-  let bodyStart=skip(source,first.next);if(source[bodyStart]!=='(')return null;bodyStart++;
-  const expected=first.name.slice(0,-1)+'r',stack=[first.name];let i=bodyStart,braces=0;
+  const left=scanTexDelimiterToken(source,first.next);if(!left)return null;
+  const bodyStart=left.next,expected=first.name.slice(0,-1)+'r',stack=[{name:first.name,braces:0}];let i=bodyStart,braces=0;
   while(i<source.length){
     const ch=source[i];
     if(ch==='%'){const line=source.indexOf('\n',i);i=line<0?source.length:line+1;continue;}
@@ -122,14 +123,22 @@ function fixedFence(source:string,start:number,parseRegion:ParseTexRegion,create
       const token=control(source,i);if(!token)return null;
       if(token.name==='begin'){const bounds=scanTexEnvironment(source,i);if(!bounds)return null;i=bounds.next;continue;}
       if(token.name==='left'){const bounds=scanTexDelimiter(source,i);if(!bounds)return null;i=bounds.next;continue;}
-      if(names.includes(token.name)){stack.push(token.name);i=token.next;continue;}
+      if(names.includes(token.name)){
+        const opening=scanTexDelimiterToken(source,token.next);if(!opening)return null;
+        stack.push({name:token.name,braces});i=opening.next;continue;
+      }
       if(['bigr','Bigr','biggr','Biggr'].includes(token.name)){
-        const opening=stack.pop();if(!opening||opening.slice(0,-1)+'r'!==token.name)return null;
+        const opening=stack.pop();if(!opening||opening.name.slice(0,-1)+'r'!==token.name||opening.braces!==braces)return null;
+        const right=scanTexDelimiterToken(source,token.next);if(!right)return null;
         if(!stack.length){
-          const end=skip(source,token.next);if(braces||token.name!==expected||source[end]!==')')return null;
+          if(braces||token.name!==expected)return null;
+          const pair=guiDelimiterPairs.find(pair=>pair.leftKey===left.value&&pair.rightKey===right.value);if(!pair)return null;
+          const type=pair.type==='parens'?'paren'+first.name.slice(0,-1):pair.type+'-'+first.name.slice(0,-1);
+          if(!catalog.some(entry=>entry.type===type))return null;
           const parsed=parseRegion(source.slice(bodyStart,i));if(!parsed)return null;
-          return {node:createNode('paren'+first.name.slice(0,-1),[parsed]),next:end+1};
+          return {node:createNode(type,[parsed]),next:right.next};
         }
+        i=right.next;continue;
       }
       i=token.next;continue;
     }

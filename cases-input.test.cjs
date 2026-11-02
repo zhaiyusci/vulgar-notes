@@ -30,7 +30,7 @@ test('numbered cases use the same row insertion and deletion operations without 
   const body=model.root.items[0].regions[1].items[0],before=model.snapshot(),original=body.regions.map(region=>region.id);
   model.setCursor(body.regions[2].id,0);const editing=model.snapshot();assert.equal(model.editTable(body.id,body.regions[2].id,'rowBefore'),true);
   assert.equal(body.rows,3);assert.equal(body.regions[0].id,original[0]);assert.equal(body.regions[4].id,original[2]);
-  assert.equal(model.exportLatex(),String.raw`\begin{numcases}{f=}a&b\\&\\c&d\end{numcases}`);
+  assert.equal(model.exportLatex(),String.raw`\begin{numcases}{f=}a&b\\{}&\\c&d\end{numcases}`);
   assert.equal(model.editTable(body.id,body.regions[2].id,'deleteRow'),true);
   assert.equal(body.rows,2);assert.equal(model.exportLatex(),String.raw`\begin{numcases}{f=}a&b\\c&d\end{numcases}`);
   model.undo();assert.equal(model.root.items[0].regions[1].items[0].rows,3);model.undo();assert.equal(model.snapshot(),editing);
@@ -38,7 +38,7 @@ test('numbered cases use the same row insertion and deletion operations without 
 });
 
 test('inserting numbered cases initializes editable cells and switching numbering preserves identities',()=>{
-  const model=blank();model.insert('q+');model.insertStructure('numcases');const node=model.root.items[2],body=node.regions[1].items[0];
+  const model=blank();assert.equal(model.initializeFormula('numcases'),true);const node=model.root.items[0],body=node.regions[1].items[0];
   assert.equal(body.rows,2);assert.equal(body.regions.length,4);
   model.insert('f=');model.setCursor(body.regions[0].id,0);model.insert('x');
   const originalIds=body.regions.map(region=>region.id),before=model.snapshot();

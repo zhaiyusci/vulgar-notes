@@ -59,7 +59,7 @@ test('saved drafts reject malformed data without replacing the current formula',
 test('all large operators default to automatic placement and expose two explicit variants',()=>{
   const {catalog}=require('./editor-model');
   for(const entry of catalog.filter(e=>e.category==='大型算符' && e.variantOf===e.type)){
-    const variants=catalog.filter(e=>!e.hidden && e.variantOf===entry.type && e.type!=='sideset');
+    const variants=catalog.filter(e=>!e.hidden && e.variantOf===entry.type && e.type!=='sideset' && e.operatorCommand===entry.operatorCommand);
     assert.equal(variants.length,3,entry.type);
     const m=new EditorModel();m.insertStructure(entry.type);const node=m.root.items.at(-1);
     m.replaceInput(...m.range,'_a');m.move(1);m.replaceInput(...m.range,'^b');const regions=[...node.regions],cursor={...m.cursor};
@@ -253,7 +253,7 @@ test('first insertion appends to the existing formula and creates unique region 
 
 test('every board structure preserves a nested selection and survives undo/redo', () => {
   const {catalog} = require('./editor-model.js');
-  for (const entry of catalog) {
+  for (const entry of catalog.filter(entry=>entry.scope!=='formula')) {
     const m = new EditorModel(), den = denominator(m), inner = den.items[2];
     m.setCursor(den.id,3,0); const before = m.snapshot();
     m.insertStructure(entry.type);
@@ -387,7 +387,7 @@ test('nested variant switch only changes the target and no-op creates no undo en
 
 test('all multiline structures support dynamic rows, nested content and undo', () => {
   const {catalog}=require('./editor-model.js');
-  for(const entry of catalog.filter(e=>e.rowEnvironment)){
+  for(const entry of catalog.filter(e=>e.rowEnvironment&&e.scope!=='formula')){
     const m=new EditorModel();m.insertStructure(entry.type);
     const node=m.parents.get(m.cursor.region).node;
     for(let i=0;i<node.regions.length;i++){m.setCursor(node.regions[i].id,0);m.insert(String(i));}

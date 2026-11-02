@@ -38,7 +38,7 @@ async function uiHarness(t,locale){
 test('English math board labels, descriptions and accessible names do not retain Chinese UI text',async t=>{
  const h=await uiHarness(t,'en'),board=h.window.document.getElementById('insertToolbar');
  const chemical=board.querySelector('[data-group="化学与单位"]');
- assert.deepEqual(Array.from(chemical.querySelectorAll('.structure-label'),element=>element.textContent),['Chemical formulas and reactions','Quantities and units']);
+ assert.deepEqual(Array.from(chemical.querySelectorAll('.chemical-card .structure-label'),element=>element.textContent),['Chemical formulas and reactions','Quantities and units']);
  assert.deepEqual(Array.from(chemical.querySelectorAll('code'),element=>element.textContent),['\\ce{…}','\\pu{…}'],'command spellings remain literal');
  for(const element of [board,...board.querySelectorAll('*')]){
   for(const [attribute,text] of [['textContent',element.textContent],['title',element.getAttribute('title')],['aria-label',element.getAttribute('aria-label')]])
@@ -51,7 +51,7 @@ test('English math board labels, descriptions and accessible names do not retain
 
 test('Chinese locale retains chemistry descriptions and translated regional labels',async t=>{
  const h=await uiHarness(t,'zh-CN'),chemical=h.window.document.querySelector('[data-group="化学与单位"]');
- assert.deepEqual(Array.from(chemical.querySelectorAll('.structure-label'),element=>element.textContent),['化学式与反应式','物理量与单位']);
+ assert.deepEqual(Array.from(chemical.querySelectorAll('.chemical-card .structure-label'),element=>element.textContent),['化学式与反应式','物理量与单位']);
  assert.match(h.window.document.getElementById('structureCount').textContent,/右击按钮选择变体 · \d+ 个分类/);
  h.entry.model.insertStructure('frac');h.hooks.activate(h.entry.element,h.entry.model,'start');
  const node=h.entry.model.root.items[0];h.entry.model.setCursor(node.regions[0].id,0);h.hooks.change();
@@ -91,5 +91,41 @@ test('localized interpolation uses stable IDs and leaves TeX braces, unknown tok
   assert.equal(api.t('Row {row}: {part}',{row:3,part:api.t('Condition')}),locale==='en'?'Row 3: Condition':'第3行条件');
   assert.equal(api.t('\\ce{H2O}'),'\\ce{H2O}');assert.equal(api.t('Unknown {token}',{other:1}),'Unknown {token}');
   assert.equal(api.t('Bold (Ctrl+B)'),locale==='en'?'Bold (Ctrl+B)':'粗体 (Ctrl+B)');
+ }
+});
+
+test('physics variant menus show the public command without editor placeholder markup',async t=>{
+ const h=await uiHarness(t,'zh-CN'),button=h.window.document.querySelector('[data-insert="physics-pdv"]');
+ button.dispatchEvent(new h.window.MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:20,clientY:20}));
+ const menu=h.window.document.getElementById('variantMenu');assert.equal(menu.hidden,false);
+ const commands=Array.from(menu.querySelectorAll('code'),element=>element.textContent);
+ assert.ok(commands.includes('\\pdv[…]{…}{…}'));assert.ok(commands.includes('\\pdv{…}{…}{…}'));
+ for(const option of menu.querySelectorAll('button'))assert.doesNotMatch(option.getAttribute('aria-label'),/math-placeholder|\\(?:class|phantom)/);
+});
+
+test('the board hides implementation helpers and inserts punctuation through rendered variant menus',async t=>{
+ const h=await uiHarness(t,'en'),board=h.window.document.getElementById('insertToolbar');
+ h.hooks.activate(h.entry.element,h.entry.model,'start');
+ for(const type of ['fence-arrowvert','fence-bracevert','mathjax-symbol-qcomma','mathjax-symbol-qc','mathjax-symbol-Residue','operator-intop','operator-ointop','mathjax-symbol-cdotp','mathjax-symbol-ldotp','mathjax-symbol-ordinarycolon','mathjax-symbol-vcentercolon'])
+  assert.equal(board.querySelector('[data-insert="'+type+'"]'),null,type+' has no separate button');
+ const open=type=>{
+  const button=board.querySelector('[data-insert="'+type+'"]');assert.ok(button,type);
+  button.dispatchEvent(new h.window.MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:20,clientY:20}));
+  const menu=h.window.document.getElementById('variantMenu');assert.equal(menu.hidden,false);return menu;
+ };
+ for(const [primary,names] of [['symbol-cdot',['cdot','cdotp','ldotp']],['mathjax-symbol-colon',['colon','ordinarycolon','vcentercolon']]]){
+  for(const name of names){
+   const menu=open(primary),options=Array.from(menu.querySelectorAll('button[data-variant]'));
+   assert.deepEqual(options.map(option=>option.querySelector('code').textContent),names.map(name=>'\\'+name));
+   assert.ok(options.every(option=>option.querySelector('.variant-preview')),'each choice includes its rendered preview');
+   options.find(option=>option.querySelector('code').textContent==='\\'+name).click();
+   assert.equal(h.entry.model.exportLatex().trim().split(/\s+/).at(-1),'\\'+name,'menu inserts the selected native command');
+  }
+ }
+ for(const primary of ['integral','contourIntegral']){
+  const menu=open(primary),commands=Array.from(menu.querySelectorAll('code'),element=>element.textContent);
+  assert.ok(commands.length>=3);assert.ok(commands.some(command=>command.includes('\\limits')));assert.ok(commands.some(command=>command.includes('\\nolimits')));
+  assert.equal(commands.some(command=>/\\(?:intop|ointop)\b/.test(command)),false,'duplicate implementation commands are absent');
+  if(primary==='integral')assert.ok(commands.some(command=>command.includes('\\smallint')),'the genuinely smaller integral remains available');
  }
 });

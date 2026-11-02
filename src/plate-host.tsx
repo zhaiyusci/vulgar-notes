@@ -206,7 +206,7 @@ export class PlateMathHost implements DocumentHost {
   private serializedCache:{value:Value;libraries:readonly BibLibrary[];style:BibliographyStyle;envelope:ReturnType<PlateMathHost['envelope']>;compact:string;pretty?:string}|undefined;
   private snapshotRoots=new Map<string,string>();
   private checkedFormulaSources=new Set<string>();
-  private formulaMigrations=new Map<string,{before?:string;source:string;after:string;id:string;numbered:boolean}[]>();
+  private formulaMigrations=new Map<string,{before?:string;source:string;after:string;id:string;numbered:boolean;afterSource?:string;display?:boolean}[]>();
   private activeFormula:HTMLElement|undefined;
   private pendingActivation=new Set<string>();
   private bibliographyLibraries:readonly BibLibrary[]=Object.freeze([]);
@@ -446,11 +446,12 @@ export class PlateMathHost implements DocumentHost {
       // every caret move or keystroke in a large document.
       if(node.snapshot&&this.checkedFormulaSources.has(id))continue;
       this.checkedFormulaSources.add(id);
-      let model:EditorModel,upgraded=false;
+      let model:EditorModel,upgraded=false,layoutMigrated=false;
       if(!node.snapshot){model=this.sourceModel(node.texExpression||'');upgraded=true;}
       else{
-        if(!node.snapshot.includes('"source-tex"'))continue;
         model=new EditorModel();model.restore(node.snapshot);
+        layoutMigrated=this.snapshotContent(model.snapshot())!==this.snapshotContent(node.snapshot);
+        upgraded=layoutMigrated;
         const raw=[...model.nodes.values()].filter(item=>item.type==='source-tex');
         const comparable=(items:MathItem[])=>JSON.stringify(items,(key,value)=>key==='id'||key==='label'?undefined:value);
         for(const item of raw){
@@ -459,23 +460,31 @@ export class PlateMathHost implements DocumentHost {
           // An opaque fallback alone is no progress. Retain its IDs and source
           // cursor rather than repeatedly replacing it with another fallback.
           if(comparable([item])===comparable(parsed.root.items))continue;
+          // A whole display environment can replace the whole formula only.
+          // Keep an embedded source fragment intact instead of nesting it.
+          if((parsed.formulaLayout()||standaloneMathEnvironmentBounds(item.regions[0].items.join('')))&&
+            (parent.region!==model.root||parent.region.items.length!==1))continue;
           const cursor={...model.cursor};
           model.setCursor(parent.region.id,parent.index+1,parent.index);
           model.replaceFragment(parsed.root.items);upgraded=true;
           if(model.regions.has(cursor.region))model.setCursor(cursor.region,cursor.offset,cursor.anchor);
         }
       }
+      const standalone=!!model.formulaLayout()||!!standaloneMathEnvironmentBounds(model.exportLatex());
+      const display=standalone?true:node.display;
+      if(display!==node.display)upgraded=true;
       if(!upgraded)continue;
       model.undoStack=[];model.redoStack=[];
       const snapshot=model.snapshot();
       const key=node.id||'path:'+path.join('.');
-      this.formulaMigrations.set(key,[...(this.formulaMigrations.get(key)??[]),{before:node.snapshot,source:node.texExpression,after:snapshot,id,numbered:node.numbered!==false}]);
+      const afterSource=layoutMigrated?model.exportLatex():node.texExpression;
+      this.formulaMigrations.set(key,[...(this.formulaMigrations.get(key)??[]),{before:node.snapshot,source:node.texExpression,after:snapshot,id,numbered:node.numbered!==false,afterSource,display}]);
       this.models.set(id,model);
       this.collaboration?.ensureMath(id,snapshot);
       if(this.collaboration){model.undo=()=>this.collaboration?.undo();model.redo=()=>this.collaboration?.redo();}
       if(this.initialized&&!node.texExpression)this.pendingActivation.add(id);
       // This is a derived editing representation, not an edit to the source.
-      this.editor.tf.withoutSaving(()=>this.editor.tf.setNodes({id,snapshot,numbered:node.numbered!==false},{at:path}));
+      this.editor.tf.withoutSaving(()=>this.editor.tf.setNodes({id,snapshot,texExpression:afterSource,numbered:node.numbered!==false,...(display!==undefined?{display}:{})},{at:path}));
     }
   }
   attach(node:FormulaNode,element:HTMLElement){
@@ -561,7 +570,9 @@ export class PlateMathHost implements DocumentHost {
         const contentChanged=!node.snapshot||this.snapshotContent(snapshot)!==this.snapshotContent(node.snapshot);
         if(!contentChanged&&!includeCursor)continue;
         if(contentChanged&&this.collaboration?.ready){this.deferredMathCursors.delete(node.id);this.collaboration.publishMath(node.id,node.snapshot??snapshot,snapshot);}
-        const set=()=>this.editor.tf.setNodes({snapshot,...(contentChanged?{texExpression:model.exportLatex()}:{})},{at:path});
+        const texExpression=contentChanged?model.exportLatex():node.texExpression;
+        const display=contentChanged&&(!!model.formulaLayout()||!!standaloneMathEnvironmentBounds(texExpression));
+        const set=()=>this.editor.tf.setNodes({snapshot,...(contentChanged?{texExpression,...(display?{display:true}:{})}:{})},{at:path});
         if(!contentChanged)this.editor.tf.withoutSaving(set);
         else this.editor.tf.withNewBatch(set);
         changed=true;
@@ -598,7 +609,7 @@ export class PlateMathHost implements DocumentHost {
       if(isFormula(node)){
         for(const migration of this.formulaMigrations.get(node.id||'path:'+path.join('.'))??[]){
           const sameSnapshot=migration.before===undefined?node.snapshot===undefined:typeof node.snapshot==='string'&&this.snapshotContent(node.snapshot)===this.snapshotContent(migration.before);
-          if(node.texExpression===migration.source&&sameSnapshot){node.snapshot=migration.after;node.id=migration.id;node.numbered=migration.numbered;}
+          if(node.texExpression===migration.source&&sameSnapshot){node.snapshot=migration.after;node.id=migration.id;node.numbered=migration.numbered;if(migration.afterSource!==undefined)node.texExpression=migration.afterSource;if(migration.display!==undefined)node.display=migration.display;}
         }
       }
       if(Array.isArray(node.children))visit(node.children,path);
@@ -692,7 +703,7 @@ export class PlateMathHost implements DocumentHost {
     }
     model.record();model.restore(next.snapshot());this.models.set(node.id,model);
     this.checkedFormulaSources.add(node.id);
-    flushSync(()=>this.editor.tf.withNewBatch(()=>this.editor.tf.setNodes({snapshot:model.snapshot(),texExpression:source},{at:path})));
+    flushSync(()=>this.editor.tf.withNewBatch(()=>this.editor.tf.setNodes({snapshot:model.snapshot(),texExpression:source,...(next.formulaLayout()||standaloneMathEnvironmentBounds(source)?{display:true}:{})},{at:path})));
     this.save();this.scheduleChange();
   }
   prepareTextInsertion(){
@@ -705,6 +716,10 @@ export class PlateMathHost implements DocumentHost {
   setNumbered(element:HTMLElement,numbered:boolean){if(this.readOnly)return;const entry=this.locate(element);if(entry)this.editor.tf.withNewBatch(()=>this.editor.tf.setNodes({numbered},{at:entry[1]}));}
   setDisplay(element:HTMLElement,display:boolean){
     if(this.readOnly)return;
+    if(!display){
+      const entry=this.locate(element);
+      if(entry&&(this.models.get(entry[0].id)?.formulaLayout()||standaloneMathEnvironmentBounds(entry[0].texExpression)))return;
+    }
     this.hooks.leave();this.persist();const entry=this.locate(element);if(!entry||this.isDisplay(element)===display)return;
     const [node,path]=entry;
     flushSync(()=>this.editor.tf.withNewBatch(()=>this.editor.tf.withoutNormalizing(()=>{
@@ -718,19 +733,27 @@ export class PlateMathHost implements DocumentHost {
     const elementNext=this.mounts.get(node.id);if(elementNext)this.enter(elementNext,'end');
   }
   insertFormula(display=false,source=''):FormulaEntry{
+    const model=this.sourceModel(source);
+    return this.insertFormulaModel(model,display,source?'end':'start');
+  }
+  insertFormulaEntry(type:string):FormulaEntry{
+    const model=this.sourceModel('');
+    if(!model.initializeFormula(type))throw Error('Unknown formula entry');
+    return this.insertFormulaModel(model,true,'start');
+  }
+  private insertFormulaModel(model:EditorModel,display:boolean,edge:'start'|'end'):FormulaEntry{
     if(this.readOnly)throw Error('Document is read-only');
     if(this.activeFormula?.isConnected)this.exit(this.activeFormula,1,false);
     this.hooks.leave();this.persist();
-    const model=this.sourceModel(source);
-    model.setCursor(model.root.id,model.root.items.length);
-    const node=formulaNode(model,display);this.models.set(node.id,model);
+    model.setCursor(model.root.id,edge==='end'?model.root.items.length:0);
+    const node=formulaNode(model,display||!!model.formulaLayout());this.models.set(node.id,model);
     flushSync(()=>this.editor.tf.withNewBatch(()=>{
       if(!this.editor.selection)this.editor.tf.select(this.editor.api.end([]));
       this.editor.tf.insertNodes(node,{select:true});
       this.editor.api.onChange();
     }));
     const element=this.mounts.get(node.id);if(!element)throw Error('Unable to mount formula');
-    this.enter(element,source?'end':'start');return {element,model};
+    this.enter(element,edge);return {element,model};
   }
   enter(element:HTMLElement,edge:'start'|'end'){
     if(this.readOnly)return;

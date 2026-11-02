@@ -32,6 +32,44 @@ test('loaded source formulas become editable without changing their original TeX
     if(!left||!right||typeof left!=='object'||typeof right!=='object')return {path,left:typeof left==='string'?left.slice(0,100):left,right:typeof right==='string'?right.slice(0,100):right};
     for(const key of new Set([...Object.keys(left),...Object.keys(right)])){const found=firstDifference(left[key],right[key],path+'.'+key);if(found)return found;}return null;
   };
+  await t.test('whole-formula entries create separate display formulas and preserve prose',async()=>{
+    const flow=host();
+    for(const type of ['formula-equation','formula-align','formula-gather','formula-multline','formula-cases']){
+      const entry=flow.insertFormulaEntry(type);await tick();
+      assert.equal(entry.model.formulaLayout().type,type);
+      assert.equal(entry.element.dataset.display,'true');
+      assert.notEqual(entry.model.cursor.region,entry.model.root.id);
+      assert.equal(entry.model.root.items.length,1);
+      flow.setDisplay(entry.element,false);await tick();
+      assert.equal(entry.element.dataset.display,'true','a complete display environment cannot be marked inline');
+    }
+    assert.equal(flow.entries().length,5);
+    flow.persist();const saved=flow.serializeDocument();flow.openDocument(saved);await tick();
+    assert.equal(flow.entries().length,5);assert.ok(flow.entries().every(entry=>entry.model.formulaLayout()));flow.destroy();
+  });
+  await t.test('legacy separate lhs and numbered cases migrate the tree and saved source together',async()=>{
+    const model=api.convertMath(String.raw`\begin{numcases}{}x&one\\y&two\end{numcases}`);
+    const saved=JSON.parse(model.snapshot()),node=saved.root.items[0];
+    saved.root.items=['Z','=',node];saved.cursor={region:saved.root.id,offset:2,anchor:2};
+    const tex=String.raw`Z=\begin{numcases}{}x&one\\y&two\end{numcases}`;
+    const original=source([p([{text:'Before '},math('legacy-entry',tex,{snapshot:JSON.stringify(saved),display:true}),{text:' After'}])]);
+    const flow=host();flow.openDocument(original);await tick();
+    const loaded=flow.entries()[0].model,stored=allMath(flow.editor.children)[0];
+    assert.equal(loaded.root.items.length,1);assert.equal(loaded.root.items[0].id,node.id);
+    assert.deepEqual(loaded.root.items[0].regions[0].items,['Z','=']);
+    assert.match(stored.texExpression,/^\\begin\{numcases\}\{Z=\}/);
+    assert.equal(stored.texExpression,loaded.exportLatex());
+    flow.markDocumentSaved(original);assert.equal(flow.hasUnsavedChanges(),false);
+    const reopened=flow.serializeDocument();flow.openDocument(reopened);await tick();
+    assert.equal(flow.entries()[0].model.root.items[0].id,node.id);assert.equal(flow.editor.api.string([]),'Before  After');flow.destroy();
+  });
+  await t.test('pasting a complete display into an empty inline formula promotes its document layout',async()=>{
+    const flow=host(),entry=flow.insertFormula(false),whole=api.convertMath(String.raw`\begin{align}a&=b\\c&=d\end{align}`);
+    entry.model.replaceFragment(whole.root.items);flow.syncMath();await tick();
+    const stored=allMath(flow.editor.children)[0];
+    assert.equal(stored.display,true);assert.equal(flow.entries()[0].element.dataset.display,'true');
+    assert.match(stored.texExpression,/^\\begin\{align\}/);flow.destroy();
+  });
 
   await t.test('snapshotless unsupported commands receive a source-preserving editable model on open',async()=>{
     const tex=String.raw`\futurecmd[opt]{a}{b}+x`,original=source([p([{text:'Before '},math('source-only',tex),{text:' after'}])]),flow=host();flow.openDocument(original);await tick();

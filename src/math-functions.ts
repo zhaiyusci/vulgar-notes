@@ -8,6 +8,7 @@ export interface MathFunction {
   command:string;
   aliases?:string[];
   automaticParentheses?:boolean;
+  automaticDelimiters?:readonly ('['|'{')[];
   optionalExponent?:boolean;
   hidden?:boolean;
 }
@@ -16,6 +17,8 @@ export const mathFunctions:readonly MathFunction[]=[
   ...expressions.map(name=>({name,command:name,automaticParentheses:true,optionalExponent:true})),
   ...'exp det Pr tr Tr erf'.split(' ').map(name=>({name,command:name,automaticParentheses:true,
     ...(name==='Tr'?{aliases:['Trace']}:name==='tr'?{aliases:['trace']}: {})})),
+  {name:'Res',command:'Res',automaticParentheses:true,automaticDelimiters:['[','{']},
+  ...['pv','PV'].map(name=>({name,command:name})),
   ...'lg arg deg dim gcd hom ker rank'.split(' ').map(name=>({name,command:name})),
   ...'arcsinh arccosh arctanh sgn'.split(' ').map(name=>({name,command:`operatorname{${name}}`})),
   // These are genuine physics spellings, not aliases to Expression commands:

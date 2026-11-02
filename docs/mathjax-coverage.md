@@ -28,6 +28,50 @@ BBoldX remains the single blackboard alphabet. The inventory can record upstream
 alternatives without offering duplicate BBM, DSFont or extra blackboard-weight
 choices in the product.
 
+## GUI symbol coverage
+
+`gui-math-symbols.test.cjs` checks the configured character inventory against
+reachable palette buttons and their right-click variants, including canonical
+entries for aliases and explicit exclusions for implementation helpers. An
+existing source-command candidate alone does not count as a GUI entry.
+Classification uses the upstream token map, attributes and
+operator character classes; text-mode tokens are kept distinct from mathematical
+tokens with the same appearance. Large operators use the existing optional-limit
+model, and repeated ordinary atoms are retained only for reading old documents.
+
+The palette presents mathematical forms rather than a list of all commands.
+`math-input-policy.ts` keeps generic constructors such as `genfrac`, invisible
+layout primitives, macro declarations, HTML attributes, internal package helpers
+and TeX logos out of the palette and prefix suggestions. Delimiter extension
+pieces (`arrowvert`, `bracevert`), `qcomma`/`qc`, `Residue`, and the duplicate
+integral interfaces `intop`/`ointop` are also source-only. Their existing node
+definitions remain available; in particular, importing `intop` must preserve its
+different automatic limit placement rather than substitute `int`.
+Typing a complete command still opens editable
+source; import, rendering and old document nodes remain supported. In particular,
+bare `genfrac` must never select a preset's delimiters, thickness or style.
+Fractions, binomial coefficients and unruled stacks remain mathematical choices.
+Dot punctuation (`cdotp`, `ldotp`) and colon alignment (`ordinarycolon`,
+`vcentercolon`) are right-click variants of their corresponding symbol. Choosing
+a variant preserves its native command and mathematical spacing class.
+
+`gui-math-structures.test.cjs` covers all public enabled `xArrow` commands and
+the added arcs, double annotations, modulus forms, centered negation and small
+diagonal fraction. The arrow list includes the four distinct forms documented by
+[extpfeil](https://docs.mathjax.org/en/v4.1/input/tex/extensions/extpfeil.html).
+`physics-gui-variants.test.cjs` checks derivative orders, differential operators,
+mixed partials, higher differentials, same-state products and expectation values.
+These checks compare real MathJax output and exercise insertion, conversion and
+document/clipboard preservation. Optional-argument variants map operands by role;
+switching must not turn an order into a differentiation variable or drop content.
+
+This is an audit of symbols and the listed input forms, not a claim that every
+TeX declaration or parameterized layout interface has a GUI. Macro definitions,
+global settings and mhchem's internal reaction-arrow helpers are not independent
+palette symbols. Whole-equation environments belong to document insertion; only
+unnumbered inner structures belong to the formula component palette. Preview
+tests render every visible button and variant and reject errors or implicit tags.
+
 The ordinary AMS `cases` structure is distinct from the `cases` extension's
 `numcases` and `subnumcases`. Numbered cases have editable mathematical rows and
 text-mode condition cells; spaces, CJK and explicit `$...$` math in a condition

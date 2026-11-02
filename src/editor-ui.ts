@@ -11,6 +11,7 @@ import {readNativeClipboard,writeNativeClipboard,nativeClipboardHtml,type Native
 import {extractClipboardMathHtml} from './document-clipboard-format';
 import {standaloneMathEnvironmentBounds} from './tex-display-environment';
 import {equationNumbering} from './math-equation-numbering';
+import {formulaLayouts} from './formula-layouts';
 const palette=[...catalog,...symbols];
 let model = new EditorModel(), editing = false, composing = false, sessionStart:string|null = null;
 const documentSession = documentSessionId();
@@ -78,12 +79,15 @@ commandMenu.addEventListener('click',event=>{
 document.addEventListener('scroll',positionCommands,true);
 const chemicalStates=new Map<MathNode,{source:string;valid:boolean}>();
 function intrinsicMathLayout(editor:EditorModel):{name:string;numbered:boolean;count:number}|null {
+  const layout=editor.formulaLayout()?.formula;
+  if(layout){
+    const node=editor.root.items[0] as MathNode;
+    const body=layout.kind==='cases'?node.regions[1].items[0]:node;
+    const count=layout.numbering==='none'?0:layout.numbering==='rows'&&typeof body!=='string'?(body?.rows??1):1;
+    return {name:layout.environment,numbered:count>0,count};
+  }
   if(editor.root.items.length!==1)return null;
   const node=editor.root.items[0];if(typeof node==='string')return null;
-  if(node.type==='numcases'||node.type==='subnumcases'){
-    const body=node.regions[1].items[0],rows=body&&typeof body!=='string'?body.rows??1:1;
-    return {name:node.type,numbered:true,count:node.type==='subnumcases'?1:rows};
-  }
   if(node.type!=='source-tex')return null;
   const source=editing&&editor===model&&editor.cursor.region===node.regions[0].id?node.regions[0].items.join(''):chemicalStates.get(node)?.source??node.regions[0].items.join('');
   const bounds=standaloneMathEnvironmentBounds(source);if(!bounds)return null;
@@ -130,10 +134,15 @@ function regionTex(region:Region,editor=model,isEditing=editing):string {
   // A numbered-cases body is an alignment preamble, not a grouped math atom.
   // Class wrappers around the complete `a&b\\c&d` would hide its separators
   // from MathJax. Keep markers on each cell so row editing still finds the grid.
-  if((parentType==='numcases'||parentType==='subnumcases')&&parent?.childIndex===1&&region.items.length===1){
+  if(parent&&editor.formulaLayout()?.formula?.kind==='cases'&&parent.node===editor.root.items[0]&&parent.childIndex===1&&region.items.length===1){
     const body=region.items[0];
-    if(typeof body!=='string'&&body.type==='numbered-cases-body'){
-      const columns=body.columns??2,cells=body.regions.map(cell=>`\\class{structure-node structure-${body.id}}{${regionTex(cell,editor,isEditing)}}`);
+    if(typeof body!=='string'&&['numbered-cases-body','formula-cases-body'].includes(body.type)){
+      const columns=body.columns??2,cells=body.regions.map((cell,index)=>{
+        const child=cell.items.length===1?cell.items[0]:undefined;
+        const textCondition=child&&typeof child!=='string'&&child.type==='case-text';
+        const content=`\\class{structure-node structure-${body.id}}{${regionTex(cell,editor,isEditing)}}`;
+        return body.type==='numbered-cases-body'&&index%columns===1&&!textCondition?'$'+content+'$':content;
+      });
       return Array.from({length:cells.length/columns},(_,index)=>cells.slice(index*columns,(index+1)*columns).join('&')).join('\\\\');
     }
   }
@@ -247,13 +256,14 @@ function showCategory(name:string) {
 function buildBoard() {
   const board=elementById('insertToolbar', HTMLElement),nav=document.createElement('div');
   nav.className='structure-categories';nav.setAttribute('aria-label',t('结构分类'));board.append(nav);
-  const visible=palette.filter(entry=>!entry.hidden&&!entry.legacy);
+  const visible=palette.filter(entry=>entry.scope!=='formula'&&!entry.hidden&&!entry.legacy);
   const alphabets=['拉丁字母','希腊字母','数字'];
   const categoryOf=(entry:typeof visible[number])=>alphabets.includes(entry.category)?'字母与数字':entry.category;
   const categories=[...new Set(['字母与数字',...visible.filter(entry=>entry.category!=='文字').map(categoryOf)])];
   categories.forEach(category=>{
-    const tab=document.createElement('button');tab.dataset.category=category;tab.textContent=t(category);tab.setAttribute('aria-pressed','false');nav.append(tab);
-    const panel=document.createElement('div');panel.className='structure-group';panel.dataset.group=category;panel.setAttribute('role','group');panel.setAttribute('aria-label',t(category));
+    const label=category==='矩阵与多行'?'Matrices and inner blocks':category;
+    const tab=document.createElement('button');tab.dataset.category=category;tab.textContent=t(label);tab.setAttribute('aria-pressed','false');nav.append(tab);
+    const panel=document.createElement('div');panel.className='structure-group';panel.dataset.group=category;panel.setAttribute('role','group');panel.setAttribute('aria-label',t(label));
     const rows=new Map<string,HTMLElement>();
     if(category==='字母与数字')for(const name of alphabets){
       const row=document.createElement('div');row.className='alphabet-row';
@@ -268,12 +278,13 @@ function buildBoard() {
       const coverage=entry.font?fontPresentation(entry.command)?.coverage:undefined;
       if(coverage)card.title+=' · '+coverage;
       if(entry.operator)card.title=mathLabel(entry)+' · \\'+entry.operatorCommand+' · '+t('Insert the operator; use ^ / _ or right-click to add limits');
+      if(entry.scope==='component'&&entry.rowEnvironment)card.title=mathLabel(entry)+' · '+t('Insert inside the current formula')+' · '+entry.command;
       if(entry.atom || entry.font || entry.category==='函数名称')card.classList.add('compact-card');
       if(entry.variantOf){card.title+=' · '+t('Right-click for variants');card.setAttribute('aria-haspopup','menu');card.setAttribute('aria-expanded','false');}
       const sample=entry.atom?entry.tex:entry.render(entry.previewArgs||entry.labels.map(()=>placeholderTex));
       const preview=document.createElement('span');preview.className='structure-preview';preview.setAttribute('aria-hidden','true');preview.textContent='\\(\\displaystyle '+sample+'\\)';
       const label=document.createElement('span');label.className='structure-label';label.textContent=mathLabel(entry);card.append(preview,label);
-      if(category==='化学与单位'){
+      if(entry.type==='chem-ce'||entry.type==='chem-pu'){
         card.classList.add('chemical-card');
         const command=document.createElement('code');command.textContent=entry.command+'{…}';card.append(command);
       }
@@ -335,7 +346,7 @@ function closeVariantMenu(restoreFocus=false){
 }
 function openVariantMenu(button:HTMLElement,x:number,y:number,node:MathNode|null=null,cellRegionId?:string){
   const definition=node?palette.find(entry=>entry.type===node.type):null;
-  const entries=palette.filter(entry=>!entry.hidden && !entry.legacy && entry.variantOf===(node?definition?.variantOf:button.dataset.insert) && entry.variantOf && !(node && entry.type==='matrix3'));
+  const entries=palette.filter(entry=>entry.scope!=='formula' && !entry.hidden && !entry.legacy && entry.variantOf===(node?definition?.variantOf:button.dataset.insert) && entry.variantOf && !(node && entry.type==='matrix3'));
   if(!entries.length && !definition?.matrixEnvironment && !definition?.rowEnvironment && !definition?.operator)return;
   closeVariantMenu();variantTrigger=button;variantNodeId=node?.id;MathJax.typesetClear([variantMenu]);variantMenu.replaceChildren();
   variantMenu.setAttribute('aria-label',t('Formula variants'));
@@ -368,7 +379,7 @@ function openVariantMenu(button:HTMLElement,x:number,y:number,node:MathNode|null
     option.dataset.variant=entry.type;
     const sample=(entry.atom?entry.tex:entry.render(entry.previewArgs||entry.labels.map(()=>placeholderTex)))!.trim();
     const glyph=document.createElement('span');glyph.className='variant-preview';glyph.setAttribute('aria-hidden','true');
-    const command=document.createElement('code');command.textContent=(entry.equivalentTex??[entry.exportTex??sample]).join(' = ');
+    const command=document.createElement('code');command.textContent=(entry.equivalentTex??[entry.exportTex??sample.replaceAll(placeholderTex,'…')]).join(' = ');
     option.setAttribute('aria-label',command.textContent);option.title=command.textContent;option.classList.add('rendered-variant');
     option.append(glyph,command);
     // Render into this option only: a closed/reopened menu must not receive stale results.
@@ -385,7 +396,7 @@ function openVariantMenu(button:HTMLElement,x:number,y:number,node:MathNode|null
     if(node){
       option.setAttribute('role','menuitemradio');option.setAttribute('aria-checked',String(entry.type===node.type || (!!entry.glyphKey&&entry.glyphKey===definition?.glyphKey) || (!!entry.tex&&entry.tex===definition?.tex) || (node.type==='matrix3' && entry.type==='matrix')));
       option.disabled=!!node.id&&!model.canSwitchVariant(node.id,entry.type);
-      if(option.disabled){option.title=t('先移走超出目标尺寸的单元格内容');}
+      if(option.disabled){option.title=t('This variant cannot preserve the current contents.');}
     }
     variantMenu.append(option);
   }
@@ -407,10 +418,25 @@ elementById('insertToolbar', HTMLElement).addEventListener('keydown',event=>{
 variantMenu.addEventListener('pointerdown',event=>event.preventDefault());
 function appendNumberingMenu(owner:HTMLElement,x:number,y:number){
   if(!flow?.isDisplay(owner))return;
-  const entry=flow.entries().find(entry=>entry.element===owner);if(entry&&intrinsicMathLayout(entry.model))return;
+  const entry=flow.entries().find(entry=>entry.element===owner),layout=entry?.model.formulaLayout()?.formula;
+  if(entry&&!layout&&intrinsicMathLayout(entry.model))return;
   if(variantMenu.hidden){MathJax.typesetClear([variantMenu]);variantMenu.replaceChildren();variantMenu.setAttribute('aria-label',t('Display'));}
   else {const divider=document.createElement('div');divider.setAttribute('role','separator');variantMenu.append(divider);}
-  for(const [value,label] of [['true','编号'],['false','不编号']]){
+  if(layout){
+    const group=(label:string,field:'numbering'|'alignment',choices:readonly (readonly [string,string])[])=>{
+      const heading=document.createElement('div');heading.className='menu-heading';heading.textContent=t(label);variantMenu.append(heading);
+      for(const [value,label] of choices){
+        const target=formulaLayouts.find(item=>item.kind===layout.kind&&item[field]===value&&
+          (field==='numbering'?item.alignment===layout.alignment:item.numbering===layout.numbering));
+        if(!target)continue;
+        const option=document.createElement('button');option.type='button';option.dataset.formulaVariant=target.type;
+        option.dataset.formulaId=owner.dataset.mathId;option.textContent=t(label);option.setAttribute('role','menuitemradio');
+        option.setAttribute('aria-checked',String(layout[field]===value));variantMenu.append(option);
+      }
+    };
+    group('Numbering','numbering',[['single','One number'],['rows','Number each row'],['subrows','Number subrows'],['none','Unnumbered']]);
+    if(layout.kind==='align')group('Alignment','alignment',[['standard','Standard spacing'],['compact','Compact spacing'],['spread','Full width']]);
+  }else for(const [value,label] of [['true','编号'],['false','不编号']]){
     const option=document.createElement('button');option.type='button';option.dataset.numbered=value;
     option.dataset.formulaId=owner.dataset.mathId;option.textContent=t(label);option.setAttribute('role','menuitemradio');
     option.setAttribute('aria-checked',String(flow.isNumbered(owner)===(value==='true')));variantMenu.append(option);
@@ -426,6 +452,17 @@ variantMenu.addEventListener('click',event=>{
   const numbering=eventElement(event).closest<HTMLButtonElement>('[data-numbered]');
   if(numbering){const owner=flow?.entries().find(e=>e.element.dataset.mathId===numbering.dataset.formulaId)?.element;
     if(owner)flow?.setNumbered(owner,numbering.dataset.numbered==='true');closeVariantMenu();return;}
+  const formulaVariant=eventElement(event).closest<HTMLButtonElement>('[data-formula-variant]');
+  if(formulaVariant){
+    const entry=flow?.entries().find(entry=>entry.element.dataset.mathId===formulaVariant.dataset.formulaId);
+    const node=entry?.model.root.items[0];
+    if(entry&&node&&typeof node!=='string'){
+      entry.model.switchVariant(node.id,formulaVariant.dataset.formulaVariant!);
+      flow?.syncMath?.();closeVariantMenu();inputEdit=null;update();
+      if(editing)input.focus({preventScroll:true});
+    }
+    return;
+  }
   const option=eventElement(event).closest<HTMLButtonElement>('[data-variant],[data-matrix-action],[data-script-slot]');if(!option)return;
   if(option.disabled)return;
   const nodeId=variantNodeId,cellId=variantCellId,letter=variantLetter;closeVariantMenu();
@@ -498,7 +535,10 @@ async function renderCurrent() {
         const firstNumber=equationNumber;
         if(numbered)equationNumber+=intrinsic?.count??1;
         const label=entry.element.dataset.texLabel;
-        const source=(intrinsic?'\\[':display?`\\begin{${environment}}`:'\\(')+edge('start')+regionTex(entry.model.root,entry.model,editing&&entry.model===model)+edge('end')+(intrinsic?'\\]':display?`\\end{${environment}}`:'\\)');
+        // A complete display has no editable sequence outside its environment.
+        // Keep the inline edge targets only for ordinary expression sequences.
+        const content=regionTex(entry.model.root,entry.model,editing&&entry.model===model);
+        const source=(intrinsic?'\\[':display?`\\begin{${environment}}`:'\\(')+(intrinsic?content:edge('start')+content+edge('end'))+(intrinsic?'\\]':display?`\\end{${environment}}`:'\\)');
         const width=elementById('textFlow',HTMLElement).clientWidth;
         const cacheKey=(label||'')+(display?`${equationNumber}:${width}:`:'')+source;
         if(renderedSources.get(entry.element)===cacheKey)continue;
@@ -734,6 +774,7 @@ input.addEventListener('paste',event=>{
   if(!editing||!event.clipboardData||flow?.readOnly)return;
   if(composing){composing=false;acceptInput();}
   clipboardSelection();const data=event.clipboardData,native=readNativeClipboard(data);
+  try {
   const plain=data.getData('text/plain');
   let imported:EditorModel|undefined,sourceFallback:string|undefined;
   if(native?.kind==='math'){
@@ -770,6 +811,13 @@ input.addEventListener('paste',event=>{
     if(parsed)model.replaceFragment(parsed.root.items);else model.insertSourceTex(source);
   }
   inputEdit=null;update();
+  }catch(cause){
+    event.preventDefault();event.stopPropagation();
+    const message=cause instanceof Error?cause.message:String(cause);
+    error.textContent=message==='A whole formula can only replace the complete formula.'?
+      t('A complete display equation must be inserted in the document, not inside another formula.'):
+      t('Unable to paste this formula.')+' '+message;
+  }
 });
 window.addEventListener('resize',()=>{positionInput();update();});
 new ResizeObserver(positionInput).observe(preview);

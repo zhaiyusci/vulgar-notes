@@ -6,7 +6,7 @@ const Module=require('node:module');
 const {buildSync}=require('esbuild');
 const {execFileSync}=require('node:child_process');
 const compiled=new Module(path.resolve('.mathjax-commands-test.cjs'),module);compiled.paths=module.paths;
-compiled._compile(buildSync({stdin:{contents:"export * from './src/mathjax-commands';export {EditorModel} from './src/editor-model';export {convertMath} from './src/tex-convert';",resolveDir:process.cwd(),loader:'ts'},bundle:true,platform:'node',format:'cjs',write:false}).outputFiles[0].text,path.resolve('.mathjax-commands-test.cjs'));
+compiled._compile(buildSync({stdin:{contents:"export * from './src/mathjax-commands';export * from './src/math-input-policy';export {EditorModel} from './src/editor-model';export {convertMath} from './src/tex-convert';",resolveDir:process.cwd(),loader:'ts'},bundle:true,platform:'node',format:'cjs',write:false}).outputFiles[0].text,path.resolve('.mathjax-commands-test.cjs'));
 const api=compiled.exports;
 const modelFor=query=>{const model=new api.EditorModel();model.root.items=Array.from(query);model.index();model.setCursor(model.root.id,model.root.items.length);return model;};
 
@@ -30,10 +30,14 @@ test('runtime character maps provide real symbols while unknown argument grammar
   const macro=api.mathjaxSourceCommands().find(command=>api.mathjaxCommandDefinition(command).syntax.kind==='macro-expansion'&&api.mathjaxCommandDefinition(command).syntax.arity>0);assert.ok(macro);
   const syntax=api.mathjaxCommandDefinition(macro).syntax,arity=syntax.arity-(syntax.optionalDefault===undefined?0:1);assert.equal(api.mathjaxSourceTemplate(macro.name),'\\'+macro.name+'{}'.repeat(arity));
 });
-test('actual commandCandidates covers enabled math commands and preserves the single blackboard policy',()=>{
+test('command completion covers public math commands without promoting implementation helpers or duplicate fonts',()=>{
   const candidates=modelFor('\\').commandCandidates(),names=new Set(candidates.map(command=>command.name));
-  const missing=api.mathjaxSourceCommands().map(command=>command.name).filter(name=>!names.has(name));assert.deepEqual(missing,[]);
-  assert.ok(candidates.length>1200);assert.ok(candidates.some(command=>command.atom));assert.ok(candidates.some(command=>command.source));
+  const missing=api.mathjaxSourceCommands().map(command=>command.name).filter(name=>!names.has(name)&&!api.isSourceOnlyMathCommand(name));assert.deepEqual(missing,[]);
+  assert.ok(candidates.some(command=>command.atom));assert.ok(candidates.some(command=>command.source));
+  for(const command of api.mathjaxSourceCommands().filter(command=>api.isSourceOnlyMathCommand(command.name))){
+    assert.equal(names.has(command.name),false,command.name+' is not suggested');
+    const exact=modelFor('\\'+command.name).pendingCommand();assert.ok(exact?.source,command.name+' remains explicit source input');
+  }
   for(const name of ['toggle','mathtip','bfbbalpha','mathbfbb','imathbfbb','jmathbfbb','mathbbm','mathds'])assert.equal(names.has(name),false,name+' is intentionally omitted');
   assert.ok(names.has('bbalpha'));assert.ok(names.has('flat'));assert.ok(names.has('lnot'));
 });
@@ -50,9 +54,42 @@ test('source command candidates focus the raw region and preserve editable sourc
   model.undo();assert.equal(model.exportLatex(),candidate.source);model.undo();assert.deepEqual(JSON.parse(model.snapshot()).root,JSON.parse(before).root);model.redo();model.redo();assert.equal(model.exportLatex(),next);
 });
 
+test('genfrac is explicit source input and never substitutes a fixed bracket preset',()=>{
+  assert.equal(modelFor('\\gen').commandCandidates().some(entry=>entry.name==='genfrac'),false);
+  const model=modelFor('\\genfrac');assert.ok(model.commitCommand());assert.equal(model.rawInput,true);
+  assert.equal(model.exportLatex(),'\\genfrac');assert.equal(model.root.items[0].type,'source-tex');
+  const source=String.raw`\genfrac{(}{)}{1pt}{2}{a+b}{c}`;
+  model.insert(source.slice('\\genfrac'.length));assert.equal(model.exportLatex(),source);
+  const restored=new api.EditorModel();restored.restore(model.snapshot());assert.equal(restored.exportLatex(),source);
+  assert.equal(api.convertMath(source).exportLatex(),source,'Custom delimiters, thickness and style are preserved');
+});
+
 test('sp and sb use the same current-flow script insertion as typed markers',()=>{
   const model=modelFor('x\\sp');assert.ok(model.commitCommand());model.insert('N');
   model.replaceInput(...model.range,'\\sb');assert.ok(model.commitCommand());model.insert('bead');
   assert.equal(model.exportLatex(),'{x}^{{N}_{bead}}');
   const restored=new api.EditorModel();restored.restore(model.snapshot());assert.equal(restored.exportLatex(),model.exportLatex());
+});
+
+test('implementation commands stay out of partial completion but complete source remains editable and lossless',()=>{
+  for(const [name,source] of [
+    ['def',String.raw`\def\F#1{#1^2}\F{x}`],
+    ['class',String.raw`\class{example}{x+y}`],
+    ['kern',String.raw`\kern1pt x`],
+    ['overwithdelims',String.raw`{a\overwithdelims()b}`],
+    ['qcomma',String.raw`a\qcomma b`],
+    ['Residue',String.raw`\Residue f`],
+    ['intop',String.raw`\intop_{a}^{b}f`],
+    ['ointop',String.raw`\ointop_{a}^{b}f`],
+  ]){
+    for(let length=0;length<name.length;length++)
+      assert.equal(modelFor('\\'+name.slice(0,length)).commandCandidates().some(entry=>entry.name===name),false,name+' is not a prefix suggestion');
+    const model=modelFor('\\'+name);assert.ok(model.commitCommand(),name);assert.equal(model.rawInput,true,name);
+    model.setCursor(model.current.id,0,model.current.items.length);model.replace(...model.range,source);
+    assert.equal(model.exportLatex(),source,name);
+    const restored=new api.EditorModel();restored.restore(model.snapshot());assert.equal(restored.exportLatex(),source,name);
+    assert.equal(restored.rawInput,true,name+' stays editable');
+  }
+  for(const name of ['Res','int','oint','smallint','oiint','oiiint','cdotp','ldotp','colon','ordinarycolon','vcentercolon'])
+    assert.ok(modelFor('\\'+name.slice(0,-1)).commandCandidates().some(entry=>entry.name===name),name+' remains a mathematical input choice');
 });

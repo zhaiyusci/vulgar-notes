@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import {catalog,type Definition,type MathNode,type Region} from './editor-model';
+import {formulaLayouts} from './formula-layouts';
+import {guiDelimiterAliases,guiDelimiterTypes} from './gui-math-delimiters';
 
 export interface ParsedTexStructure {node:MathNode;next:number}
 export interface TexEnvironmentBounds {name:string;bodyStart:number;bodyEnd:number;next:number}
@@ -142,6 +144,23 @@ function splitGrid(source:string,start:number,end:number):string[][]|null {
 /** Parse only layouts whose column/row semantics the existing catalog can represent. */
 export function parseTexEnvironment(source:string,start:number,parseRegion:ParseTexRegion,createNode:CreateTexNode):ParsedTexStructure|null {
   const bounds=scanTexEnvironment(source,start);if(!bounds)return null;
+  if(['equation','equation*','displaymath'].includes(bounds.name)){
+    const body=parseRegion(source.slice(bounds.bodyStart,bounds.bodyEnd));if(!body)return null;
+    const numbered=bounds.name==='equation',only=body.items.length===1?body.items[0]:undefined;
+    // Recognize the wrappers emitted by the whole-formula entries without
+    // introducing another nested editable formula container.
+    if(numbered&&only&&typeof only!=='string'){
+      const inner=catalog.find(entry=>entry.type===only.type),layout=formulaLayouts.find(entry=>entry.numbering==='single'&&entry.kind!=='cases'&&entry.innerEnvironment===inner?.rowEnvironment);
+      if(layout)return {node:createNode(layout.type,only.regions,{rows:only.rows??only.regions.length/(only.columns??1),columns:only.columns??1}),next:bounds.next};
+    }
+    const last=body.items.at(-1);
+    if(last&&typeof last!=='string'&&last.type==='cases'){
+      const lhs=parseRegion(''),rows=parseRegion('');if(!lhs||!rows)return null;
+      lhs.items=body.items.slice(0,-1);rows.items=[createNode('formula-cases-body',last.regions,{rows:last.rows??last.regions.length/2,columns:2})];
+      return {node:createNode(numbered?'formula-cases':'formula-cases-unnumbered',[lhs,rows]),next:bounds.next};
+    }
+    return {node:createNode(numbered?'formula-equation':'formula-equation-unnumbered',[body]),next:bounds.next};
+  }
   if(bounds.name==='numcases'||bounds.name==='subnumcases'){
     const lhs=group(source,skipSpace(source,bounds.bodyStart));if(!lhs||lhs.next>bounds.bodyEnd)return null;
     const rows=splitGrid(source,lhs.next,bounds.bodyEnd);if(!rows||rows.some(row=>row.length>2)||rows.length>50000)return null;
@@ -154,6 +173,16 @@ export function parseTexEnvironment(source:string,start:number,parseRegion:Parse
     const left=parseRegion(lhs.body),body=parseRegion('');if(!left||!body)return null;
     body.items=[createNode('numbered-cases-body',regions,{rows:rows.length,columns:2})];
     return {node:createNode(bounds.name,[left,body]),next:bounds.next};
+  }
+  const formula=formulaLayouts.find(entry=>entry.environment===bounds.name&&!entry.innerEnvironment&&entry.kind!=='cases'&&entry.kind!=='equation');
+  if(formula){
+    let bodyStart=bounds.bodyStart;
+    if(bounds.name.startsWith('alignat')){const count=group(source,skipSpace(source,bodyStart));if(!count||count.body.trim()!=='1')return null;bodyStart=count.next;}
+    const columns=formula.kind==='align'?2:1,rows=splitGrid(source,bodyStart,bounds.bodyEnd);
+    if(!rows||rows.length*columns>100000||rows.some(row=>row.length>columns))return null;
+    const regions:Region[]=[];
+    for(const row of rows)for(let column=0;column<columns;column++){const parsed=parseRegion(row[column]??'');if(!parsed)return null;regions.push(parsed);}
+    return {node:createNode(formula.type,regions,{rows:rows.length,columns}),next:bounds.next};
   }
   const layout=environmentDefinition(source,bounds);if(!layout||layout.start>bounds.bodyEnd)return null;
   const rows=splitGrid(source,layout.start,bounds.bodyEnd);if(!rows)return null;
@@ -169,6 +198,7 @@ export function parseTexEnvironment(source:string,start:number,parseRegion:Parse
 }
 
 const delimiterAliases:Record<string,string>={
+  ...guiDelimiterAliases,
   '(':'(',')':')','[':'[',']':']','{':'{','}':'}','|':'|','/':'/','.':'.',
   lbrace:'{',rbrace:'}',lbrack:'[',rbrack:']',lparen:'(',rparen:')',
   vert:'|',lvert:'|',rvert:'|',Vert:'||',lVert:'||',rVert:'||',
@@ -182,7 +212,9 @@ function delimiter(source:string,start:number):{value:string;next:number}|null {
   const value=token?.name==='|'?'||':!token&&['{','}'].includes(name)?'raw:'+name:delimiterAliases[name]??'raw:'+name;
   return {value,next:token?.next??at+1};
 }
+export {delimiter as scanTexDelimiterToken};
 const delimiterTypes:Record<string,string>={
+  ...guiDelimiterTypes,
   '(|)':'parens','[|]':'brackets','{|}':'braces','|||':'abs','|||||':'norm',
   '<|>':'angles','floorL|floorR':'floor','ceilL|ceilR':'ceil',
   '{|.':'leftBrace','.|}':'rightBrace','.||':'evaluation','/|/':'slashFence','backslash|backslash':'backslashFence',

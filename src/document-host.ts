@@ -30,6 +30,7 @@ export interface DocumentHost {
   setNumbered(element:HTMLElement,numbered:boolean):void;
   setDisplay(element:HTMLElement,display:boolean):void;
   insertFormula(display?:boolean):FormulaEntry;
+  insertFormulaEntry?(type:string):FormulaEntry;
   enter(element:HTMLElement,edge:'start'|'end'):void;
   exit(element:HTMLElement,direction:-1|1):void;
   removeEmpty(element:HTMLElement):void;

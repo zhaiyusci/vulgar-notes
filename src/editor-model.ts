@@ -7,6 +7,11 @@ import {mathjaxSymbolCommands,mathjaxSourceCommands,mathjaxSourceTemplate,mathja
 import {registerPhysicsStructures} from './physics-structures';
 import {registerTexLayoutStructures,validateTexLayoutOptions,type TexLayoutOptionsKind} from './tex-layout-structures';
 import {registerSideSetStructures} from './tex-sideset';
+import {registerFormulaLayouts,renderFormulaLayout,type FormulaLayout} from './formula-layouts';
+import {isStandaloneMathEnvironmentName,standaloneMathEnvironmentBounds} from './tex-display-environment';
+import {registerGuiSymbols,organizeGuiSymbols} from './gui-math-symbols';
+import {registerDelimiterVariants} from './gui-math-delimiters';
+import {isSourceOnlyMathCommand} from './math-input-policy';
 export type ScriptSlot = 'lower' | 'upper' | 'leftLower' | 'leftUpper';
 export type Direction = -1 | 1;
 export type MathItem = string | MathNode;
@@ -16,11 +21,14 @@ export interface Cursor {region:string; offset:number; anchor:number}
 interface SavedState {root:Region;cursor:Cursor;pendingFont?:string}
 interface Parent {region:Region; index:number; node:MathNode; childIndex:number}
 export interface Definition {
+ scope?:'component'|'formula';formula?:FormulaLayout;
  type:string; label:string; category:string; labels:string[]; render:(r:string[])=>string; exportRender?:(r:string[])=>string;
  selectedIndex:number; command:string; tex?:string; atom?:boolean; font?:boolean;
  aliases?:string[]; raw?:boolean; commandCandidate?:boolean; commandName?:string; legacy?:boolean;
  hidden?:boolean;letter?:string;exportTex?:string;equivalentTex?:string[];glyphKey?:string;fontCommand?:string;
  previewArgs?:string[]; variantOf?:string; variantLabel?:string; columns?:number;
+ /** Argument roles remain stable across variants whose slot counts differ. */
+ variantSlots?:string[];
  matrixEnvironment?:string; matrixAlign?:string; rowEnvironment?:string; rowOptions?:string;
  operator?:boolean; operatorCommand?:string; operatorPlacement?:string;
  functionExponent?:boolean;
@@ -88,16 +96,15 @@ export interface FontWarning {region:string;index:number;message:string}
   for (const [type,label,env,size] of [['matrix','圆括号矩阵','pmatrix',2],['bmatrix','方括号矩阵','bmatrix',2],['plainmatrix','无括号矩阵','matrix',2],['determinant','行列式','vmatrix',2],['normmatrix','双竖线矩阵','Vmatrix',2],['matrix3','3 × 3 矩阵','pmatrix',3]] as const) {
     add(type,label,'矩阵与多行',Array.from({length:size*size},(_,i)=>`矩阵第${Math.floor(i/size)+1}行第${i%size+1}列`),r=>`\\begin{${env}}${Array.from({length:size},(_,i)=>r.slice(i*size,(i+1)*size).join('&')).join('\\\\')}\\end{${env}}`,{columns:size});
   }
-  add('cases','分段函数','矩阵与多行',['第一段表达式','第一段条件','第二段表达式','第二段条件'],r=>`\\begin{cases}${r[0]}&${r[1]}\\\\${r[2]}&${r[3]}\\end{cases}`,{columns:2});
+  add('cases','Inner cases block','矩阵与多行',['第一段表达式','第一段条件','第二段表达式','第二段条件'],r=>`\\begin{cases}${r[0]}&${r[1]}\\\\${r[2]}&${r[3]}\\end{cases}`,{columns:2});
   add('numbered-cases-body','Cases rows','矩阵与多行',['Expression','Condition','Expression','Condition'],r=>`${r[0]}&${r[1]}\\\\${r[2]}&${r[3]}`,{
     hidden:true,commandCandidate:false,columns:2,rowEnvironment:'numbered-cases-body'});
-  for(const name of ['numcases','subnumcases'])add(name,name,'矩阵与多行',['Left-hand side','Cases'],r=>`\\begin{${name}}{${r[0]}}${r[1]}\\end{${name}}`,{
-    command:`\\begin{${name}}`,commandName:name,variantOf:'numcases',variantLabel:name,previewArgs:['f(x)=','x&x>0\\\\-x&x<0']});
-  add('aligned','两行对齐','矩阵与多行',['第一行左侧','第一行右侧','第二行左侧','第二行右侧'],r=>`\\begin{aligned}${r[0]}&${r[1]}\\\\${r[2]}&${r[3]}\\end{aligned}`,{columns:2});
+  add('aligned','Inner aligned block','矩阵与多行',['第一行左侧','第一行右侧','第二行左侧','第二行右侧'],r=>`\\begin{aligned}${r[0]}&${r[1]}\\\\${r[2]}&${r[3]}\\end{aligned}`,{columns:2});
   for (const [type,label,command] of [
     ['hat','帽子','hat'],['widehat','宽帽子','widehat'],
     ['tilde','波浪线','tilde'],['widetilde','宽波浪线','widetilde'],
     ['bar','短横线','bar'],['overline','上划线','overline'],['underline','下划线','underline'],
+    ['overparen','Over arc','overparen'],['underparen','Under arc','underparen'],
     ['acute','锐音符','acute'],['grave','重音符','grave'],['breve','短音符','breve'],['check','抑扬符','check'],['mathring','圆圈重音','mathring'],
     ['dot','单点','dot'],['ddot','双点','ddot'],['dddot','三点','dddot'],['ddddot','四点','ddddot'],
     ['vector','向量箭头','vec'],['overrightarrow','上右箭头','overrightarrow'],['overleftarrow','上左箭头','overleftarrow'],['overleftrightarrow','上双向箭头','overleftrightarrow'],
@@ -108,6 +115,7 @@ export interface FontWarning {region:string;index:number;message:string}
   add('underbrace','下花括号注释','标注与箭头',['内容','下方注释'],r=>`\\underbrace{${r[0]}}_{${r[1]}}`);
   add('overset','上方标注','标注与箭头',['主体','上方标注'],r=>`\\overset{${r[1]}}{${r[0]}}`);
   add('underset','下方标注','标注与箭头',['主体','下方标注'],r=>`\\underset{${r[1]}}{${r[0]}}`);
+  add('overunderset','Above and below annotation','标注与箭头',['Content','Upper annotation','Lower annotation'],r=>`\\overunderset{${r[1]}}{${r[2]}}{${r[0]}}`);
   add('arrow','带标注右箭头','标注与箭头',['上方标注','下方标注'],r=>`\\xrightarrow[${r[1]}]{${r[0]}}`);
   add('boxed','方框','标注与箭头',['内容'],r=>`\\boxed{${r[0]}}`);
   add('cancel','删除线','标注与箭头',['内容'],r=>`\\cancel{${r[0]}}`);
@@ -139,11 +147,11 @@ export interface FontWarning {region:string;index:number;message:string}
     add('op'+cmd,label,'大型算符',['条件','表达式'],r=>`\\${cmd}_{${r[0]}} ${r[1]}`,{selectedIndex:1});
   for(const [env,label] of [['Bmatrix','花括号矩阵'],['smallmatrix','行内小矩阵'],['psmallmatrix','圆括号小矩阵'],['bsmallmatrix','方括号小矩阵'],['Bsmallmatrix','花括号小矩阵'],['vsmallmatrix','小行列式'],['Vsmallmatrix','双竖线小矩阵']])
     add(env,label,'矩阵与多行',['第一行第一列','第一行第二列','第二行第一列','第二行第二列'],r=>`\\begin{${env}}${r[0]}&${r[1]}\\\\${r[2]}&${r[3]}\\end{${env}}`,{columns:2});
-  for(const [env,label] of [['rcases','右侧分段括号'],['dcases','显示分段函数'],['drcases','显示右侧分段括号']])
+  for(const [env,label] of [['rcases','Inner right cases block'],['dcases','Inner display-style cases block'],['drcases','Inner display-style right cases block']])
     add(env,label,'矩阵与多行',['第一段表达式','第一段条件','第二段表达式','第二段条件'],r=>`\\begin{${env}}${r[0]}&${r[1]}\\\\${r[2]}&${r[3]}\\end{${env}}`,{columns:2});
-  for(const [env,label] of [['gathered','两行居中'],['lgathered','两行左对齐'],['rgathered','两行右对齐'],['multlined','多行首尾对齐']])
+  for(const [env,label] of [['gathered','Inner centered block'],['lgathered','Inner left-aligned block'],['rgathered','Inner right-aligned block'],['multlined','多行首尾对齐']])
     add(env,label,'矩阵与多行',['第一行','第二行'],r=>`\\begin{${env}}${r[0]}\\\\${r[1]}\\end{${env}}`,{columns:1});
-  add('alignedat','紧凑两行对齐','矩阵与多行',['第一行左侧','第一行右侧','第二行左侧','第二行右侧'],r=>`\\begin{alignedat}{1}${r[0]}&${r[1]}\\\\${r[2]}&${r[3]}\\end{alignedat}`,{columns:2});
+  add('alignedat','Inner compact aligned block','矩阵与多行',['第一行左侧','第一行右侧','第二行左侧','第二行右侧'],r=>`\\begin{alignedat}{1}${r[0]}&${r[1]}\\\\${r[2]}&${r[3]}\\end{alignedat}`,{columns:2});
   add('array','两列左对齐数组','矩阵与多行',['第一行第一列','第一行第二列','第二行第一列','第二行第二列'],r=>`\\begin{array}{ll}${r[0]}&${r[1]}\\\\${r[2]}&${r[3]}\\end{array}`,{columns:2});
   for(const [env,label] of [['pmatrix','圆括号'],['bmatrix','方括号']])for(const [align,name] of [['l','左对齐'],['r','右对齐']])
     add(env+align,label+name+'矩阵','矩阵与多行',['第一行第一列','第一行第二列','第二行第一列','第二行第二列'],r=>`\\begin{${env}*}[${align}]${r[0]}&${r[1]}\\\\${r[2]}&${r[3]}\\end{${env}*}`,{columns:2});
@@ -154,9 +162,15 @@ export interface FontWarning {region:string;index:number;message:string}
   for(const [cmd,label] of [['bcancel','反向删除线'],['xcancel','交叉删除线']])add(cmd,label,'标注与箭头',['内容'],r=>`\\${cmd}{${r[0]}}`);
   add('cancelto','消去至指定值','标注与箭头',['内容','目标值'],r=>`\\cancelto{${r[1]}}{${r[0]}}`);
   for(const [cmd,label] of [['xlongleftarrow','长左箭头'],['xlongrightarrow','长右箭头'],['xLongleftarrow','长左双线箭头'],['xLongrightarrow','长右双线箭头']])add(cmd,label,'标注与箭头',['上方标注','下方标注'],r=>`\\${cmd}[${r[1]}]{${r[0]}}`);
+  for(const [cmd,label] of [['xtwoheadrightarrow','Annotated right double-head arrow'],['xtwoheadleftarrow','Annotated left double-head arrow'],['xtofrom','Annotated opposing arrows'],['xlongequal','Annotated equals sign']])
+    add(cmd,label,'标注与箭头',['Upper annotation','Lower annotation'],r=>`\\${cmd}[${r[1]}]{${r[0]}}`,{command:'\\'+cmd});
+  for(const [cmd,label] of [['pmod','Modulo in parentheses'],['mod','Modulo without parentheses'],['pod','Congruence modulus']])
+    add(cmd,label,'运算符号',['Modulus'],r=>`\\${cmd}{${r[0]}}`,{command:'\\'+cmd,variantOf:'pmod',variantLabel:label});
   registerExtensions(catalog,symbols);
   registerPhysicsStructures(catalog);
   registerTexLayoutStructures(catalog);
+  Object.assign(catalog.find(entry=>entry.type==='layout-centernot')!,{hidden:false,label:'Negated relation'});
+  Object.assign(catalog.find(entry=>entry.type==='layout-nicefrac')!,{hidden:false,label:'Small diagonal fraction',category:'分式与根式'});
   add('text-normal','描述文字','文字',['描述文字'],r=>textNormal(r[0]),{raw:true,command:'\\textnormal',aliases:['textrm'],previewArgs:['说明']});
   add('case-text','Condition text','文字',['Condition text'],r=>`\\textnormal{${r[0]}}`,{raw:true,hidden:true,commandCandidate:false});
   // Unsupported imported TeX is an opaque source component, never escaped into
@@ -168,6 +182,9 @@ export interface FontWarning {region:string;index:number;message:string}
   // exact consuming syntax so its surrounding spacing remains unchanged.
   add('physics-auto-parens','Parentheses','括号与定界符',['Content'],r=>`\\left(${r[0]}\\right)`,{
     exportRender:r=>`(${r[0]})`,hidden:true,commandCandidate:false});
+  for(const [name,left,right] of [['brackets','[',']'],['braces','{','}']])
+    add('physics-auto-'+name,name,'括号与定界符',['Content'],r=>`\\left${name==='braces'?'\\':''}${left}${r[0]}\\right${name==='braces'?'\\':''}${right}`,{
+      exportRender:r=>left+r[0]+right,hidden:true,commandCandidate:false});
   registerLetterVariants(catalog,symbols);
   for(const entry of mathFunctions){
     const type='function-'+(entry.command.startsWith('operatorname')?'operatorname-'+entry.name:entry.name);
@@ -176,6 +193,7 @@ export interface FontWarning {region:string;index:number;message:string}
     if(entry.optionalExponent)add(type+'-exponent',entry.name,'函数名称',[],()=>`\\${entry.command} `,{command:`\\${entry.command}`,hidden:true,commandCandidate:false,variantOf:type,
       operator:true,operatorCommand:entry.command,operatorPlacement:'',scriptSlots:['lower','upper'],scriptLabels:['下标','上标'],legacySlots:0,functionExponent:true});
   }
+  for(const name of ['pv','PV'])Object.assign(catalog.find(entry=>entry.type==='function-'+name)!,{variantOf:'function-pv'});
   // Explicit operatorname is a different grammar from physics' parenthesis-
   // consuming functions. Preserve it as such when converting imported source.
   for(const name of mathFunctions.filter(entry=>!entry.command.startsWith('operatorname')).map(entry=>entry.name))
@@ -191,6 +209,7 @@ export interface FontWarning {region:string;index:number;message:string}
       atom:true,labels:[],selectedIndex:0,render:()=>'',ungroupScriptBase:true});
   }
   add('font-bboldx-bold','黑板粗体','数学字体',['字体内容'],r=>'\\mathbfbb{'+r[0]+'}',{font:true,hidden:true,commandCandidate:false,command:'\\mathbfbb'});
+  registerGuiSymbols(symbols,catalog);
   symbols.forEach(entry=>symbolDefinitions.set(entry.type,entry));
   // Layout variants remain insertable but live in their primary button's menu.
   const variantGroups = {
@@ -229,6 +248,7 @@ export interface FontWarning {region:string;index:number;message:string}
     }
   }
   // Show the exact syntax on hover, including variants/options, not just a name.
+  registerDelimiterVariants(catalog);
   for(const entry of catalog) if(!entry.command) entry.command=entry.render(entry.labels.map(()=>'…'));
   const definitions = new Map(catalog.map(entry=>[entry.type,entry]));
   for(const [type,env,align] of [
@@ -236,13 +256,16 @@ export interface FontWarning {region:string;index:number;message:string}
     ['determinant','vmatrix'],['normmatrix','Vmatrix'],['Bmatrix','Bmatrix'],
     ...['smallmatrix','psmallmatrix','bsmallmatrix','Bsmallmatrix','vsmallmatrix','Vsmallmatrix'].map(env=>[env,env]),
     ['pmatrixl','pmatrix*','l'],['pmatrixr','pmatrix*','r'],['bmatrixl','bmatrix*','l'],['bmatrixr','bmatrix*','r'],['array','array','l']
-  ]) Object.assign(definitions.get(type)!,{matrixEnvironment:env,matrixAlign:align});
+  ]) Object.assign(definitions.get(type)!,{scope:'component',matrixEnvironment:env,matrixAlign:align});
   for(const type of ['cases','rcases','dcases','drcases','aligned','alignedat','gathered','lgathered','rgathered','multlined','substack','subarrayl','subarrayc']){
     const entry=definitions.get(type)!;
     entry.label=entry.label.replace('两行','多行');
-    Object.assign(entry,{rowEnvironment:type.startsWith('subarray')?'subarray':type,columns:entry.columns || 1,
+    Object.assign(entry,{scope:'component',rowEnvironment:type.startsWith('subarray')?'subarray':type,columns:entry.columns || 1,
       rowOptions:type==='alignedat'?'{1}':type==='subarrayl'?'{l}':type==='subarrayc'?'{c}':''});
   }
+  // MathJax 4.1.3 numbers multlined even inside another expression. Keep old
+  // documents readable, but offer long equations through the document entry.
+  Object.assign(definitions.get('multlined')!,{hidden:true,commandCandidate:false});
   for(const entry of catalog.filter(e=>e.category==='大型算符'||e.type==='sideset')){
     const sample=entry.render(entry.labels.map(()=>''));
     entry.operator=true;
@@ -271,6 +294,8 @@ export interface FontWarning {region:string;index:number;message:string}
   // The sum-specific sideset template belongs to sum's menu, not generic scripts.
   Object.assign(definitions.get('sideset')!,{category:'大型算符',variantOf:'sum'});
   registerSideSetStructures(catalog);
+  registerFormulaLayouts(catalog);
+  for(const entry of catalog)if(entry.scope==='formula')definitions.set(entry.type,entry);
   for(const entry of catalog)if(!definitions.has(entry.type))definitions.set(entry.type,entry);
   // A named operator has one insertion path, including command completion.
   // Keep retired atoms readable for saved drafts, but do not offer duplicates.
@@ -279,6 +304,14 @@ export interface FontWarning {region:string;index:number;message:string}
     if(operatorCommands.has(entry.command.slice(1))||mathFunctions.some(fn=>fn.name===entry.type.slice(7))){
       entry.hidden=true;entry.commandCandidate=false;
     }
+  }
+  organizeGuiSymbols(symbols,catalog);
+  // Generic constructors must not bind their bare command to an arbitrary
+  // fixed preset (notably genfrac's delimiters, rule width and math style).
+  // Keep definitions for saved documents and exact TeX conversion.
+  for(const entry of [...catalog,...symbols]){
+    const name=/^\\([A-Za-z]+)/.exec(entry.command)?.[1];
+    if(name&&isSourceOnlyMathCommand(name)){entry.hidden=true;entry.commandCandidate=false;}
   }
   // Build once. Candidate filtering must not rebuild the installed command
   // inventory (or a thousand DOM options) for every typed letter.
@@ -307,6 +340,8 @@ export interface FontWarning {region:string;index:number;message:string}
     commandEntries.set(command.name,{name:command.name,type:'source-tex',atom:false,label:'LaTeX source',category:'LaTeX source',source});
   }
   for(const environment of mathjaxEnvironments){
+    if(isStandaloneMathEnvironmentName(environment.name))continue;
+    if(catalog.some(entry=>entry.rowEnvironment===environment.name&&entry.commandCandidate===false))continue;
     if(!environment.configured||!/^\w+$/.test(environment.name)||commandEntries.has(environment.name))continue;
     commandEntries.set(environment.name,{name:environment.name,type:'source-tex',atom:false,label:'LaTeX source',category:'LaTeX source',
       source:`\\begin{${environment.name}}\n\n\\end{${environment.name}}`});
@@ -334,7 +369,7 @@ export interface FontWarning {region:string;index:number;message:string}
     if(renderRegion===latex&&definition?.exportRender)return definition.exportRender(r);
     if(renderRegion===latex&&['power','subscript','sup'].includes(node.type)&&node.regions[0]?.items.length===1){
       const base=node.regions[0].items[0];
-      if(typeof base!=='string'&&(base.type==='physics-auto-parens'||(base.atom?symbolDefinitions.get(base.type):definitions.get(base.type))?.ungroupScriptBase))
+      if(typeof base!=='string'&&(automaticFences[base.type]||(base.atom?symbolDefinitions.get(base.type):definitions.get(base.type))?.ungroupScriptBase))
         return r[0]+(node.type==='power'?`^{${r[1]}}`:node.type==='subscript'?`_{${r[1]}}`:`_{${r[1]}}^{${r[2]}}`);
     }
     if(definition?.operator){
@@ -354,10 +389,18 @@ export interface FontWarning {region:string;index:number;message:string}
       if(env==='numbered-cases-body')for(let index=1;index<node.regions.length;index+=columns){
         const items=node.regions[index].items,child=items.length===1?items[0]:undefined;
         if(child&&typeof child!=='string'&&child.type==='case-text')r[index]=child.regions[0].items.join('');
+        else r[index]='$'+(r[index]||'{}')+'$';
       }
       const options=env==='array'?`{${(definition.matrixAlign || 'c').repeat(columns)}}`:definition.matrixAlign?`[${definition.matrixAlign}]`:definition.rowOptions || '';
-      const content=Array.from({length:r.length/columns},(_,i)=>r.slice(i*columns,(i+1)*columns).join('&')).join('\\\\');
-      if(env==='numbered-cases-body')return content;
+      const content=Array.from({length:r.length/columns},(_,i)=>{
+        const cells=r.slice(i*columns,(i+1)*columns);
+        // An empty final row otherwise looks like a trailing row terminator
+        // to TeX. A zero-width group preserves the intended row and its tag.
+        if((definition.formula||env==='numbered-cases-body'||env==='formula-cases-body')&&cells.every(cell=>!cell.trim()))cells[0]='{}';
+        return cells.join('&');
+      }).join('\\\\');
+      if(env==='numbered-cases-body'||env==='formula-cases-body')return content;
+      if(definition.formula)return renderFormulaLayout(definition.formula,content);
       return env==='substack'?`\\substack{${content}}`:`\\begin{${env}}${options}${content}\\end{${env}}`;
     }
     if (definitions.has(node.type)) return definitions.get(node.type)!.render(r);
@@ -372,21 +415,26 @@ export interface FontWarning {region:string;index:number;message:string}
     if(definitions.get(item.type)?.font)return latex({id:'',label:'',items:[item]});
     return structureTex(item,child=>styledLatex(child,command));
   }).join('');
-  const automaticParenthesesAfter=(item:MathItem|undefined):boolean=>{
+  const automaticFences:Record<string,{open:string;close:string}>={
+    'physics-auto-parens':{open:'(',close:')'},'physics-auto-brackets':{open:'[',close:']'},'physics-auto-braces':{open:'{',close:'}'}
+  };
+  const automaticFenceAfter=(item:MathItem|undefined,opening:string):boolean=>{
     if(!item||typeof item==='string')return false;
     const definition=item.atom?symbolDefinitions.get(item.type):definitions.get(item.type);
     if(!definition)return false;
     const grammar=mathFunction(definition.operatorCommand??definition.command.slice(1));
-    return !!grammar?.automaticParentheses&&!definition.operatorPlacement&&
+    const automatic=opening==='('?grammar?.automaticParentheses:grammar?.automaticDelimiters?.some(delimiter=>delimiter===opening);
+    return !!automatic&&!definition.operatorPlacement&&
       item.regions.every(region=>definition.functionExponent&&region.slot==='upper');
   };
   const latex = (r:Region):string => r.items.map((item,index) => {
     if(typeof item==='string')return texChar(item);
     const def=definitions.get(item.type);
     const scriptedFence=['power','subscript','sup'].includes(item.type)&&item.regions[0]?.items.length===1?item.regions[0].items[0]:null;
-    const fence=item.type==='physics-auto-parens'?item:scriptedFence&&typeof scriptedFence!=='string'&&scriptedFence.type==='physics-auto-parens'?scriptedFence:null;
+    const fence=automaticFences[item.type]?item:scriptedFence&&typeof scriptedFence!=='string'&&automaticFences[scriptedFence.type]?scriptedFence:null;
     if(fence){
-      const content=latex(fence.regions[0]),value=automaticParenthesesAfter(r.items[index-1])?`(${content})`:`\\left(${content}\\right)`;
+      const content=latex(fence.regions[0]),{open,close}=automaticFences[fence.type];
+      const value=automaticFenceAfter(r.items[index-1],open)?open+content+close:definitions.get(fence.type)!.render([content]);
       return value+(fence===item?'':item.type==='power'?`^{${latex(item.regions[1])}}`:item.type==='subscript'?`_{${latex(item.regions[1])}}`:`_{${latex(item.regions[1])}}^{${latex(item.regions[2])}}`);
     }
     if(def?.font){
@@ -464,6 +512,21 @@ export interface FontWarning {region:string;index:number;message:string}
       this.undoStack = []; this.redoStack = [];
       this.index();
     }
+    formulaLayout():Definition|null {
+      const item=this.root.items.length===1?this.root.items[0]:undefined;
+      return item&&typeof item!=='string'&&definitions.get(item.type)?.scope==='formula'?definitions.get(item.type)!:null;
+    }
+    initializeFormula(type:string):boolean {
+      const definition=definitions.get(type);
+      if(!definition?.formula||this.root.items.length)return false;
+      const node=structure(type,definition.labels.map(label=>region(label)));
+      if(definition.formula.kind==='cases'){
+        const numbered=definition.formula.numbering==='rows'||definition.formula.numbering==='subrows';
+        const body=structure(numbered?'numbered-cases-body':'formula-cases-body',Array.from({length:4},(_,i)=>region(i%2?'Condition':'Expression')));
+        body.rows=2;body.columns=2;node.regions[1].items=[body];
+      }
+      this.root.items=[node];this.index();this.setCursor(node.regions[0].id,0);return true;
+    }
     index() {
       this.root.label='公式';
       // Upgrade saved drafts: move the old body slot into its surrounding flow.
@@ -488,6 +551,29 @@ export interface FontWarning {region:string;index:number;message:string}
           node.regions.forEach(migrate);
         }
       };migrate(this.root);
+      // Older versions allowed a standalone numcases after a separate lhs.
+      // Move that prefix into its empty lhs, preserving every existing ID.
+      const last=this.root.items.at(-1);
+      if(last&&typeof last!=='string'&&['numcases','subnumcases'].includes(last.type)&&this.root.items.length>1&&!last.regions[0].items.length){
+        const prefix=this.root.items.slice(0,-1);
+        if(!prefix.some(item=>typeof item!=='string'&&definitions.get(item.type)?.scope==='formula')){
+          const count=prefix.length;last.regions[0].items=prefix;this.root.items=[last];
+          if(this.cursor.region===this.root.id){const offset=Math.min(this.cursor.offset,count),anchor=Math.min(this.cursor.anchor,count);this.cursor={region:last.regions[0].id,offset,anchor};}
+        }
+      }
+      // A standalone environment is a document entry, not an arbitrary child.
+      // Preserve malformed historical trees as editable TeX rather than drop
+      // any content or continue to emit an illegal nested editable structure.
+      const invalidScope=(r:Region,root=false):boolean=>r.items.some(item=>typeof item!=='string'&&
+        (definitions.get(item.type)?.scope==='formula'&&(!root||r.items.length!==1)||item.regions.some(child=>invalidScope(child))));
+      if(invalidScope(this.root,true)){
+        // Restored decimal IDs may exceed this process's allocation counter.
+        // Reserve them before introducing the migration's new source region.
+        const reserve=(r:Region)=>{const id=BigInt(r.id.slice(1));if(id>serial)serial=id;for(const item of r.items)if(typeof item!=='string'){const id=BigInt(item.id.slice(1));if(id>serial)serial=id;item.regions.forEach(reserve);}};
+        reserve(this.root);
+        const source=latex(this.root),raw=region('LaTeX source',source);
+        this.root.items=[structure('source-tex',[raw])];this.cursor={region:raw.id,offset:0,anchor:0};
+      }
       this.regions = new Map(); this.parents = new Map(); this.nodes = new Map(); this.order = [];
       const visit = (r:Region) => {
         const regionSerial=BigInt(r.id.slice(1));if(regionSerial>serial)serial=regionSerial;
@@ -517,10 +603,22 @@ export interface FontWarning {region:string;index:number;message:string}
         });
       };
       visit(this.root);
+      if(this.cursor.region===this.root.id&&this.cursor.offset===this.cursor.anchor&&this.formulaLayout())this.setCursor(this.root.id,this.cursor.offset);
     }
     get current():Region { const r=this.regions.get(this.cursor.region); if(!r)throw new Error('Invalid cursor region'); return r; }
     get range():[number,number] { return [Math.min(this.cursor.offset, this.cursor.anchor), Math.max(this.cursor.offset, this.cursor.anchor)]; }
     setCursor(id:string, offset:number, anchor = offset) {
+      if(id===this.root.id&&offset===anchor&&this.formulaLayout()){
+        const node=this.root.items[0] as MathNode,child=node.regions[offset<=0?0:node.regions.length-1];
+        if(child){id=child.id;offset=anchor=offset<=0?0:child.items.length;}
+      }
+      if(offset===anchor){
+        const parent=this.parents.get(id),body=this.regions.get(id)?.items[0];
+        if(parent?.childIndex===1&&definitions.get(parent.node.type)?.formula?.kind==='cases'&&body&&typeof body!=='string'&&
+          ['numbered-cases-body','formula-cases-body'].includes(body.type)){
+          const child=body.regions[offset<=0?0:body.regions.length-1];id=child.id;offset=anchor=offset<=0?0:child.items.length;
+        }
+      }
       const r = this.regions.get(id); if (!r) return;
       const clamp = (x:number) => Math.max(0, Math.min(r.items.length, x));
       this.cursor = {region: id, offset: clamp(offset), anchor: clamp(anchor)};
@@ -601,7 +699,21 @@ export interface FontWarning {region:string;index:number;message:string}
       const cloneItem=(item:MathItem):MathItem=>typeof item==='string'?item:{...item,id:'n'+nextSerial(),regions:item.regions.map(cloneRegion)};
       const cloned=root.items.map(cloneItem);
       if(this.rawInput){this.replace(...this.range,latex({id:'',label:'',items:cloned}));return;}
+      const isFormula=(item:MathNode):boolean=>definitions.get(item.type)?.scope==='formula'||item.type==='source-tex'&&!!standaloneMathEnvironmentBounds(item.regions[0].items.join(''));
+      const hasFormula=(values:readonly MathItem[]):boolean=>values.some(item=>typeof item!=='string'&&(isFormula(item)||item.regions.some(child=>hasFormula(child.items))));
+      let replaceWhole=false;
+      if(hasFormula(cloned)){
+        const sole=cloned.length===1&&typeof cloned[0]!=='string'&&isFormula(cloned[0])&&
+          !cloned[0].regions.some(child=>hasFormula(child.items));
+        const [start,end]=this.range;
+        const emptyTemplate=(r:Region):boolean=>r.items.every(item=>typeof item!=='string'&&
+          ['numbered-cases-body','formula-cases-body','case-text'].includes(item.type)&&item.regions.every(emptyTemplate));
+        const emptyFormula=!!this.formulaLayout()&&(this.root.items[0] as MathNode).regions.every(emptyTemplate);
+        replaceWhole=sole&&(emptyFormula||this.current===this.root&&start===0&&end===this.root.items.length);
+        if(!replaceWhole)throw Error('A whole formula can only replace the complete formula.');
+      }
       this.record();this.pendingFont=undefined;
+      if(replaceWhole){this.root.items=cloned;this.index();this.setCursor(this.root.id,0);return;}
       const container=this.current,[start,end]=this.range;
       container.items.splice(start,end-start,...cloned);this.index();this.setCursor(container.id,start+cloned.length);
       if(!container.items.length)this.removeEmptyScript();
@@ -623,7 +735,7 @@ export interface FontWarning {region:string;index:number;message:string}
     commandCandidates() {
       const query=this.commandQuery();if(!query)return [];
       const common=['sin','cos','tan','exp','log','alpha','beta','pi','frac','sqrt','sum','int','mathbf'];
-      return commandInventory.filter(e=>e.name.startsWith(query.name)).sort((a,b)=>{
+      return commandInventory.filter(e=>e.name.startsWith(query.name)&&(!isSourceOnlyMathCommand(e.name)||e.name===query.name)).sort((a,b)=>{
         const rank=(e:CommandCandidate)=>e.name===query.name?-2:common.includes(e.name)?common.indexOf(e.name):100;
         return rank(a)-rank(b) || a.name.localeCompare(b.name);
       });
@@ -677,6 +789,7 @@ export interface FontWarning {region:string;index:number;message:string}
       }
     }
     enterScript(marker:string) {
+      if(this.current===this.root&&this.formulaLayout()&&this.range[0]!==this.range[1])return;
       const upper=marker==='^', [start,end]=this.range;
       const previousOperator=start===end && start>0?this.current.items[start-1]:null;
       const operator=previousOperator && typeof previousOperator!=='string' && definitions.get(previousOperator.type)?.operator?previousOperator:null;
@@ -710,6 +823,8 @@ export interface FontWarning {region:string;index:number;message:string}
     insertStructure(type:string,record=true) {
       const definition = definitions.get(type);
       if (!definition) throw new Error('Unknown structure: ' + type);
+      if(definition.scope==='formula')throw new Error('Use the whole-formula insertion entry for '+type+'.');
+      if(this.current===this.root&&this.formulaLayout()&&this.range[0]!==this.range[1])throw new Error('A whole formula cannot be nested inside another structure.');
       if(this.rawInput){this.insert(definition.render(definition.labels.map(()=>'')));return;}
       this.pendingFont=undefined;
       const [start, end] = this.range, parent = this.current;
@@ -721,10 +836,6 @@ export interface FontWarning {region:string;index:number;message:string}
         this.setCursor(parent.id,start+1+selected.length);return;
       }
       const node = structure(type, definition.labels.map((label,i)=>region(label,i===definition.selectedIndex?contents:[])));
-      if(type==='numcases'||type==='subnumcases'){
-        const body=structure('numbered-cases-body',Array.from({length:4},(_,i)=>region(i%2?'Condition':'Expression',i%2?[structure('case-text',[region('Condition text')])]:[])));
-        body.rows=2;body.columns=2;node.regions[1].items=[body];
-      }
       if(record)this.record();
       // Move the selection into the new structure rather than flattening it.
       parent.items.splice(start, end - start, node);
@@ -753,6 +864,10 @@ export interface FontWarning {region:string;index:number;message:string}
       if(!node || !source || !target)return false;
       if(source.font && target.font)return true;
       if(!source?.variantOf || source.variantOf!==target?.variantOf)return false;
+      if(source.variantSlots||target.variantSlots){
+        if(!source.variantSlots||!target.variantSlots)return false;
+        return node.regions.every((r,i)=>!r.items.length||target.variantSlots!.includes(source.variantSlots![i]));
+      }
       if(source.operator && target.operator)return node.regions.every(r=>!r.items.length||!r.slot||target.scriptSlots?.includes(r.slot));
       if(source.variantOf==='sqrt')return true;
       if((source.matrixEnvironment && target.matrixEnvironment) || (source.rowEnvironment && target.rowEnvironment))return true;
@@ -768,6 +883,24 @@ export interface FontWarning {region:string;index:number;message:string}
       if(node.atom){this.record();node.type=type;this.index();return true;}
       const source=definitions.get(node.type)!, target=definitions.get(type)!;
       this.record();
+      if(source.variantSlots&&target.variantSlots){
+        const old=new Map(source.variantSlots.map((key,i)=>[key,node.regions[i]]));
+        node.regions=target.variantSlots.map((key,i)=>{
+          const child=old.get(key)??region(target.labels[i]);child.label=target.labels[i];return child;
+        });
+        node.type=type;this.index();
+        if(!this.regions.has(this.cursor.region))this.setCursor(node.regions[0].id,0);
+        return true;
+      }
+      if(source.formula&&target.formula){
+        node.type=type;
+        if(source.formula.kind==='cases'){
+          const body=node.regions[1].items[0];
+          if(body&&typeof body!=='string'&&['numbered-cases-body','formula-cases-body'].includes(body.type))
+            body.type=target.formula.numbering==='rows'||target.formula.numbering==='subrows'?'numbered-cases-body':'formula-cases-body';
+        }
+        this.index();return true;
+      }
       if(source.operator && target.operator){node.type=type;this.index();return true;}
       if(source.variantOf==='sqrt'){
         const parent=this.parents.get(node.regions[0].id)!;
@@ -814,7 +947,8 @@ export interface FontWarning {region:string;index:number;message:string}
       const columns=node.columns || 1, rows=node.rows || 1;
       const grid=Array.from({length:rows},(_,i)=>node.regions.slice(i*columns,(i+1)*columns));
       const at=(isRow?row:column)+(action.endsWith('After')?1:0);
-      if(isRow)grid.splice(at,deleting?1:0,...(deleting?[]:[Array.from({length:columns},(_,column)=>region('',node.type==='numbered-cases-body'&&column===1?[structure('case-text',[region('Condition text')])]:[]))]));
+      const textConditions=node.type==='numbered-cases-body'&&grid.every(cells=>cells[1].items.length===1&&typeof cells[1].items[0]!=='string'&&cells[1].items[0].type==='case-text');
+      if(isRow)grid.splice(at,deleting?1:0,...(deleting?[]:[Array.from({length:columns},(_,column)=>region('',textConditions&&column===1?[structure('case-text',[region('Condition text')])]:[]))]));
       else for(const cells of grid)cells.splice(at,deleting?1:0,...(deleting?[]:[region('')]));
       node.columns=grid[0].length;node.regions=grid.flat();this.index();
       // Keep a surviving cursor (including nested content); enter the new cell

@@ -16,8 +16,22 @@ test('HTML export enables the official MathJax menu and registers only its exact
  assert.equal(config.options.enableSpeech,false);assert.equal(config.options.enableExplorer,false);assert.equal(config.options.enableExplorerHelp,false);
  assert.equal(config.output.font,'mathjax-newcm');assert.deepEqual(JSON.parse(JSON.stringify(config.tex.packages['[+]'].find(value=>Array.isArray(value)&&value[0]==='physics'))),['physics',2]);
  assert.equal(config.startup.typeset,false);assert.ok(config.options.skipHtmlTags.includes('pre'));assert.ok(config.options.skipHtmlTags.includes('mjx-container'));
- let defaultReady=0,defaultPageReady=0;const requests=[];config._={font:'shared-font-internals'};
- config.startup.defaultReady=()=>{defaultReady++;};config.startup.defaultPageReady=async()=>{defaultPageReady++;};
+ let defaultReady=0,defaultPageReady=0;const requests=[];
+ const originalBracket={token:'\\lbrack',char:'[',attributes:null},delimiterTokens=new Map([['\\lbrack',originalBracket]]);
+ const delimiterMap={lookup:name=>delimiterTokens.get(name),add:(name,token)=>delimiterTokens.set(name,token)};
+ class Token {constructor(token,char,attributes){Object.assign(this,{token,char,attributes});}}
+ config._={font:'shared-font-internals',input:{tex:{
+  MapHandler:{MapHandler:{getMap:name=>{assert.equal(name,'delimiter');return delimiterMap;}}},Token:{Token},
+ }}};
+ config.startup.defaultReady=()=>{
+  defaultReady++;
+  assert.equal(window.fontShimProbe,config._,'the shared font setup runs before MathJax initializes');
+  assert.equal(delimiterTokens.get('\\lbrack'),originalBracket,'native delimiter entries remain unchanged');
+  for(const [name,char] of [['\\llbracket','⟦'],['\\rrbracket','⟧'],['\\lBrack','⟦'],['\\rBrack','⟧'],['⟦','⟦'],['⟧','⟧']]){
+   const token=delimiterTokens.get(name);assert.ok(token instanceof Token,name+' is installed before defaultReady');
+   assert.equal(token.token,name);assert.equal(token.char,char);assert.equal(token.attributes,null);
+  }
+ };config.startup.defaultPageReady=async()=>{defaultPageReady++;};
  config.typesetPromise=async elements=>{requests.push(Array.from(elements));for(const formula of elements){assert.equal(formula.textContent,source);const output=window.document.createElement('mjx-container');output.textContent='Native MathItem';formula.replaceChildren(output);}};
  config.startup.ready();assert.equal(defaultReady,1);assert.equal(window.fontShimProbe,config._);
  await config.startup.pageReady();

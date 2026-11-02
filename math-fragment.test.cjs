@@ -144,7 +144,7 @@ test('valid clipboard input remains unchanged during validation and ID remapping
 
 test('all existing component forms can still save and restore after arity validation',()=>{
   for(const definition of catalog){
-    const model=blank();model.insertStructure(definition.type);const saved=model.snapshot();
+    const model=blank();if(definition.scope==='formula')model.initializeFormula(definition.type);else model.insertStructure(definition.type);const saved=model.snapshot();
     const restored=new EditorModel();assert.doesNotThrow(()=>restored.restore(saved),definition.type);
     assert.equal(restored.exportLatex(),model.exportLatex(),definition.type);
   }

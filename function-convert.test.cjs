@@ -7,7 +7,7 @@ const compiled=buildSync({stdin:{contents:`export {convertMath} from './src/tex-
 const loaded={exports:{}};new Function('module','exports','require',compiled)(loaded,loaded.exports,require);
 const {convertMath,mathFunctions,EditorModel,catalog}=loaded.exports;
 const optionalExpressions='sin sinh arcsin asin cos cosh arccos acos tan tanh arctan atan csc csch arccsc acsc sec sech arcsec asec cot coth arccot acot log ln'.split(' ');
-const automaticOnly='exp det Pr tr Tr erf'.split(' ');
+const automaticOnly='exp det Pr tr Tr erf Res'.split(' ');
 const namedAliases={sine:'sin',hypsine:'sinh',arcsine:'arcsin',asine:'asin',cosine:'cos',hypcosine:'cosh',arccosine:'arccos',acosine:'acos',tangent:'tan',hyptangent:'tanh',arctangent:'arctan',atangent:'atan',cosecant:'csc',hypcosecant:'csch',arccosecant:'arccsc',acosecant:'acsc',secant:'sec',hypsecant:'sech',arcsecant:'arcsec',asecant:'asec',cotangent:'cot',hypcotangent:'coth',arccotangent:'arccot',acotangent:'acot',exponential:'exp',logarithm:'log',naturallogarithm:'ln',determinant:'det',Probability:'Pr'};
 let mathjax;
 test.before(async()=>{
@@ -118,7 +118,7 @@ test('all optional-exponent Expressions preserve the exponent and automatic pare
 });
 
 test('functions that do not consume optional exponents retain following square brackets literally',async()=>{
-  for(const name of [...automaticOnly,'rank','sine']){
+  for(const name of [...automaticOnly,'rank','sine'].filter(name=>!mathFunctions.find(entry=>entry.name===name)?.automaticDelimiters?.includes('['))){
     const source='\\'+name+String.raw`[2](\frac{a}{b})`,model=convertMath(source),fn=nativeFunction(model,name);
     assert.ok(fn,source);assert.deepEqual(fn.regions,[]);
     const {after}=await samePresentation(source,model);
@@ -196,5 +196,23 @@ test('function recognition consumes complete case-sensitive control words only',
     const model=convertMath(source);assert.equal(model.exportLatex(),source);
     assert.equal(nodes(model).some(node=>node.type.startsWith('function-')),false);
     assert.ok(nodes(model).some(node=>node.type==='source-tex'));
+  }
+});
+
+test('principal values and residues preserve the native physics delimiter grammar',async()=>{
+  for(const source of [String.raw`\pv \int f(x)`,String.raw`\PV \int_{a}^{b}f(x)`,String.raw`\pv{a+b}`,String.raw`\PV(a+b)`,
+    String.raw`\Res(\frac{a}{b})`,String.raw`\Res[\frac{a}{b}]`,String.raw`\Res{\frac{a}{b}}`,String.raw`\Res{\frac{a}{b}}^2`]){
+    const model=convertMath(source);
+    assert.equal(nodes(model).some(node=>node.type==='source-tex'),false,source);
+    await samePresentation(source,model);
+    const restored=new EditorModel();restored.restore(model.snapshot());assert.equal(restored.exportLatex(),model.exportLatex());
+  }
+  for(const source of [String.raw`\Res[\frac{a}{b}]`,String.raw`\Res{\frac{a}{b}}`]){
+    const model=convertMath(source),operator=model.root.items[0];
+    model.root.items.shift();model.index();
+    assert.match(model.exportLatex(),/^\\left/,'The visible fence survives deleting its consuming function');
+    const expected=source.includes('[')?String.raw`\left[\frac{a}{b}\right]`:String.raw`\left\{\frac{a}{b}\right\}`;
+    await samePresentation(expected,model);
+    model.root.items.unshift(operator);model.index();await samePresentation(source,model);
   }
 });

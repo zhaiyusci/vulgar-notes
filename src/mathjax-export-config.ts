@@ -1,4 +1,5 @@
 import {installUnicodeFonts} from './mathjax-unicode-fonts';
+import {installMathDelimiters} from './install-math-delimiters';
 import {mathJaxExtensionLoads,mathJaxTexPackages,mathJaxDisabledTexPackages,mathJaxRequireOptions} from './mathjax-extension-policy';
 
 // Exported formulas use the same TeX and alphabets as the editor, while the
@@ -18,7 +19,7 @@ const configuration={
     textmacros:{packages:{'[+]':['textcomp']}},tags:'cases' as const,mathStyle:'TeX',mathStyleGreekLC:true,mathStyleMathAlphabets:true},
   startup:{
     typeset:false,
-    ready:()=>{installUnicodeFonts(MathJax._);MathJax.startup.defaultReady();},
+    ready:()=>{installUnicodeFonts(MathJax._);installMathDelimiters(MathJax._);MathJax.startup.defaultReady();},
     pageReady:async()=>{
       await MathJax.startup.defaultPageReady();
       const elements=Array.from(document.querySelectorAll<HTMLElement>('[data-export-math-source]'));

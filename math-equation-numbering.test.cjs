@@ -21,6 +21,17 @@ test('numbered cases consume one number per row and the document label targets t
   assert.deepEqual(equationNumbering(cases('subnumcases',String.raw`a&positive`)),expected(1,0,'a'));
 });
 
+test('spacing wrappers retain the underlying display counter and label location',()=>{
+  const inner=String.raw`\begin{align}a&=b\\c&=d\end{align}`;
+  const source=String.raw`\begin{spreadlines}{1em}`+inner+String.raw`\end{spreadlines}`;
+  assert.deepEqual(equationNumbering(source),expected(2,1));
+  assert.equal(loaded.exports.equationLabelInsertionOffset(source),source.indexOf('\\end{align}'));
+  assert.deepEqual(equationNumbering(source.replaceAll('{align}','{align*}')),expected(0));
+  for(const name of ['xalignat','xalignat*','xxalignat']){
+    assert.deepEqual(equationNumbering(`\\begin{${name}}{1}a&=b\\\\c&=d\\end{${name}}`),name==='xalignat'?expected(2,1):expected(0));
+  }
+});
+
 test('comments, braces, escaped symbols and nested grids do not add outer rows',()=>{
   const source=cases('numcases',String.raw`\begin{matrix}a&b\\c&d\end{matrix}&first\\\frac{a\{b}{c\}d}&second`);
   assert.deepEqual(equationNumbering(source),expected(2,1));
@@ -132,7 +143,7 @@ test('actual MathJax counters and labels match numbered cases before the next eq
   }
   for(const [name,prefix,body] of [
     ['align','',String.raw`a&=b\\c&=d`],['gather','',String.raw`a+b\\c+d`],
-    ['alignat','{1}',String.raw`a&=b\\c&=d`],['flalign','',String.raw`a&=b&&\\c&=d&&`],
+    ['alignat','{1}',String.raw`a&=b\\c&=d`],['xalignat','{1}',String.raw`a&=b\\c&=d`],['flalign','',String.raw`a&=b&&\\c&=d&&`],
     ['eqnarray','',String.raw`a&=&b\\c&=&d`],['multline','',String.raw`a+b\\c+d`]
   ]){
     const source='\\begin{'+name+'}'+prefix+body+'\\end{'+name+'}';runtime.texReset(0);
@@ -140,6 +151,14 @@ test('actual MathJax counters and labels match numbered cases before the next eq
     assert.deepEqual(tags(String.raw`\begin{equation}z=0\end{equation}`),[String(equationNumbering(source).count+1)]);
     const star='\\begin{'+name+'*}'+prefix+body+'\\end{'+name+'*}';runtime.texReset(0);
     assert.deepEqual(tags(star),[],name+'*');assert.deepEqual(tags(String.raw`\begin{equation}z=0\end{equation}`),['1']);
+  }
+  for(const source of [
+    String.raw`\begin{spreadlines}{1em}\begin{align}a&=b\\c&=d\end{align}\end{spreadlines}`,
+    String.raw`\begin{spreadlines}{1em}\begin{gather*}a+b\\c+d\end{gather*}\end{spreadlines}`,
+    String.raw`\begin{xxalignat}{1}a&=b\\c&=d\end{xxalignat}`,
+  ]){
+    runtime.texReset(0);assert.equal(tags(source).length,equationNumbering(source).count,source);
+    assert.deepEqual(tags(String.raw`\begin{equation}z=0\end{equation}`),[String(equationNumbering(source).count+1)]);
   }
 });
 

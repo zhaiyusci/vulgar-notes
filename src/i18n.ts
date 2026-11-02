@@ -16,7 +16,7 @@ export function t(source:string,values?:Record<string,string|number>):string {
 }
 export function mathLabel(entry:{label:string;command?:string;type:string}):string{
   const translated=t(entry.label);
-  return locale!=='en'||translated!==entry.label?translated:entry.command||entry.type;
+  return locale!=='en'||translated!==entry.label||Object.hasOwn(messages,entry.label)?translated:entry.command||entry.type;
 }
 /** Region names in older trees stay untouched; only their UI presentation is localized. */
 export function mathRegionLabel(label:string):string {

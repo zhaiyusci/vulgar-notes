@@ -7,7 +7,7 @@ const {EditorModel,catalog,symbols}=loaded.exports;
 const blank=()=>{const model=new EditorModel();model.root.items=[];model.index();model.setCursor(model.root.id,0);return model;};
 const candidates=query=>{const model=blank();model.insert('\\'+query);return model.commandCandidates();};
 const byType=type=>catalog.find(definition=>definition.type===type);
-const fixedNames='sin cos tan cot sec csc sinh cosh tanh coth arcsin arccos arctan asin acos atan arccsc acsc arcsec asec arccot acot csch sech exp ln log lg arg deg det dim gcd hom ker Pr tr Tr rank erf'.split(' ');
+const fixedNames='sin cos tan cot sec csc sinh cosh tanh coth arcsin arccos arctan asin acos atan arccsc acsc arcsec asec arccot acot csch sech exp ln log lg arg deg det dim gcd hom ker Pr tr Tr rank erf pv PV Res'.split(' ');
 
 test('ordinary named functions have independent native definitions and no operand region',()=>{
   for(const name of fixedNames){

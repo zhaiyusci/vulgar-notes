@@ -9,6 +9,7 @@ import {textSymbolValue} from './text-symbols';
 import {parseTexLayoutStructure} from './tex-layout-structures';
 import {parseTexCatalogStructure} from './tex-structure-grammar';
 import {parseTexSideSet} from './tex-sideset';
+import {isStandaloneMathEnvironmentName} from './tex-display-environment';
 
 interface Argument {body:string;next:number;braced:boolean}
 interface Term {items:MathItem[];next:number;scriptable:boolean;operator?:MathNode;prefix?:MathItem[]}
@@ -112,7 +113,7 @@ export function convertMath(source:string):EditorModel {
   // atom-only fast path must not reinterpret optional function exponents.
   const hasFunction=[...source.matchAll(/\\([A-Za-z]+)/g)].some(match=>!!mathFunction(match[1]));
   const strict=hasFunction?null:importMath(source);if(strict)return strict;
-  const model=new EditorModel();let serial=200000000,depth=0;
+  const model=new EditorModel();let serial=200000000,depth=0,invalidDisplayNesting=false;
   const region=(items:MathItem[],slot?:ScriptSlot):Region=>({id:'r'+ ++serial,label:'Content',items,...(slot?{slot}:{})});
   const node=(type:string,regions:Region[],dimensions?:{rows:number;columns:number}):MathNode=>({id:'n'+ ++serial,type,regions,...dimensions});
   const opaque=(value:string):MathNode=>node('source-tex',[region(Array.from(value))]);
@@ -164,6 +165,11 @@ export function convertMath(source:string):EditorModel {
     const items:MathItem[]=[];let i=0;
     const term=(start:number):Term=>{
       const ch=String.fromCodePoint(text.codePointAt(start)!);
+      if(ch==='\\'&&control(text,start)?.name==='begin'){
+        const bounds=scanTexEnvironment(text,start);
+        if(bounds&&isStandaloneMathEnvironmentName(bounds.name)&&
+          (depth!==1||text.slice(0,start).trim()||text.slice(bounds.next).trim()))invalidDisplayNesting=true;
+      }
       if(ch==='\\'||ch==='{'){
         const sideSet=parseTexSideSet(text,start,parseRegion,node);
         if(sideSet)return {items:[sideSet.node],next:sideSet.next,scriptable:false};
@@ -256,10 +262,12 @@ export function convertMath(source:string):EditorModel {
         const placement=/^\\(limits|nolimits)(?![A-Za-z])/.exec(text.slice(at));
         if(placement){const variant=catalog.find(entry=>entry.operator&&entry.operatorCommand===name&&entry.operatorPlacement==='\\'+placement[1]);if(variant){definition=variant;at+=placement[0].length;}else return {items:[opaque(text.slice(start,at+placement[0].length))],next:at+placement[0].length,scriptable:false};}
         const operator=node(definition.type,exponent?[exponent]:[]);operator.operatorLayout=true;
-        if(functionGrammar?.automaticParentheses&&text[at]==='('){
-          const group=balanced(text,at,'(',')');
+        const opening=text[at],closing=({'(':')','[':']','{':'}'} as Record<string,string>)[opening];
+        if(closing&&(opening==='('?functionGrammar?.automaticParentheses:functionGrammar?.automaticDelimiters?.some(delimiter=>delimiter===opening))){
+          const group=balanced(text,at,opening,closing);
           if(!group)return {items:[opaque(text.slice(start))],next:text.length,scriptable:false};
-          return {prefix:[operator],items:[node('physics-auto-parens',[parseRegion(group.body)!])],next:group.next,scriptable:true};
+          const type=opening==='('?'parens':opening==='['?'brackets':'braces';
+          return {prefix:[operator],items:[node('physics-auto-'+type,[parseRegion(group.body)!])],next:group.next,scriptable:true};
         }
         return {items:[operator],next:at,scriptable:true,operator};
       }
@@ -313,7 +321,8 @@ export function convertMath(source:string):EditorModel {
     return items;
   };
   try{
-    model.root=parseRegion(source)!;model.index();model.setCursor(model.root.id,0);
+    const parsed=parseRegion(source)!;
+    model.root=invalidDisplayNesting?region([opaque(source)]):parsed;model.index();model.setCursor(model.root.id,0);
     // This remains a persisted-data boundary even when a helper is extended.
     model.restore(model.snapshot());return model;
   }catch{

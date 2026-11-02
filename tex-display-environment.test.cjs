@@ -34,6 +34,17 @@ test('prefixes, tails, multiple environments, malformed nesting and verbatim syn
   for(const source of ['x+'+environment,environment+'+x',environment+environment,'{'+environment+'}','\\('+environment+'\\)','$'+environment+'$',String.raw`\begin{equation}{x\end{equation}`,String.raw`\begin{align}\begin{aligned}x\end{align}\end{aligned}`,String.raw`\begin{equation}x\end{align}`,String.raw`\begin{equation}\verb|\end{equation}|\end{equation}`,String.raw`\begin{equation}\catcode\%=12 x\end{equation}`])assert.equal(api.standaloneMathEnvironment(source),false,source);
 });
 
+test('spreadlines inherits a complete enclosed display without promoting ordinary inner structures',()=>{
+  for(const [name,numbered] of [['align',true],['gather*',false],['numcases',true]]){
+    const source=`\\begin{spreadlines}{2pt}\n\\begin{${name}}a\\end{${name}}\n\\end{spreadlines}`;
+    const bounds=api.standaloneMathEnvironmentBounds(source);assert.ok(bounds,source);assert.equal(bounds.name,'spreadlines');assert.equal(bounds.numbered,numbered);
+    assert.equal(source.slice(bounds.bodyEnd,bounds.end),String.raw`\end{spreadlines}`);
+  }
+  for(const body of [String.raw`x`,String.raw`\begin{aligned}a&b\end{aligned}`,String.raw`x+\begin{align}a&b\end{align}`,String.raw`\begin{align}a&b\end{align}\begin{align}c&d\end{align}`])
+    assert.equal(api.standaloneMathEnvironment(String.raw`\begin{spreadlines}{2pt}`+body+String.raw`\end{spreadlines}`),false,body);
+  assert.equal(api.standaloneMathEnvironment(String.raw`\begin{spreadlines}\begin{align}a&b\end{align}\end{spreadlines}`),false);
+});
+
 const casesSource=name=>String.raw`\begin{numcases}{`+name+String.raw`(x)=}
 x & x>0\\
 -x & x\le0

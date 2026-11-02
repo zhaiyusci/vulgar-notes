@@ -18,6 +18,7 @@ const standalone=new Set([
   'gather','gather*','multline','multline*','eqnarray','eqnarray*',
   'xalignat','xalignat*','xxalignat','displaymath','numcases','subnumcases','empheq',
 ]);
+export function isStandaloneMathEnvironmentName(name:string):boolean {return standalone.has(name);}
 interface Control {name:string;next:number}
 function control(source:string,start:number):Control|null {
   if(source[start]!=='\\'||start+1>=source.length)return null;
@@ -36,6 +37,17 @@ function skipSpace(source:string,start:number):number {
     else break;
   }
   return start;
+}
+function groupEnd(source:string,start:number):number|null {
+  if(source[start]!=='{')return null;
+  let depth=1;
+  for(let at=start+1;at<source.length;at++){
+    if(source[at]==='%'){at=commentEnd(source,at)-1;continue;}
+    if(source[at]==='\\'){const token=control(source,at);if(!token)return null;at=token.next-1;continue;}
+    if(source[at]==='{')depth++;
+    else if(source[at]==='}'&&--depth===0)return at+1;
+  }
+  return null;
 }
 function tag(source:string,start:number):{kind:'begin'|'end';name:string;next:number}|null {
   const command=control(source,start);
@@ -60,9 +72,10 @@ function tag(source:string,start:number):{kind:'begin'|'end';name:string;next:nu
  * This deliberately has no model dependency: rendering and export can decide
  * whether a math delimiter would create an illegal nested display environment.
  */
-export function standaloneMathEnvironmentBounds(source:string):StandaloneMathEnvironmentBounds|null {
+export function standaloneMathEnvironmentBounds(source:string,depth=0):StandaloneMathEnvironmentBounds|null {
+  if(depth>100)return null;
   const start=skipSpace(source,0),opening=tag(source,start);
-  if(!opening||opening.kind!=='begin'||!standalone.has(opening.name))return null;
+  if(!opening||opening.kind!=='begin'||!standalone.has(opening.name)&&opening.name!=='spreadlines')return null;
   const stack=[{name:opening.name,braceDepth:0}];let at=opening.next,braceDepth=0;
   while(at<source.length){
     const character=source[at];
@@ -79,8 +92,16 @@ export function standaloneMathEnvironmentBounds(source:string):StandaloneMathEnv
           if(!current||current.name!==environment.name||current.braceDepth!==braceDepth)return null;
           if(!stack.length){
             if(skipSpace(source,environment.next)!==source.length)return null;
+            let numbered=opening.name==='empheq'?undefined:!opening.name.endsWith('*')&&!['displaymath','xxalignat'].includes(opening.name);
+            if(opening.name==='spreadlines'){
+              const dimensionEnd=groupEnd(source,skipSpace(source,opening.next));
+              if(dimensionEnd===null||dimensionEnd>at)return null;
+              const inner=standaloneMathEnvironmentBounds(source.slice(dimensionEnd,at),depth+1);
+              if(!inner)return null;
+              numbered=inner.numbered;
+            }
             return {name:opening.name,start,bodyStart:opening.next,bodyEnd:at,end:environment.next,
-              numbered:opening.name==='empheq'?undefined:!opening.name.endsWith('*')&&!['displaymath','xxalignat'].includes(opening.name)};
+              numbered};
           }
         }
         at=environment.next;continue;

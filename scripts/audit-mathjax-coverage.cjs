@@ -74,13 +74,13 @@ async function audit(){
   }
   const finish=entries=>[...entries.values()].sort((a,b)=>compare(a.name,b.name)).map(entry=>({...entry,packages:sorted(entry.definitions.map(def=>def.package)),configured:entry.definitions.some(def=>def.configured),definitions:entry.definitions.sort((a,b)=>compare(a.package+':'+a.map,b.package+':'+b.map))}));
   const commandList=finish(commands),environmentList=finish(environments);
-  const source=buildSync({stdin:{contents:"export {EditorModel,catalog,symbols} from './src/editor-model'; export {importMath} from './src/tex-import';export {convertMath} from './src/tex-convert';",resolveDir:root,loader:'ts'},bundle:true,platform:'node',format:'cjs',write:false}).outputFiles[0].text;
+  const source=buildSync({stdin:{contents:"export {EditorModel,catalog,symbols} from './src/editor-model'; export {importMath} from './src/tex-import';export {convertMath} from './src/tex-convert';export {isSourceOnlyMathCommand} from './src/math-input-policy';",resolveDir:root,loader:'ts'},bundle:true,platform:'node',format:'cjs',write:false}).outputFiles[0].text;
   const exports={exports:{}};vm.runInNewContext(source,{module:exports,exports:exports.exports,console,crypto:globalThis.crypto,URL,TextEncoder,TextDecoder});
   const definitions=[...exports.exports.catalog,...exports.exports.symbols];
   const completionModel=new exports.exports.EditorModel();completionModel.root.items=['\\'];completionModel.index();completionModel.setCursor(completionModel.root.id,1);
   const candidates=completionModel.commandCandidates(),candidateNames=new Set(candidates.map(candidate=>candidate.name));
   const candidateMissing=commandList.filter(command=>command.configured&&/^[A-Za-z]+$/.test(command.name)&&!candidateNames.has(command.name)).map(command=>command.name);
-  const intentionalCandidateOmissions=candidateMissing.filter(name=>commandList.find(command=>command.name===name)?.packages.includes('bboldx')&&(/^bfbb/.test(name)||['mathbfbb','imathbfbb','jmathbfbb'].includes(name)));
+  const intentionalCandidateOmissions=candidateMissing.filter(name=>exports.exports.isSourceOnlyMathCommand(name)||commandList.find(command=>command.name===name)?.packages.includes('bboldx')&&(/^bfbb/.test(name)||['mathbfbb','imathbfbb','jmathbfbb'].includes(name)));
   const shape=model=>{let raw=0,native=0;const visit=region=>{for(const item of region.items){if(typeof item==='string'){native++;continue;}if(item.type==='source-tex'){raw++;continue;}native++;item.regions.forEach(visit);}};visit(model.root);return raw?native?'mixed':'source':'native';};
   const symbolProbes=commandList.filter(command=>/^[A-Za-z]+$/.test(command.name)&&command.definitions.some(def=>def.configured&&def.context==='math'&&def.syntax.kind==='symbol')).map(command=>{
     const sample='\\'+command.name;return {name:command.name,sample,strictNative:!!exports.exports.importMath(sample),conversion:shape(exports.exports.convertMath(sample))};
