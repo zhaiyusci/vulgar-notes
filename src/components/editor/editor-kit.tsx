@@ -34,6 +34,7 @@ import { MathKit } from './plugins/math-kit';
 import { ReferenceKit } from './plugins/reference-kit';
 import { MediaKit } from './plugins/media-kit';
 import { MentionKit } from './plugins/mention-kit';
+import { NavigationKit } from './plugins/navigation-kit';
 import { SuggestionKit } from './plugins/suggestion-kit';
 import { TableKit } from './plugins/table-kit';
 import { FloatKit } from './plugins/float-kit';
@@ -79,6 +80,7 @@ export const EditorKit = [
   ...SuggestionKit,
 
   // Editing
+  ...NavigationKit,
   ...CursorOverlayKit,
   ...DndKit,
   ...EmojiKit,

@@ -73,11 +73,34 @@ type BuildBlockDiscussionIndexOptions = {
 const discussionIndexCache = new WeakMap<
   PlateEditor,
   {
+    children: PlateEditor['children'];
     discussions: TDiscussion[];
     index: BlockDiscussionIndex;
-    version: number;
   }
 >();
+
+const discussionMarksCache = new WeakMap<object, boolean>();
+
+/** Slate replaces edited nodes and ancestors, so unchanged subtrees stay cached. */
+export const hasBlockDiscussionMarks = (
+  node: TCommentText | TElement | TSuggestionText
+): boolean => {
+  const cached = discussionMarksCache.get(node);
+  if (cached !== undefined) return cached;
+
+  const marked = Object.keys(node).some(
+    (key) =>
+      key === KEYS.comment ||
+      key.startsWith(`${KEYS.comment}_`) ||
+      key === `${KEYS.comment}Transient` ||
+      key === KEYS.suggestion ||
+      key.startsWith(`${KEYS.suggestion}_`) ||
+      key === `${KEYS.suggestion}Transient`
+  ) || (ElementApi.isElement(node) && node.children.some(hasBlockDiscussionMarks));
+
+  discussionMarksCache.set(node, marked);
+  return marked;
+};
 
 const TYPE_TEXT_MAP: Record<string, (node?: TElement) => string> = {
   [KEYS.audio]: () => 'Audio',
@@ -453,14 +476,13 @@ export const buildBlockDiscussionIndex = ({
 
 const getDiscussionIndex = (
   editor: PlateEditor,
-  discussions: TDiscussion[],
-  version: number
+  discussions: TDiscussion[]
 ) => {
   const cached = discussionIndexCache.get(editor);
 
   if (
     cached &&
-    cached.version === version &&
+    cached.children === editor.children &&
     cached.discussions === discussions
   ) {
     return cached.index;
@@ -480,7 +502,11 @@ const getDiscussionIndex = (
       ElementApi.isElement(node) && suggestionApi.isBlockSuggestion(node),
   });
 
-  discussionIndexCache.set(editor, { discussions, index, version });
+  discussionIndexCache.set(editor, {
+    children: editor.children,
+    discussions,
+    index,
+  });
 
   return index;
 };
@@ -491,7 +517,7 @@ export const useBlockDiscussionItems = (blockPath: Path) => {
   const version = useEditorVersion() ?? 0;
 
   return React.useMemo(() => {
-    const index = getDiscussionIndex(editor, discussions, version);
+    const index = getDiscussionIndex(editor, discussions);
     const blockKey = getBlockKey(blockPath);
 
     return {

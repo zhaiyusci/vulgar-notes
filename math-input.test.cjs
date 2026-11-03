@@ -101,7 +101,7 @@ test('math rendering requests only changed formulas in a multi-formula document'
  });
  const draw=async()=>{
   assert.equal(frames.length,1,'updates within a frame should share one render');frames.shift()();
-  for(let turn=0;turn<150&&window.document.getElementById('renderStage');turn++)await Promise.resolve();
+  await hooks.renderForExport();
   assert.equal(window.document.getElementById('renderStage'),null,'the asynchronous render must complete');
   assert.equal(window.document.getElementById('error').textContent,'');
  };
@@ -121,6 +121,19 @@ test('math rendering requests only changed formulas in a multi-formula document'
  assert.equal(requests.length,25,'switching formulas redraws only the old and new active formulas');
  for(let index=2;index<entries.length;index++)assert.equal(entries[index].element.firstChild,untouched[index]);
  assert.equal(exports,0,'rendering does not generate document export formats');
+ hooks.leave();await draw();
+ const getStyle=window.getComputedStyle.bind(window);let proseLayoutReads=0;
+ window.getComputedStyle=element=>{if(element.id==='textFlow')proseLayoutReads++;return getStyle(element);};
+ hooks.change();await draw();
+ assert.equal(proseLayoutReads,0,'unchanged formulas must not create a staging element or force a font-size layout read');
+ const retained=entries[0];for(const entry of entries)entry.element.remove();entries=[];
+ const previousRequests=requests.length;
+ for(let index=0;index<3;index++){hooks.change();await draw();}
+ assert.equal(proseLayoutReads,0,'prose-only updates must not create a math stage or force a document layout read');
+ assert.equal(requests.length,previousRequests);
+ entries=[retained];window.document.getElementById('textFlow').append(retained.element);
+ retained.model.insert('z');hooks.change();await draw();
+ assert.equal(requests.length,previousRequests+1,'inserting math after prose-only edits restores normal rendering');
  await window.happyDOM.abort();
 });
 

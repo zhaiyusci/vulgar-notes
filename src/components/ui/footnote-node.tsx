@@ -12,7 +12,6 @@ import {
   PlateElement,
   useEditorSelector,
   useFocused,
-  useNavigationHighlight,
   usePath,
   useSelected,
 } from 'platejs/react';
@@ -45,27 +44,6 @@ import {BibtexBibliography} from '@/components/ui/bibtex-bibliography';
 import {t} from '@/i18n';
 
 const NUMERIC_FOOTNOTE_QUERY = /^\d+$/;
-
-const getNavigationAttributes = (
-  attributes: PlateElementProps<TFootnoteElement>['attributes'],
-  navigationHighlight: ReturnType<typeof useNavigationHighlight>
-) => ({
-  ...attributes,
-  'data-nav-cycle': navigationHighlight
-    ? String(navigationHighlight.cycle)
-    : undefined,
-  'data-nav-highlight': navigationHighlight?.variant,
-  'data-nav-pulse': navigationHighlight
-    ? String(navigationHighlight.pulse)
-    : undefined,
-  'data-nav-target': navigationHighlight ? 'true' : undefined,
-  style: {
-    ...(attributes.style as React.CSSProperties | undefined),
-    ['--plate-nav-feedback-duration' as const]: navigationHighlight
-      ? `${navigationHighlight.duration}ms`
-      : undefined,
-  } as React.CSSProperties,
-});
 
 const getFootnotePreviewLabel = (text?: string) => {
   const normalized = text?.replace(/\s+/g, ' ').trim();
@@ -111,7 +89,6 @@ export function FootnoteReferenceElement(
   const [hoverOpen, setHoverOpen] = React.useState(false);
   const focused = useFocused();
   const path = usePath();
-  const navigationHighlight = useNavigationHighlight(path);
   const fallbackResolved =
     identifier && footnoteApi ? footnoteApi.isResolved({ identifier }) : false;
   const fallbackPreviewText =
@@ -151,7 +128,7 @@ export function FootnoteReferenceElement(
       as="span"
       className="endnote-reference tex-reference group/footnote-ref"
       attributes={{
-        ...getNavigationAttributes(props.attributes, navigationHighlight),
+        ...props.attributes,
         contentEditable: false,
         draggable: true,
         'data-endnote-selected':isReferenceSelected?'true':'false',
@@ -183,7 +160,7 @@ export function FootnoteReferenceElement(
           <button
             type="button"
             className={cn(
-              'tex-reference-content group-data-[nav-target=true]/footnote-ref:bg-(--color-highlight)',
+              'tex-reference-content',
               number?'text-blue-700':'text-red-600 underline decoration-wavy'
             )}
             aria-description={number?t('Endnote'):t('Unresolved or duplicate endnote')}
@@ -247,7 +224,6 @@ export function FootnoteDefinitionElement(
       referenceItems,
     };
   }, [identifier, path]);
-  const navigationHighlight = useNavigationHighlight(definitionState?.path);
   const isDuplicateDefinition = !!definitionState?.isDuplicateDefinition;
   const duplicateReplacementIdentifier =
     definitionState?.duplicateReplacementIdentifier;
@@ -259,13 +235,9 @@ export function FootnoteDefinitionElement(
     <PlateElement
       {...props}
       className={cn(
-        'mb-3 data-[nav-target=true]:rounded-md data-[nav-target=true]:bg-(--color-highlight)',
+        'mb-3',
         isDuplicateDefinition &&
           'rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-2'
-      )}
-      attributes={getNavigationAttributes(
-        props.attributes,
-        navigationHighlight
       )}
     >
       <BibtexBibliography beforeNode={element} />

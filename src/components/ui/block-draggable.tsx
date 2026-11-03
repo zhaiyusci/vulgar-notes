@@ -3,7 +3,7 @@
 import * as React from 'react';
 import {t} from '@/i18n';
 
-import { DndPlugin, useDraggable, useDropLine } from '@platejs/dnd';
+import { DndPlugin, useDraggable } from '@platejs/dnd';
 import { expandListItemsWithChildren } from '@platejs/list';
 import { BlockSelectionPlugin } from '@platejs/selection/react';
 import { GripVertical } from 'lucide-react';
@@ -13,9 +13,8 @@ import {
   type PlateElementProps,
   type RenderNodeWrapper,
   MemoizedChildren,
-  useEditorRef,
-  useElement,
-  usePluginOption,
+  useEditorPluginOption,
+  useEditorPluginOptions,
 } from 'platejs/react';
 import { useSelected } from 'platejs/react';
 
@@ -26,6 +25,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useNarrowViewport } from '@/lib/use-narrow-viewport';
 import { startParagraphDrag } from './paragraph-pointer-drag';
 
 const UNDRAGGABLE_KEYS = [KEYS.column, KEYS.tr, KEYS.td];
@@ -135,7 +135,7 @@ function Draggable(props: PlateElementProps) {
       }}
     >
       {!isInTable && (
-        <Gutter>
+        <Gutter editor={editor} element={element}>
           <div
             className={cn(
               'slate-blockToolbarWrapper',
@@ -173,6 +173,8 @@ function Draggable(props: PlateElementProps) {
                 data-plate-prevent-deselect
               >
                 <DragHandle
+                  editor={editor}
+                  element={element}
                   isDragging={isDragging}
                   previewRef={previewRef}
                   resetPreview={resetPreview}
@@ -202,24 +204,41 @@ function Draggable(props: PlateElementProps) {
         }
       >
         <MemoizedChildren>{children}</MemoizedChildren>
-        <DropLine />
+        <DropLine editor={editor} element={element} />
       </div>
     </div>
   );
 }
 
-function Gutter({
+type BlockChromeProps = {editor:PlateEditor;element:TElement};
+type GutterProps = React.ComponentProps<'div'> & BlockChromeProps;
+
+function Gutter(props:GutterProps) {
+  const narrow=useNarrowViewport();
+  // Desktop gutters are already hidden by sm:opacity-0 regardless of selection.
+  // Keep the selected-block affordance below 40rem without subscribing
+  // every desktop paragraph to Slate's global selection updates.
+  return narrow?<SelectedGutter {...props} />:<GutterView {...props} selected={false} />;
+}
+
+function SelectedGutter(props:GutterProps) {
+  const selected=useSelected();
+  return <GutterView {...props} selected={selected} />;
+}
+
+function GutterView({
   children,
   className,
+  editor,
+  element,
+  selected,
   ...props
-}: React.ComponentProps<'div'>) {
-  const editor = useEditorRef();
-  const element = useElement();
-  const isSelectionAreaVisible = usePluginOption(
+}: GutterProps & {selected:boolean}) {
+  const isSelectionAreaVisible = useEditorPluginOption(
+    editor,
     BlockSelectionPlugin,
     'isSelectionAreaVisible'
   );
-  const selected = useSelected();
 
   return (
     <div
@@ -242,19 +261,18 @@ function Gutter({
 }
 
 const DragHandle = React.memo(function DragHandle({
+  editor,
+  element,
   isDragging,
   previewRef,
   resetPreview,
   setPreviewTop,
-}: {
+}: BlockChromeProps & {
   isDragging: boolean;
   previewRef: React.RefObject<HTMLDivElement | null>;
   resetPreview: () => void;
   setPreviewTop: (top: number) => void;
 }) {
-  const editor = useEditorRef();
-  const element = useElement();
-
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -355,9 +373,14 @@ const DragHandle = React.memo(function DragHandle({
 
 const DropLine = React.memo(function DropLine({
   className,
+  editor,
+  element,
   ...props
-}: React.ComponentProps<'div'>) {
-  const { dropLine } = useDropLine();
+}: React.ComponentProps<'div'> & BlockChromeProps) {
+  const dropLine = useEditorPluginOptions(editor,DndPlugin,({dropTarget})=>{
+    if(!dropTarget||dropTarget.id!==element.id)return '';
+    return dropTarget.line==='top'||dropTarget.line==='bottom'?dropTarget.line:'';
+  });
 
   if (!dropLine) return null;
 

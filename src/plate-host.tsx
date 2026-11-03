@@ -8,7 +8,7 @@ import {createPortal,flushSync} from 'react-dom';
 import {createPlateEditor,Plate,type PlateEditor} from 'platejs/react';
 import {type TElement,type Value,NodeApi,assignLegacyTransforms,KEYS} from 'platejs';
 import {MarkdownPlugin} from '@platejs/markdown';
-import {Range,Path} from 'slate';
+import {Range,Path,type Operation} from 'slate';
 import {EditorKit} from './components/editor/editor-kit';
 import {Editor,EditorContainer} from './components/ui/editor';
 import {BibtexBibliography} from './components/ui/bibtex-bibliography';
@@ -38,6 +38,23 @@ import {CollaborationCursors} from './components/ui/collaboration-cursors';
 import {rememberCollaborationInvite,forgetCollaborationInvite} from './collaboration-navigation';
 import type {DocumentCollaborationSession} from './collaboration-session';
 import type {CollaborativeMathStore,MathCursorHandle} from './collaboration-math';
+import {formulaLocations} from './formula-locations';
+
+/** Empty/manual notifications and every non-text mutation take the full path. */
+function documentChangeKind(operations:readonly Operation[]):'text'|'selection'|'other'{
+  if(!operations.length)return 'other';
+  let text=false;
+  for(const operation of operations){
+    if(operation.type==='insert_text'||operation.type==='remove_text')text=true;
+    else if(operation.type!=='set_selection')return 'other';
+  }
+  return text?'text':'selection';
+}
+
+function hasEmptyTrailingParagraph(value:Value):boolean {
+  const last=value.at(-1);
+  return last?.type==='p'&&last.children.length===1&&last.children[0].text==='';
+}
 
 function CollaborationPlate({host,children,onChange}:{host:PlateMathHost;children:React.ReactNode;onChange:()=>void}){
   const state=React.useSyncExternalStore(host.subscribeCollaboration,host.getCollaborationState,host.getCollaborationState);
@@ -206,6 +223,7 @@ export class PlateMathHost implements DocumentHost {
   private serializedCache:{value:Value;libraries:readonly BibLibrary[];style:BibliographyStyle;envelope:ReturnType<PlateMathHost['envelope']>;compact:string;pretty?:string}|undefined;
   private snapshotRoots=new Map<string,string>();
   private checkedFormulaSources=new Set<string>();
+  private emptyBibliographyTail=false;
   private formulaMigrations=new Map<string,{before?:string;source:string;after:string;id:string;numbered:boolean;afterSource?:string;display?:boolean}[]>();
   private activeFormula:HTMLElement|undefined;
   private pendingActivation=new Set<string>();
@@ -270,19 +288,30 @@ export class PlateMathHost implements DocumentHost {
     this.replaceBibliography(restored.libraries);
   }
   private envelope(){
-    const bibliographyLibraries=citedBibLibraries(this.bibliographyLibraries,citedReferenceKeys(this.editor.children));
+    const bibliographyLibraries=this.bibliographyLibraries.length?citedBibLibraries(this.bibliographyLibraries,citedReferenceKeys(this.editor.children)):[];
     return {version:1,value:this.editor.children,...(bibliographyLibraries.length?{bibliographyLibraries}:{}),...(this.bibliographyStyle!=='simple'?{bibliographyStyle:this.bibliographyStyle}:{})};
   }
   get readOnly(){return this.collaborationState.active?!this.collaborationState.writable:this.mount.querySelector('[data-slate-editor]')?.getAttribute('contenteditable')==='false';}
   constructor(readonly mount:HTMLElement,initial:EditorModel,private hooks:MathHostHooks){
     try{const copies=JSON.parse(draftStorage().getItem(documentStorageKey+'-collaboration-recovery')??'[]');if(Array.isArray(copies))this.collaborationRecoveries=copies.filter(copy=>Number.isFinite(copy?.createdAt)&&typeof copy?.source==='string');}catch{/* An unreadable recovery must not prevent opening the document. */}
     const restored=restoreDocumentEnvelope(initial);this.bibliographyStyle=restored.bibliographyStyle??'simple';this.restoreBibliography(restored.bibliographyLibraries,restored.value);
-    this.editor=createPlateEditor({plugins:EditorKit,value:restored.value});
+    this.editor=createPlateEditor({plugins:EditorKit,value:restored.value,navigationFeedback:false,chunking:{chunkSize:32}});
     this.ensureFormulas();
     const originalNormalize=this.editor.tf.normalizeNode.bind(this.editor);
     this.editor.tf.normalizeNode=entry=>{
       const [node,path]=entry;
-      if(path.length===0&&this.groupBibliography())return;
+      if(path.length===0){
+        const emptyTail=hasEmptyTrailingParagraph(this.editor.children);
+        const tailChanged=emptyTail!==this.emptyBibliographyTail;
+        this.emptyBibliographyTail=emptyTail;
+        // Typing into the trailing empty paragraph makes it ordinary prose;
+        // references must move after it. The normalized reference group, if
+        // present, is immediately before that paragraph; no full scan is needed
+        // for the first keystroke in a document without editable references.
+        const beforeTail=this.editor.children.at(-2);
+        const referenceTail=beforeTail?.type==='bibliography_entry'||beforeTail?.type===KEYS.footnoteDefinition;
+        if((tailChanged&&referenceTail||documentChangeKind(this.editor.operations)==='other')&&this.groupBibliography())return;
+      }
       if('type' in node&&(isFormula(node)||node.type==='float')){
         const n=node as FormulaNode;
         const duplicate=[...NodeApi.nodes(this.editor)].some(([other,p])=>other!==node&&'type' in other&&(isFormula(other)||other.type==='float')&&other.id===n.id&&Path.compare(p,path)<0);
@@ -416,10 +445,7 @@ export class PlateMathHost implements DocumentHost {
   private groupBibliography():boolean {
     const entries=bibliographyItems(this.editor.children,this.bibliographyLibraries).filter(item=>!item.libraryId);
     if(!entries.length)return false;
-    const trailing=()=>{
-      const last=this.editor.children.at(-1);
-      return last?.type==='p'&&last.children.length===1&&last.children[0].text==='';
-    };
+    const trailing=()=>hasEmptyTrailingParagraph(this.editor.children);
     const start=this.editor.children.length-(trailing()?1:0)-entries.length;
     if(entries.every(({path},index)=>path.length===1&&path[0]===start+index))return false;
     const refs=entries.map(({path})=>this.editor.api.pathRef(path));
@@ -510,21 +536,35 @@ export class PlateMathHost implements DocumentHost {
   }
   private changed(){
     if(!this.initialized||this.syncing||this.collaborationApplying)return;
-    this.ensureFormulas();
-    // Document undo/redo is authoritative before the next math repaint.
-    for(const [raw] of NodeApi.nodes(this.editor)){
-      if(!isFormula(raw))continue;
-      const n=raw as FormulaNode,m=this.models.get(n.id);
-      // Cursor/selection belongs to the live math editor. A prose selection or
-      // repaint must not restore an older cursor from the saved node snapshot.
-      if(m&&n.snapshot&&this.snapshotContent(m.snapshot())!==this.snapshotContent(n.snapshot))m.restore(n.snapshot);
+    const kind=documentChangeKind(this.editor.operations);
+    if(kind==='selection'){
+      this.collaboration?.publishPresence();this.scheduleChange();return;
     }
-    this.collaboration?.publishSettings();this.collaboration?.publishPresence();this.save();this.scheduleChange();
+    if(kind==='other'){
+      this.ensureFormulas();
+      // Document undo/redo is authoritative before the next math repaint.
+      for(const [raw] of NodeApi.nodes(this.editor)){
+        if(!isFormula(raw))continue;
+        const n=raw as FormulaNode,m=this.models.get(n.id);
+        // Cursor/selection belongs to the live math editor. A prose selection or
+        // repaint must not restore an older cursor from the saved node snapshot.
+        if(m&&n.snapshot&&this.snapshotContent(m.snapshot())!==this.snapshotContent(n.snapshot))m.restore(n.snapshot);
+      }
+      this.collaboration?.publishSettings();
+    }
+    this.collaboration?.publishPresence();this.save();this.scheduleChange();
   }
-  entries():FormulaEntry[]{return [...this.mount.querySelectorAll<HTMLElement>('.inline-formula')].flatMap(element=>{
-    const model=this.models.get(element.dataset.mathId!);return model?[{element,model}]:[];
-  });}
-  private locate(element:HTMLElement){return [...NodeApi.nodes(this.editor)].find(([n])=>'type' in n&&isFormula(n)&&n.id===element.dataset.mathId) as [FormulaNode,number[]]|undefined;}
+  entries():FormulaEntry[]{
+    if(!this.models.size)return [];
+    return formulaLocations(this.editor.children).flatMap(([node])=>{
+      const element=this.mounts.get(node.id),model=this.models.get(node.id);
+      return model&&element?.isConnected&&this.mount.contains(element)?[{element,model}]:[];
+    });
+  }
+  private locate(element:HTMLElement):[FormulaNode,number[]]|undefined {
+    const found=formulaLocations(this.editor.children).find(([node])=>node.id===element.dataset.mathId);
+    return found?[found[0],[...found[1]]]:undefined;
+  }
   private save(){
     if(this.recoveryTimer!==undefined||!this.initialized||this.recoverySuspended)return;
     // A bounded batch: continuous typing cannot postpone recovery indefinitely.
@@ -560,19 +600,20 @@ export class PlateMathHost implements DocumentHost {
   }
   private synchronizeMath(includeCursor:boolean):boolean {
     if(this.collaborationState.active&&!this.collaborationState.writable&&!this.collaborationApplying)return false;
-    if(this.syncing||!this.initialized||this.collaborationApplying)return false;this.syncing=true;
+    if(this.syncing||!this.initialized||this.collaborationApplying)return false;
+    if(!this.models.size){this.collaboration?.flush();return false;}
+    this.syncing=true;
     let changed=false;
     try{
-      for(const [raw,path] of NodeApi.nodes(this.editor)){
-        if(!('type' in raw)||!isFormula(raw))continue;
-        const node=raw as FormulaNode,model=this.models.get(node.id);if(!model)continue;
+      for(const [node,path] of formulaLocations(this.editor.children)){
+        const model=this.models.get(node.id);if(!model)continue;
         const snapshot=model.snapshot();if(snapshot===node.snapshot)continue;
         const contentChanged=!node.snapshot||this.snapshotContent(snapshot)!==this.snapshotContent(node.snapshot);
         if(!contentChanged&&!includeCursor)continue;
         if(contentChanged&&this.collaboration?.ready){this.deferredMathCursors.delete(node.id);this.collaboration.publishMath(node.id,node.snapshot??snapshot,snapshot);}
         const texExpression=contentChanged?model.exportLatex():node.texExpression;
         const display=contentChanged&&(!!model.formulaLayout()||!!standaloneMathEnvironmentBounds(texExpression));
-        const set=()=>this.editor.tf.setNodes({snapshot,...(contentChanged?{texExpression,...(display?{display:true}:{})}:{})},{at:path});
+        const set=()=>this.editor.tf.setNodes({snapshot,...(contentChanged?{texExpression,...(display?{display:true}:{})}:{})},{at:[...path]});
         if(!contentChanged)this.editor.tf.withoutSaving(set);
         else this.editor.tf.withNewBatch(set);
         changed=true;

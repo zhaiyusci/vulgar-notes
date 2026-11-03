@@ -151,6 +151,14 @@ MathJax 和编辑器会动态创建样式，因此 `dangerousDisableAssetCspModi
 
 修改源文件后运行 `npm run build`，再刷新页面；服务器无需重启。启动前确保端口没有被另一个预览进程占用。MathJax 仍由 CDN 加载，首次打开需要网络连接。
 
+## Large-document editing
+
+Prose edits reuse immutable subtree indexes for formulas and metadata. Slate renders blocks in chunks of 32. Navigation flash feedback is disabled; ordinary selection, the caret, and reference navigation remain available.
+
+The application build applies an audited selection-offset optimization to React DOM 19.3.1 in memory. It uses native DOM ranges to read the same UTF-16 offsets, retains backward selections, and keeps React's original traversal as a fallback. It does not modify `node_modules` or the input/textarea code paths. See `src/lib/native-selection-offsets.ts`, `scripts/react-dom-selection.cjs`, and `react-selection-offsets.test.cjs`.
+
+The build checks the exact React DOM version and source hash. A dependency upgrade must review and revalidate this optimization before updating those checks; do not silently remove the guard to make a build pass.
+
 ## License and corresponding source
 
 Copyright (c) 2026 Yu Zhai. The original application code is free software under **GNU GPL version 3 or any later version**, without warranty. Third-party components, fonts and CSL resources keep their own notices and licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). This application license does not impose a license on documents users create or on their exported contents.

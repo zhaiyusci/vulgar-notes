@@ -11,7 +11,8 @@ const code=build({
  plugins:[{name:'toolbar-adapters',setup(build){
   const adapters={
    'platejs':`export const KEYS=new Proxy({},{get:(_,key)=>key});export const NodeApi={nodes:function*(editor){function* walk(nodes,parent=[]){for(let i=0;i<nodes.length;i++){const node=nodes[i],path=[...parent,i];yield[node,path];if(node.children)yield*walk(node.children,path);}}yield*walk(editor.children);}};`,
-   'platejs/react':`export const useEditorRef=()=>globalThis.referenceToolbarTest.editor;export const useEditorSelector=selector=>selector(globalThis.referenceToolbarTest.editor);export const useEditorReadOnly=()=>globalThis.referenceToolbarTest.editor.api.isReadOnly();`,
+   'platejs/react':`import {useCallback,useSyncExternalStore} from 'react';export const useEditorRef=()=>globalThis.referenceToolbarTest.editor;export const useEditorSelector=(selector,deps=[])=>{const state=globalThis.referenceToolbarTest;useSyncExternalStore(state.subscribe,state.getVersion);return useCallback(selector,deps)(state.editor);};export const useEditorReadOnly=()=>globalThis.referenceToolbarTest.editor.api.isReadOnly();`,
+   '@/references':`export * from './src/references.ts';import {referenceTargets as original} from './src/references.ts';export const referenceTargets=(...args)=>{globalThis.referenceToolbarTest.referenceQueries++;return original(...args);};`,
    '@/plate-math-element':`import{createContext}from'react';export const HostContext=createContext(null);`,
    '@/use-bibliography':`export const useBibliographyLibraries=()=>globalThis.referenceToolbarTest.libraries;export const useBibliographyStyle=()=> 'simple';`,
    '@/i18n':`export const t=value=>value;`,
@@ -57,7 +58,10 @@ test('cross-reference and citation dialog interactions',async t=>{
    {type:'float',kind:'table',id:'table',numbered:true,texLabel:'tab:sample',children:[{type:'float_caption',children:[{text:'A labelled table'}]},{type:'table',children:[{type:'tr',children:[{type:'td',children:[{type:'p',children:[{text:'A'}]}]}]}]}]},
   ],selection:selection?structuredClone(range):null,api:{isReadOnly:()=>readOnly,above:()=>undefined},tf:{}};
   editor.tf={withNewBatch:fn=>{calls.batches++;return fn();},select:point=>{calls.select.push(point);editor.selection=point;},insertNodes:node=>{calls.insert.push(node);editor.children[0].children.push(node);},setNodes:(props,{at})=>{calls.set.push({props,at});let node=editor;for(const index of at)node=node.children[index];Object.assign(node,props);},unsetNodes:(key,{at})=>{let node=editor;for(const index of at)node=node.children[index];delete node[key];},move:()=>{},focus:()=>{calls.focus++;}};
-  const state=globalThis.referenceToolbarTest={editor,libraries:[{id:'library',name:'Library.bib',source:'@book{library,author={Smith, Ann},title={A searchable book},year=2024}'}]};
+  let version=0;const subscribers=new Set();
+  const state=globalThis.referenceToolbarTest={editor,libraries:[{id:'library',name:'Library.bib',source:'@book{library,author={Smith, Ann},title={A searchable book},year=2024}'}],referenceQueries:0,
+   subscribe:listener=>{subscribers.add(listener);return()=>subscribers.delete(listener);},getVersion:()=>version};
+  const notify=()=>flushSync(()=>{version++;for(const subscriber of subscribers)subscriber();});
   const hostValue=host?{prepareTextInsertion:()=>{calls.prepare++;if(fallback&&!editor.selection)editor.selection=structuredClone(range);}}:null;
   const mount=document.createElement('div');document.body.append(mount);const root=createRoot(mount);
   const children=labelToolbar?React.createElement(api.LabelToolbarButton):fixedToolbar?React.createElement(api.FixedToolbarButtons):React.createElement(React.Fragment,null,React.createElement(api.CrossReferenceToolbarButton),React.createElement(api.CitationReferenceEditor));
@@ -65,7 +69,7 @@ test('cross-reference and citation dialog interactions',async t=>{
   const close=()=>{flushSync(()=>root.unmount());mount.remove();};
   const edit=id=>flushSync(()=>document.dispatchEvent(new window.CustomEvent('edit-tex-reference',{detail:id})));
   const editLabel=id=>flushSync(()=>document.dispatchEvent(new window.CustomEvent('edit-tex-label',{detail:id})));
-  return {mount,root,editor,ref,citation,calls,state,close,edit,editLabel};
+  return {mount,root,editor,ref,citation,calls,state,close,edit,editLabel,notify};
  }
 
  await t.test('only cross-references have a standalone trigger while existing citations keep their own editor',async()=>{
@@ -87,6 +91,34 @@ test('cross-reference and citation dialog interactions',async t=>{
   input(h.mount.querySelector('input[type="search"]'),'Legacy Author');
   assert.match(h.mount.querySelector('[role="dialog"]').textContent,/Kept title/);
   assert.doesNotMatch(h.mount.querySelector('[role="dialog"]').textContent,/Not a label or citation target/);
+  h.close();
+ });
+
+ await t.test('closed dialogs do not scan the document and opened dialogs keep current targets',async()=>{
+  const h=setup();await tick();
+  assert.equal(h.state.referenceQueries,0,'mounting two closed dialogs must not query references');
+  for(let i=0;i<3;i++){
+   h.editor.children=[...h.editor.children,{type:'p',children:[{text:'More prose '+i}]}];h.notify();
+  }
+  assert.equal(h.state.referenceQueries,0,'prose changes must not query closed dialogs');
+  const target={type:'h2',texLabel:'sec:new',children:[{text:'Added while closed'}]};
+  h.editor.children=[...h.editor.children,target];h.notify();
+  click(h.mount.querySelector('button[aria-label="Cross-reference"]'));
+  assert.ok(h.state.referenceQueries>0);assert.match(h.mount.querySelector('[role="dialog"]').textContent,/Added while closed/);
+  const beforeUpdate=h.state.referenceQueries;
+  h.editor.children=h.editor.children.map(node=>node===target?{...target,children:[{text:'Updated while open'}]}:node);h.notify();
+  assert.ok(h.state.referenceQueries>beforeUpdate);assert.match(h.mount.querySelector('[role="dialog"]').textContent,/Updated while open/);
+  assert.doesNotMatch(h.mount.querySelector('[role="dialog"]').textContent,/Added while closed/);
+  click(byText(h.mount,'Cancel'));const closedQueries=h.state.referenceQueries;
+  h.editor.children=h.editor.children.filter(node=>node.texLabel!=='sec:new');h.notify();
+  assert.equal(h.state.referenceQueries,closedQueries);
+  click(h.mount.querySelector('button[aria-label="Cross-reference"]'));
+  assert.doesNotMatch(h.mount.querySelector('[role="dialog"]').textContent,/Updated while open/);
+  click(byText(h.mount,'Cancel'));h.edit('citation');
+  assert.match(h.mount.querySelector('[role="dialog"]').textContent,/A searchable book/);
+  h.state.libraries=[{...h.state.libraries[0],source:'@book{library,author={Smith, Ann},title={Refreshed library title},year=2024}'}];h.notify();
+  assert.match(h.mount.querySelector('[role="dialog"]').textContent,/Refreshed library title/);
+  assert.doesNotMatch(h.mount.querySelector('[role="dialog"]').textContent,/A searchable book/);
   h.close();
  });
 

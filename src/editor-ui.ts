@@ -514,19 +514,20 @@ function render():Promise<void> {
   return rendering??=renderCurrent().finally(()=>{rendering=undefined;});
 }
 async function renderCurrent() {
-  const stage = document.createElement('div'); stage.id = 'renderStage'; stage.setAttribute('aria-hidden', 'true');
-  stage.style.fontSize=getComputedStyle(elementById('textFlow',HTMLElement)).fontSize;
-  document.body.append(stage);
+  let stage:HTMLDivElement|undefined;
   try {
     lastRenderFailure=undefined;
     // ES modules can finish loading after MathJax's initial page scan.
     boardTypeset??=MathJax.typesetPromise([...document.querySelectorAll<HTMLElement>('.structure-preview')].filter(el=>!el.querySelector('mjx-container')));
     await boardTypeset;
+    // Prose-only changes do not need a math staging element or its layout read.
+    // The input board still receives its one initial typeset above.
+    if(flow&&!flow.entries().length){error.textContent='';fontHint.textContent='';return;}
     let rendered;
     do {
       rendered = revision;
       await validateChemistry();
-      MathJax.typesetClear([stage]);
+      if(stage)MathJax.typesetClear([stage]);
       const edge = (side:string) => `\\class{math-boundary boundary-${side}}{\\vphantom{Xg}\\kern0.15em}`;
       let equationNumber=0;
       for(const entry of flow?.entries()||[{element:formula,model}]){
@@ -542,6 +543,11 @@ async function renderCurrent() {
         const width=elementById('textFlow',HTMLElement).clientWidth;
         const cacheKey=(label||'')+(display?`${equationNumber}:${width}:`:'')+source;
         if(renderedSources.get(entry.element)===cacheKey)continue;
+        if(!stage){
+          stage=document.createElement('div');stage.id='renderStage';stage.setAttribute('aria-hidden','true');
+          stage.style.fontSize=getComputedStyle(elementById('textFlow',HTMLElement)).fontSize;
+          document.body.append(stage);
+        }
         MathJax.typesetClear([stage]);stage.style.width=display?width+'px':'auto';stage.textContent=source;
         // Let MathJax generate the tag, seeded by this equation's document order.
         // Cursor redraws must not increment numbering; moved equations invalidate the cache.
@@ -554,10 +560,12 @@ async function renderCurrent() {
       }
     } while (rendered !== revision);
     error.textContent = [...chemicalStates].some(([node,state])=>isChemical(node)&&!state.valid)?t('化学语法尚未完整，已保留源码；点击该区域可继续编辑。'):'';
-    preview.querySelectorAll<HTMLElement>('.math-source-region').forEach(element=>{element.title=t('Click to edit this fragment’s LaTeX source');});
+    for(const {element} of flow?.entries()||[{element:formula}]){
+      element.querySelectorAll<HTMLElement>('.math-source-region').forEach(region=>{region.title=t('Click to edit this fragment’s LaTeX source');});
+    }
     annotateFontWarnings(); positionInput();
   } catch (err) { lastRenderFailure=err;error.textContent = t('公式排版失败：') + String(err); }
-  finally { MathJax.typesetClear([stage]); stage.remove(); }
+  finally { if(stage){MathJax.typesetClear([stage]);stage.remove();} }
 }
 const renderedSources=new WeakMap<HTMLElement,string>();
 

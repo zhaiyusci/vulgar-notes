@@ -26,14 +26,23 @@ import {
 } from '@/components/ui/popover';
 import { commentPlugin } from '@/components/editor/plugins/comment-kit';
 import type { TDiscussion } from '@/components/editor/plugins/discussion-kit';
-import { useBlockDiscussionItems } from '@/lib/block-discussion-index';
+import {
+  hasBlockDiscussionMarks,
+  useBlockDiscussionItems,
+} from '@/lib/block-discussion-index';
 import { suggestionPlugin } from '@/components/editor/plugins/suggestion-kit';
 
 import { BlockSuggestionCard, isResolvedSuggestion } from './block-suggestion';
 import { Comment, CommentCreateForm } from './comment';
 
 export const BlockDiscussion: RenderNodeWrapper<AnyPluginConfig> =
-  (_props) => (props) => <BlockCommentContent {...props} />;
+  ({ editor, element }) => {
+    // Plain blocks need no discussion component or editor-wide subscriptions.
+    // Adding a mark replaces the subtree and lets Plate attach this wrapper.
+    if (!hasBlockDiscussionMarks(element)) return;
+    if (editor.api.findPath(element)?.length !== 1) return;
+    return (props) => <BlockCommentContent {...props} />;
+  };
 
 const BlockCommentContent = ({ children, element }: PlateElementProps) => {
   const editor = useEditorRef();

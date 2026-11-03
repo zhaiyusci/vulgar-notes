@@ -16,6 +16,9 @@ export class DocumentContentComparison {
   private expected:unknown;
   private comparisons=new WeakMap<object,CachedComparison>();
   private normalizedValues=new WeakMap<Value,Value>();
+  private metadataSubtrees=new WeakMap<object,boolean>();
+  private metadataNodes:Value=[];
+  private normalizedMetadataNodes:Value=[];
   private snapshots=new Map<string,unknown>();
 
   constructor(savedSource:string){this.reset(savedSource);}
@@ -23,7 +26,8 @@ export class DocumentContentComparison {
   /** A completed Save may describe an older snapshot than the current editor. */
   reset(savedSource:string):void {
     this.expected=JSON.parse(documentContentKey(savedSource));
-    this.comparisons=new WeakMap();this.normalizedValues=new WeakMap();this.snapshots.clear();
+    this.comparisons=new WeakMap();this.normalizedValues=new WeakMap();this.metadataSubtrees=new WeakMap();
+    this.metadataNodes=[];this.normalizedMetadataNodes=[];this.snapshots.clear();
   }
 
   isEqual<T extends Envelope>(envelope:T):boolean {
@@ -32,9 +36,32 @@ export class DocumentContentComparison {
     if(current.metadata!==undefined)value=migrateDocumentMetadata(value,parseDocumentMetadata(current.metadata));
     const normalizedValue=this.normalizedValues.get(value);
     if(normalizedValue)value=normalizedValue;
-    else{const original=value;value=normalizeMetadataLayout(normalizeDocumentTitles(value));this.normalizedValues.set(original,value);}
+    else{const original=value;value=this.normalizeMetadata(value);this.normalizedValues.set(original,value);}
     const normalized:Record<string,unknown>={...current,value};delete normalized.metadata;
     return this.same(this.expected,normalized);
+  }
+
+  private containsMetadata(node:Record<string,unknown>):boolean {
+    const cached=this.metadataSubtrees.get(node);if(cached!==undefined)return cached;
+    const found=node.type==='document_metadata'||node.type==='metadata_entry'||
+      Array.isArray(node.children)&&node.children.some(child=>this.containsMetadata(child));
+    this.metadataSubtrees.set(node,found);return found;
+  }
+
+  /** Ordinary immutable prose cannot affect metadata order or title uniqueness. */
+  private normalizeMetadata(value:Value):Value {
+    const positions:number[]=[],nodes:Value=[];
+    value.forEach((node,index)=>{if(this.containsMetadata(node)){positions.push(index);nodes.push(node);}});
+    if(nodes.length!==this.metadataNodes.length||nodes.some((node,index)=>node!==this.metadataNodes[index])){
+      this.metadataNodes=nodes;
+      this.normalizedMetadataNodes=normalizeMetadataLayout(normalizeDocumentTitles(nodes));
+    }
+    let result=value;
+    this.normalizedMetadataNodes.forEach((node,index)=>{
+      const at=positions[index];
+      if(node!==value[at]){if(result===value)result=[...value];result[at]=node;}
+    });
+    return result;
   }
 
   private snapshotRoot(source:string):unknown {

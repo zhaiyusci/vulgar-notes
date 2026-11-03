@@ -4,7 +4,7 @@ import {NodeApi} from 'platejs';
 import {useEditorRef,useEditorSelector} from 'platejs/react';
 import type {Range} from 'slate';
 import {HostContext} from '@/plate-math-element';
-import {referenceTargets,validReferenceKey,type ReferenceCommand,type ReferenceNode} from '@/references';
+import {referenceTargets,validReferenceKey,type ReferenceCommand,type ReferenceNode,type ReferenceTarget} from '@/references';
 import {validCitationKey} from '@/bibtex';
 import {useBibliographyLibraries} from '@/use-bibliography';
 import {t} from '@/i18n';
@@ -15,6 +15,7 @@ import {BibtexLibrariesButton} from './bibtex-libraries-button';
 
 type ReferenceKind='cross-reference'|'citation';
 type CrossReferenceCommand=Exclude<ReferenceCommand,'cite'>;
+const emptyReferenceTargets:readonly ReferenceTarget[]=Object.freeze([]);
 
 export function CrossReferenceToolbarButton(){return <ReferenceDialog kind="cross-reference" />;}
 /** Existing citations remain editable; new citations are inserted from the library manager. */
@@ -31,7 +32,7 @@ function ReferenceDialog({kind}:{kind:ReferenceKind}){
   const [key,setKey]=useState(''),[error,setError]=useState('');
   const [query,setQuery]=useState('');
   const selection=useRef<Range|null>(null),editing=useRef<string|undefined>(undefined);
-  const targets=useEditorSelector(editor=>referenceTargets(editor.children,libraries),[libraries]);
+  const targets=useEditorSelector(editor=>open?referenceTargets(editor.children,libraries):emptyReferenceTargets,[libraries,open]);
   const start=useCallback((node?:ReferenceNode)=>{
     if(editor.api.isReadOnly())return;
     if(citation&&(!node||typeof node.id!=='string'||!node.id))return;

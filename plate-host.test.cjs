@@ -11,7 +11,7 @@ test('Plate document / independent MathJax mount integration',async t=>{
  const originalFetch=globalThis.fetch;
  globalThis.fetch=(input,options)=>String(input).endsWith('/mathjax-export-config.js')?Promise.resolve(new Response('/* native MathJax export configuration */',{status:200})):originalFetch(input,options);
  t.after(()=>{globalThis.fetch=originalFetch;});
- await build({stdin:{contents:"export {PlateMathHost} from './src/plate-host';export {flushDocumentDraftStore} from './src/document-draft-store';",resolveDir:__dirname,loader:'ts'},bundle:true,platform:'node',format:'cjs',outfile:'.plate-test.cjs',loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'test-kit',setup(b){b.onLoad({filter:/components[\\/]editor[\\/]editor-kit\.tsx$/},()=>({contents:`import {ParagraphPlugin} from 'platejs/react';import {H1Plugin} from '@platejs/basic-nodes/react';import {H1Element} from '../ui/heading-node';import {TrailingBlockPlugin} from 'platejs';import {MathKit} from './plugins/math-kit';import {MarkdownKit} from './plugins/markdown-kit';import {ReferenceKit} from './plugins/reference-kit';import {FootnoteKit} from './plugins/footnote-kit';export const EditorKit=[ParagraphPlugin,H1Plugin.withComponent(H1Element),...MathKit,...ReferenceKit,TrailingBlockPlugin,...MarkdownKit,...FootnoteKit];`,loader:'tsx',resolveDir:require('node:path').resolve('src/components/editor')}))}}]});
+ await build({stdin:{contents:"export {PlateMathHost} from './src/plate-host';export {flushDocumentDraftStore} from './src/document-draft-store';",resolveDir:__dirname,loader:'ts'},bundle:true,platform:'node',format:'cjs',outfile:'.plate-test.cjs',loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'test-kit',setup(b){b.onLoad({filter:/components[\\/]editor[\\/]editor-kit\.tsx$/},()=>({contents:`import {ParagraphPlugin} from 'platejs/react';import {H1Plugin} from '@platejs/basic-nodes/react';import {H1Element} from '../ui/heading-node';import {TrailingBlockPlugin} from 'platejs';import {MathKit} from './plugins/math-kit';import {MarkdownKit} from './plugins/markdown-kit';import {ReferenceKit} from './plugins/reference-kit';import {FootnoteKit} from './plugins/footnote-kit';import {NavigationKit} from './plugins/navigation-kit';export const EditorKit=[...NavigationKit,ParagraphPlugin,H1Plugin.withComponent(H1Element),...MathKit,...ReferenceKit,TrailingBlockPlugin,...MarkdownKit,...FootnoteKit];`,loader:'tsx',resolveDir:require('node:path').resolve('src/components/editor')}))}}]});
  const {PlateMathHost,flushDocumentDraftStore}=require('./.plate-test.cjs');fs.unlinkSync('.plate-test.cjs');
  const tick=()=>new Promise(resolve=>setTimeout(resolve,10));
  // Hold only the host's recovery batch timer. React, Slate and test ticks keep
@@ -535,6 +535,50 @@ test('Plate document / independent MathJax mount integration',async t=>{
   assert.equal(flow.mount.querySelectorAll('[data-bibliography-heading]').length,1);assert.equal(flow.mount.querySelector('.endnote-reference button').textContent,'[1]');
   editor.tf.select({path:[0,2],offset:0});editor.tf.insertText('[');editor.tf.insertText('^');await tick();assert.equal(editor.children[0].children[2].text,'[^');assert.equal(editor.children[0].children.some(node=>node.type==='footnoteInput'),false);flow.destroy();
  });
+ await t.test('typing in the trailing blank paragraph keeps notes last without scanning on subsequent prose edits',async()=>{
+  const {flow,editor}=setupBlank();
+  try{
+   flow.openDocument(JSON.stringify({version:1,value:[
+    {type:'p',id:'body',children:[{text:'See '},{type:'footnoteReference',identifier:'one',children:[{text:''}]},{text:'.'}]},
+    {type:'footnoteDefinition',id:'note',identifier:'one',children:[{type:'p',children:[{text:'Retained note'}]}]},
+    {type:'p',id:'tail',children:[{text:''}]},
+   ]}));await tick();
+   const order=()=>editor.children.map(node=>node.id);
+   const path=id=>[editor.children.findIndex(node=>node.id===id)];
+   const text=id=>editor.api.string(path(id));
+   const noteLast=()=>{
+    const noteIndex=path('note')[0],tail=editor.children.slice(noteIndex+1);
+    assert.ok(noteIndex>=0);assert.equal(tail.length,1);
+    assert.equal(tail[0].type,'p');assert.equal(tail[0].children.length,1);assert.equal(tail[0].children[0].text,'');
+   };
+   const initial=order();let grouped=0;const group=flow.groupBibliography.bind(flow);
+   flow.groupBibliography=()=>{grouped++;return group();};
+   editor.tf.select(editor.api.start(path('tail')));
+   editor.tf.withNewBatch(()=>editor.tf.insertText('A'));await tick();
+   assert.ok(path('tail')[0]<path('note')[0],'new prose belongs before the final notes section');
+   assert.equal(text('tail'),'A');assert.equal(text('note'),'Retained note');noteLast();assert.ok(grouped>0);
+   grouped=0;
+   editor.tf.withNewBatch(()=>editor.tf.insertText('BC'));await tick();
+   assert.equal(text('tail'),'ABC');noteLast();assert.equal(grouped,0,'continued typing uses the prose fast path');
+   editor.tf.undo();await tick();assert.equal(text('tail'),'A');noteLast();assert.equal(grouped,0);
+   editor.tf.undo();await tick();assert.deepEqual(order(),initial);assert.equal(text('tail'),'');noteLast();
+   editor.tf.redo();await tick();assert.equal(text('tail'),'A');noteLast();
+   editor.tf.redo();await tick();assert.equal(text('tail'),'ABC');noteLast();
+   editor.tf.withNewBatch(()=>{editor.tf.select(editor.api.range(path('tail')));editor.tf.insertText('');});await tick();
+   assert.equal(text('tail'),'');assert.equal(text('note'),'Retained note');noteLast();
+   editor.tf.undo();await tick();assert.equal(text('tail'),'ABC');noteLast();
+   editor.tf.redo();await tick();assert.equal(text('tail'),'');noteLast();
+   // Deleting the last character of a document tail updates the empty-tail
+   // boundary too; subsequent text-only undo/redo must not leave stale state.
+   editor.tf.setValue([{type:'p',id:'only-tail',children:[{text:'x'}]}]);await tick();grouped=0;
+   editor.tf.withNewBatch(()=>{editor.tf.select(editor.api.range([0]));editor.tf.insertText('');});await tick();
+   assert.equal(editor.api.string([]),'');
+   editor.tf.undo();await tick();assert.equal(editor.api.string([]),'x');
+   editor.tf.redo();await tick();assert.equal(editor.api.string([]),'');
+   editor.tf.insertText('new');await tick();assert.equal(editor.api.string([]),'new');
+   assert.equal(grouped,0,'empty-tail transitions without references do not scan the document');
+  }finally{flow.destroy();}
+ });
  await t.test('citation undo and redo update embedded snapshots while retaining attached source choices',async()=>{
   const {flow,editor}=setup();flow.setBibliographyLibraries([{id:'papers',name:'Papers.bib',source:'@book{a,title={Title A}}\n@book{b,title={Title B}}'}]);
   editor.tf.select(editor.api.end([]));editor.tf.withNewBatch(()=>editor.tf.insertNodes({type:'tex_reference',command:'cite',keys:['a'],children:[{text:''}]}));await tick();
@@ -715,6 +759,118 @@ test('Plate document / independent MathJax mount integration',async t=>{
    assert.equal(flow.mount.innerHTML,before.dom);assert.equal(flow.serializeDocument(),before.source);
    assert.equal(JSON.stringify(editor.selection),before.selection);assert.equal(flow.hasUnsavedChanges(),false);
   }finally{flow.destroy();}
+ });
+ await t.test('plain text changes skip formula and bibliography work while selections keep notifying without recovery writes',async()=>{
+  await withRecoveryClock(async({pending})=>{
+   const {flow,editor}=setupBlank();
+   try{
+    editor.tf.setValue([{type:'p',children:[{text:'First'}]},{type:'p',children:[{text:'Middle'}]},{type:'p',children:[{text:'Last'}]},{type:'p',children:[{text:''}]}]);await tick();
+    flow.markDocumentSaved(flow.serializeDocument());
+    let ensured=0,grouped=0,notifications=0,formulaQueries=0;
+    const ensure=flow.ensureFormulas.bind(flow),group=flow.groupBibliography.bind(flow);
+    const query=flow.mount.querySelectorAll.bind(flow.mount);
+    flow.mount.querySelectorAll=selector=>{if(selector==='.inline-formula')formulaQueries++;return query(selector);};
+    flow.ensureFormulas=()=>{ensured++;return ensure();};flow.groupBibliography=()=>{grouped++;return group();};
+    flow.hooks.change=()=>{notifications++;flow.hasUnsavedChanges();flow.entries();};
+    assert.deepEqual(flow.entries(),[]);
+    editor.tf.select({path:[1,0],offset:6});await tick();
+    assert.ok(notifications>0,'selection changes still update host consumers');
+    assert.equal(pending.size,0,'selection-only updates must not schedule a recovery save');
+    assert.equal(ensured,0);assert.equal(grouped,0);
+    editor.tf.withNewBatch(()=>editor.tf.insertText('x'));await tick();
+    assert.equal(editor.children[1].children[0].text,'Middlex');assert.equal(flow.hasUnsavedChanges(),true);
+    assert.equal(ensured,0);assert.equal(grouped,0);assert.equal(pending.size,1);
+    editor.tf.undo();await tick();assert.equal(flow.hasUnsavedChanges(),false);
+    editor.tf.redo();await tick();assert.equal(flow.hasUnsavedChanges(),true);
+    assert.equal(ensured,0);assert.equal(grouped,0,'text-only undo and redo retain the fast path');
+    assert.match(flow.serializeDocument(),/Middlex/);
+    assert.equal(formulaQueries,0,'a prose-only document must not query its entire formula DOM on each update');
+    const inserted=flow.insertFormula(false,'x');await tick();
+    assert.ok(flow.entries().some(entry=>entry.element===inserted.element),'inserting a formula restores normal entry discovery');
+    assert.equal(formulaQueries,0,'formula entry discovery must use mounted nodes without querying the whole DOM');
+   }finally{flow.destroy();}
+  });
+ });
+ await t.test('formula property updates and newly inserted source formulas retain full reconciliation after prose edits',async()=>{
+  const {flow,editor}=setup();
+  try{
+   await tick();let ensured=0,grouped=0;
+   const ensure=flow.ensureFormulas.bind(flow),group=flow.groupBibliography.bind(flow);
+   flow.ensureFormulas=()=>{ensured++;return ensure();};flow.groupBibliography=()=>{grouped++;return group();};
+   editor.tf.select({path:[0,0],offset:0});await tick();editor.tf.insertText('Prose ');await tick();
+   assert.equal(ensured,0);assert.equal(grouped,0);
+   editor.tf.setNodes({numbered:false},{at:[0,1]});await tick();
+   assert.ok(ensured>0);assert.ok(grouped>0,'set_node must retain structural reconciliation');
+   assert.equal(flow.entries()[0].element.dataset.numbered,'false');
+   editor.tf.insertNodes({type:'inline_equation',id:'source-fast-path-regression',texExpression:'\\frac{a}{b}',children:[{text:''}]},{at:[0,3]});await tick();
+   const source=flow.models.get('source-fast-path-regression');assert.ok(source,'source-only inserts must still initialize a math model');
+   assert.match(source.exportLatex(),/\\frac\{a\}\{b\}/);
+   const entry=flow.entries().find(entry=>entry.element.dataset.mathId==='source-fast-path-regression');assert.ok(entry);
+   source.setCursor(source.root.id,source.root.items.length);source.insert('z');flow.syncMath();await tick();
+   assert.match(flow.getFormulaSource(entry.element),/z/,'native model changes still synchronize formula snapshots');
+  }finally{flow.destroy();}
+ });
+ await t.test('formula synchronization and lookup follow immutable snapshot updates and moved or removed formulas',async()=>{
+  const {flow,editor}=setup();
+  try{
+   await tick();const entry=flow.entries()[0],id=entry.element.dataset.mathId;
+   const originalPath=flow.locate(entry.element)[1];originalPath[0]=999;
+   assert.deepEqual(flow.locate(entry.element)[1],[0,1],'callers must not mutate a cached index path');
+   let snapshots=0;const setNodes=editor.tf.setNodes.bind(editor);
+   editor.tf.setNodes=(properties,options)=>{if(Object.hasOwn(properties,'snapshot'))snapshots++;return setNodes(properties,options);};
+   entry.model.setCursor(entry.model.root.id,entry.model.root.items.length);entry.model.insert('z');flow.syncMath();
+   const current=flow.locate(entry.element)[0];assert.equal(current.snapshot,entry.model.snapshot());
+   const after=snapshots;flow.syncMath();assert.equal(snapshots,after,'a repeated sync must observe the newly saved formula node');
+   entry.model.insert('w');flow.syncMath();assert.ok(snapshots>after);
+   const latest=flow.locate(entry.element)[0];assert.notEqual(latest,current);assert.equal(latest.snapshot,entry.model.snapshot());
+   await tick();
+   editor.tf.withNewBatch(()=>editor.tf.insertNodes({type:'p',children:[{text:'Before'}]},{at:[0]}));await tick();
+   assert.deepEqual(flow.locate(entry.element)[1],[1,1]);
+   editor.tf.withNewBatch(()=>editor.tf.moveNodes({at:[1],to:[0]}));await tick();
+   assert.deepEqual(flow.locate(entry.element)[1],[0,1]);
+   editor.tf.undo();await tick();assert.deepEqual(flow.locate(entry.element)[1],[1,1]);
+   editor.tf.redo();await tick();assert.deepEqual(flow.locate(entry.element)[1],[0,1]);
+   editor.tf.withNewBatch(()=>editor.tf.removeNodes({at:flow.locate(entry.element)[1]}));await tick();
+   assert.equal(flow.locate(entry.element),undefined);flow.syncMath();
+   editor.tf.undo();await tick();
+   const restored=flow.entries().find(item=>item.element.dataset.mathId===id);assert.ok(restored);
+   assert.deepEqual(flow.locate(restored.element)[1],[0,1]);
+   const replacement={...flow.locate(restored.element)[0],texLabel:'replacement:label'};
+   editor.tf.setValue([{type:'p',children:[{text:''},replacement,{text:''}]}]);await tick();
+   const replaced=flow.entries().find(item=>item.element.dataset.mathId===id);assert.ok(replaced);
+   assert.equal(flow.locate(replaced.element)[0].texLabel,'replacement:label');
+   assert.deepEqual(flow.locate(replaced.element)[1],[0,1]);
+  }finally{flow.destroy();}
+ });
+ await t.test('formula entries use document order and current mounted identities without whole-DOM queries',async()=>{
+  const {flow,editor}=setup();const temporary=[];
+  try{
+   await tick();const original=flow.locate(flow.entries()[0].element)[0];
+   const a={...original,id:'indexed-entry-a'},b={...original,id:'indexed-entry-b'};
+   const paragraph=node=>({type:'p',children:[{text:''},node,{text:''}]});
+   let queries=0;const query=flow.mount.querySelectorAll.bind(flow.mount);
+   flow.mount.querySelectorAll=selector=>{if(selector==='.inline-formula')queries++;return query(selector);};
+   const ids=()=>flow.entries().map(entry=>entry.element.dataset.mathId);
+   editor.tf.setValue([paragraph(a),paragraph(b)]);await tick();assert.deepEqual(ids(),[a.id,b.id]);
+   editor.tf.withNewBatch(()=>editor.tf.moveNodes({at:[1],to:[0]}));await tick();assert.deepEqual(ids(),[b.id,a.id]);
+   editor.tf.undo();await tick();assert.deepEqual(ids(),[a.id,b.id]);
+   editor.tf.redo();await tick();assert.deepEqual(ids(),[b.id,a.id]);
+   editor.tf.withNewBatch(()=>editor.tf.removeNodes({at:[0]}));await tick();assert.deepEqual(ids(),[a.id]);
+   editor.tf.undo();await tick();assert.deepEqual(ids(),[b.id,a.id]);
+   const replacementModel=new EditorModel();replacementModel.root.items=['r'];replacementModel.index();
+   const replacement={...b,snapshot:replacementModel.snapshot(),texExpression:replacementModel.exportLatex()};
+   editor.tf.setValue([paragraph(replacement),paragraph(a)]);await tick();assert.deepEqual(ids(),[b.id,a.id]);
+   const oldMount=flow.entries()[0].element,node=flow.locate(oldMount)[0];assert.equal(flow.entries()[0].model.exportLatex(),'r');
+   const mount=()=>{const element=document.createElement('span');element.dataset.mathId=b.id;temporary.push(element);return element;};
+   const current=mount();flow.mount.append(current);flow.attach(node,current);flow.detach(oldMount);
+   assert.equal(flow.entries()[0].element,current,'an old detach must not erase the replacement mount for the same formula ID');
+   assert.deepEqual(ids(),[b.id,a.id],'entry order follows the document even when a replacement DOM mount is appended last');
+   const outside=mount();document.body.append(outside);flow.attach(node,outside);assert.deepEqual(ids(),[a.id],'connected mounts outside this editor must be excluded');
+   flow.detach(outside);
+   const detached=mount();flow.attach(node,detached);assert.deepEqual(ids(),[a.id],'unconnected mounts must be excluded');
+   flow.detach(detached);flow.attach(node,oldMount);assert.deepEqual(ids(),[b.id,a.id]);
+   assert.equal(queries,0,'no entry lookup may query every element in the document DOM');
+  }finally{for(const element of temporary)element.remove();flow.destroy();}
  });
  await window.happyDOM.abort();
 });

@@ -87,3 +87,34 @@ test('undefined object fields are omitted while array positions retain JSON null
  assert.equal(comparison.isEqual({...current,value:[{...current.value[0],custom:{empty:null,sequence:[2,null]}}]}),false,'array omission cannot erase an element');
  assert.equal(comparison.isEqual({...current,value:[{...current.value[0],custom:{sequence:[null,2,null]}}]}),false,'missing and null object properties remain different');
 });
+
+test('body edits reuse metadata normalization without traversing unchanged prose subtrees',()=>{
+ const children=[{text:'Unchanged prose'}];let reads=0;
+ const stable={type:'p',get children(){reads++;return children;}};
+ const metadata={type:'document_metadata',id:'details',children:[metadataEntry('title','title','Title'),metadataEntry('author','author','Alice')]};
+ const original=envelope([metadata,stable,p('Body')]);
+ const comparison=new DocumentContentComparison(JSON.stringify(original));
+ assert.equal(comparison.isEqual(original),true);const warmed=reads;
+ assert.equal(comparison.isEqual({...original,value:[metadata,stable,p('Body edited')]}),false);
+ assert.equal(reads,warmed,'a new root must not recursively normalize an unchanged ordinary paragraph');
+ assert.equal(comparison.isEqual({...original,value:[metadata,stable,p('Body')]}),true,'typing back to saved text remains clean');
+ assert.equal(reads,warmed);
+ const changed={...metadata,children:[metadata.children[0],metadataEntry('author','author','Bob')]};
+ assert.equal(comparison.isEqual({...original,value:[changed,stable,original.value[2]]}),false,'changed metadata must invalidate its normalization cache');
+ assert.equal(comparison.isEqual(original),true,'undo restores the saved metadata and prose');
+});
+
+test('metadata normalization cache retains separate entries, nested containers and title ordering',()=>{
+ const loose=metadataEntry('title','loose','Independent title entry');
+ const first={type:'document_metadata',id:'first',children:[metadataEntry('note','note','Note'),metadataEntry('title','primary','Primary')]};
+ const nested={type:'blockquote',children:[{type:'document_metadata',id:'nested',children:[metadataEntry('title','second','Secondary'),metadataEntry('author','author','Alice')]}]};
+ const original=envelope([loose,first,p('Body'),nested]),source=JSON.stringify(original),comparison=new DocumentContentComparison(source);
+ const normalized=envelope(normalizeMetadataLayout(normalizeDocumentTitles(clone(original.value))));
+ assert.equal(comparison.isEqual(normalized),true);
+ assert.equal(comparison.isEqual({...original,value:[loose,first,p('Body'),nested]}),true);
+ const reordered={...original,value:[loose,nested,p('Body'),first]};
+ assert.equal(comparison.isEqual(reordered),false,'reordering metadata changes which title is primary');
+ comparison.reset(JSON.stringify(reordered));
+ assert.equal(comparison.isEqual(reordered),true);
+ assert.equal(comparison.isEqual(original),false);
+});
