@@ -1,13 +1,14 @@
 import {initLocale} from './i18n';
-import {mountMathEditor} from './editor-ui';
-import {PlateMathHost} from './plate-host';
+import {mountApplicationEditor,type ApplicationEditor} from './application-editor';
 import {initPreferences} from './preferences';
 import {documentSessionId,initializeDocumentDraftStore,flushDocumentDraftStore,refreshDocumentDraftStore} from './platform';
 import {DOCUMENT_DRAFT_STORAGE_ERROR,DOCUMENT_DRAFT_STORAGE_RESTORED} from './document-draft-store';
 import {mountDocumentHome} from './document-home';
 import {listRecentDocuments,removeRecentDocument} from './recent-documents';
 import {prepareDocumentRecovery,listRecoverableDocuments} from './document-recovery';
-import {attachDocumentHost,initDocumentLifecycle,refreshDocumentState,runDocumentCommand,openRecentDocumentCommand,openSystemDocumentCommand} from './document-lifecycle';
+import {initDocumentRecoveryPreferences} from './document-recovery-preferences';
+import {showDocumentError} from './document-dialogs';
+import {attachDocumentHost,initDocumentLifecycle,refreshDocumentState,runDocumentCommand,openRecentDocumentCommand,openRecoveredDocumentCommand,openSystemDocumentCommand} from './document-lifecycle';
 import {t} from './i18n';
 import {recordRuntimeEvent} from './runtime-diagnostics';
 import {prepareCollaborationInvitation} from './collaboration-navigation';
@@ -34,19 +35,15 @@ window.addEventListener('vulgar-document-error',event=>{
   const {action,message,error}=(event as CustomEvent<{action?:string;message:string;error:string}>).detail;
   if(action==='open')void recordRuntimeEvent('document-open-error');
   if(action==='save'||action==='saveAs')void recordRuntimeEvent('document-save-error');
-  const dialog=document.createElement('dialog');dialog.className='document-unsaved-dialog';
-  const title=document.createElement('h2');title.textContent=message;
-  const description=document.createElement('p');description.textContent=error;
-  const actions=document.createElement('div');actions.className='document-unsaved-actions';
-  const close=document.createElement('button');close.type='button';close.textContent=t('Close');
-  close.addEventListener('click',()=>dialog.close());actions.append(close);dialog.append(title,description,actions);
-  dialog.addEventListener('close',()=>{void recordRuntimeEvent('document-error-dialog-close');dialog.remove();},{once:true});
-  document.body.append(dialog);void recordRuntimeEvent('document-error-dialog-start');dialog.showModal();void recordRuntimeEvent('document-error-dialog-visible');
+  showDocumentError({message,error});
 });
 let detachActiveHost:(()=>void)|undefined;
+let activeEditor:ApplicationEditor|undefined;
 let failureShown=false;
 function showDocumentFailure(){
   if(failureShown)return;failureShown=true;detachActiveHost?.();detachActiveHost=undefined;
+  try{activeEditor?.dispose();}catch{/* The failing editor already kept its recovery data. */}
+  activeEditor=undefined;
   document.body.dataset.documentView='home';
   const container=document.getElementById('documentHome')!;container.hidden=false;container.replaceChildren();
   mountDocumentHome(container,{
@@ -64,6 +61,10 @@ async function start(){
   let draftsReady=false;
   try{await initializeDocumentDraftStore();draftsReady=true;}catch{recoveryError=t('Local recovery storage could not be read. Existing data has been kept.');}
   initDocumentLifecycle();
+  initDocumentRecoveryPreferences({
+    list:async()=>{await refreshDocumentDraftStore();return listRecoverableDocuments().filter(item=>item.id!==documentSessionId());},
+    open:id=>{void openRecoveredDocumentCommand(id);},
+  });
   // OS requests survive frontend loading in the native host. Claim only after
   // error handling and recovery storage are ready; navigation consumes it once.
   if(await openSystemDocumentCommand())return;
@@ -74,11 +75,10 @@ async function start(){
     // stale localStorage fallback replace the same document's latest edits.
     if(!draftsReady){showDocumentFailure();return;}
     document.body.dataset.documentView='editor';homeContainer.hidden=true;
-    mountMathEditor((mount,initial,hooks)=>{
-      const host=new PlateMathHost(mount,initial,{...hooks,change:()=>{hooks.change();refreshDocumentState();}});
-      if(collaborationInvite)void host.startCollaboration(collaborationInvite.invite).catch(error=>window.dispatchEvent(new CustomEvent('vulgar-document-error',{detail:{message:t('Unable to join collaboration'),error:error instanceof Error?error.message:String(error)}})));
-      detachActiveHost=attachDocumentHost(host);return host;
-    });
+    activeEditor=mountApplicationEditor(refreshDocumentState);
+    const host=activeEditor.host;
+    if(collaborationInvite)void host.startCollaboration(collaborationInvite.invite).catch(error=>window.dispatchEvent(new CustomEvent('vulgar-document-error',{detail:{message:t('Unable to join collaboration'),error:error instanceof Error?error.message:String(error)}})));
+    detachActiveHost=attachDocumentHost(host);
     // Persist first-open normalization, including the cleared pendingOpen flag.
     // A cache failure must leave the mounted editor available for a real Save.
     try{await flushDocumentDraftStore();}catch{/* The recovery warning remains visible. */}
@@ -86,16 +86,15 @@ async function start(){
   }
   const home=mountDocumentHome(homeContainer,{
     onNew:()=>runDocumentCommand('new'),onOpen:()=>runDocumentCommand('open'),
-    onRecent:id=>openRecentDocumentCommand(id),onRecover:id=>navigate(id),
+    onRecent:id=>openRecentDocumentCommand(id),
     onRemoveRecent:async id=>{await removeRecentDocument(id);refreshHome();},
     onPreferences:()=>document.getElementById('openPreferences')!.click(),
   });
   function refreshHome(){
-    home.refresh({recentDocuments:listRecentDocuments(),recoveries:listRecoverableDocuments(),...(recoveryError?{error:recoveryError}:{})});
+    home.refresh({recentDocuments:listRecentDocuments(),...(recoveryError?{error:recoveryError}:{})});
   }
   refreshHome();
-  const refreshStoredHome=()=>{void refreshDocumentDraftStore().then(refreshHome,refreshHome);};
-  window.addEventListener('storage',refreshStoredHome);
-  window.addEventListener('focus',refreshStoredHome);
+  window.addEventListener('storage',refreshHome);
+  window.addEventListener('focus',refreshHome);
 }
 void start().then(()=>recordRuntimeEvent('frontend-ready')).catch(()=>{void recordRuntimeEvent('frontend-start-error');showDocumentFailure();});

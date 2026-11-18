@@ -8,9 +8,9 @@ export const locale:Locale=(()=>{
 })();
 /** English message IDs are stable; legacy Chinese UI strings resolve during migration. */
 export function t(source:string,values?:Record<string,string|number>):string {
-  const shortcut=source.match(/^(.*?)( \(.*\))$/);
-  if(shortcut)return t(shortcut[1],values)+shortcut[2];
   const key=sourceKeys.get(source)??source;
+  const shortcut=source.match(/^(.*?)( \(.*\))$/);
+  if(shortcut&&!Object.hasOwn(messages,key))return t(shortcut[1],values)+shortcut[2];
   const message=locale==='en'?key:messages[key]??key;
   return values?message.replace(/\{(\w+)\}/g,(token,name)=>Object.hasOwn(values,name)?String(values[name]):token):message;
 }

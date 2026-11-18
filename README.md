@@ -89,11 +89,11 @@ Windows 安装包注册 `.vulgar` 文档关联，可通过资源管理器双击�
 
 工具栏提供返回最近文档、新建、打开、保存、另存为，并显示文件名和未保存标记。正在编辑时，新建仍打开独立桌面窗口或浏览器标签页，保留原文档；首屏新建使用当前窗口。打开另一份文档、返回首屏和关闭桌面窗口时，未保存的修改会提示“保存／不保存／取消”；保存失败或取消文件选择均不会放弃内容。浏览器关闭或刷新未保存的文档时使用浏览器自己的离开页面提示。
 
-每份文档拥有独立 UUID 和本机恢复记录，桌面版及网页版的文档恢复数据均保存在 IndexedDB，避免带图片的文档及保存基线挤满 localStorage。恢复记录不等于保存到文件。旧版本的固定草稿和标签页草稿会保留原始数据，并迁移为可在首屏选择的未保存文档；不会自动覆盖或打开。正文和公式的恢复、文件保存基线、最近文件的路径或句柄相互独立；路径和句柄不会写入 `.vulgar`。桌面文件权限通过 Tauri 的 persisted-scope 插件保存，只恢复用户已选择文件的授权。浏览器与桌面应用的本机数据不互通，卸载或清理应用／网站数据前应保存重要文档。
+每份文档拥有独立 UUID 和本机恢复记录，桌面版及网页版的文档恢复数据均保存在 IndexedDB，避免带图片的文档及保存基线挤满 localStorage。恢复记录不等于保存到文件，也不会作为“未保存文档”常驻首页。旧版本的固定草稿和标签页草稿保留原始数据，需要时可从“首选项 → 文档恢复”手动打开；不会自动覆盖或打开。正文和公式的恢复、文件保存基线、最近文件的路径或句柄相互独立；路径和句柄不会写入 `.vulgar`。桌面文件权限通过 Tauri 的 persisted-scope 插件保存，只恢复用户已选择文件的授权。浏览器与桌面应用的本机数据不互通，卸载或清理应用／网站数据前应保存重要文档。
 
 打开文件时先校验本工具的文档结构和已知节点字段；普通配置 JSON 不是文档，错误内容不会替换当前编辑器或成为最近文档。校验提示不显示文件正文片段。编辑器组件发生未预期的渲染异常时，保留恢复数据并显示可打开其他文件的界面。Windows 桌面版本另在应用日志目录保留最多两份、每份约 256 KiB 的 `runtime-events` 日志，用于区分文件选择、读取、校验、界面错误和 WebView2 页面进程退出；日志只记录阶段 ID 和进程诊断数字，不记录文档内容、文件名或路径，不上传到服务器。
 
-“新建文档”（Ctrl/⌘+N）在桌面版打开独立窗口，在网页版打开独立标签页，从空白正文开始。原窗口的内容、撤销历史和保存路径保持不变。每份新文档的草稿、恢复副本和文件会话信息按独立标识隔离；重载同一个窗口或标签页会恢复它自己的草稿。配色、界面语言和完整文献库仍由本设备共享。当前不提供关闭后的文档窗口恢复列表，新建文档需保存为 `.vulgar` 文件以便再次打开。
+“新建文档”（Ctrl/⌘+N）在桌面版打开独立窗口，在网页版打开独立标签页，从空白正文开始。原窗口的内容、撤销历史和保存路径保持不变。每份新文档的草稿、恢复副本和文件会话信息按独立标识隔离；重载同一个窗口或标签页会恢复它自己的草稿。配色与界面语言由本设备共享，文献库随各自文档保存。当前不提供关闭后的文档窗口恢复列表，新建文档需保存为 `.vulgar` 文件以便再次打开。
 
 Tauri 配置关闭原生文件拖放拦截，让编辑器继续处理段落排序。`src/platform.ts` 集中管理桌面存储和文件导出差异，公式模型不依赖 Tauri。
 
@@ -117,7 +117,11 @@ HTML 导出保留正文格式、MathJax 公式、资料块、图表说明和参�
 
 ### 文献库与参考文献表
 
-文献库中的“刷新”重新读取原来的 `.bib` 文件，保留文献库身份、已有引用键和当前搜索。取消选择、选择其他文件或解析失败时保留原内容。桌面版在本机记录原路径；支持 File System Access 的浏览器在本机保存文件句柄，刷新时读取新内容。浏览器不支持该接口、授权失效或旧文档没有关联源文件时，需要重新选择原来的同名 `.bib`。路径和句柄不会写入 `.vulgar` 文档，文档仍只携带已引用条目及其依赖。
+文献库中的“刷新”重新读取原来的 `.bib` 文件，保留文献库身份、已有引用键和当前搜索。取消选择、选择其他文件或解析失败时保留原内容。桌面版在本机记录原路径；支持 File System Access 的浏览器在本机保存文件句柄，刷新时读取新内容。浏览器不支持该接口、授权失效或旧文档没有关联源文件时，需要重新选择原来的同名 `.bib`。路径和句柄不会写入 `.vulgar` 文档。
+
+每个文献库的编辑按钮打开条目编辑器，可搜索、新增、修改、删除和重命名引用键，也可导入、导出及备份条目。保存会更新文档内的库，不覆盖原来的外部 `.bib` 文件。未改动的条目、注释、宏和未识别字段保持原样；修改已有条目时只更新对应字段。若删除或改名使正文引用失效，保存前会列出相关键并要求再次确认。
+
+`.vulgar` 文件和草稿保存当前附件文献库的完整内容。重新打开时以文件中保存的库为准，旧缓存不会补回已删除条目或其他文档的库。旧文档中仅有的引用摘录仍会标明来源不完整。参考文献表、导出、协作及正文复制继续只使用相关的被引用条目。
 
 “参考文献表格式”提供简洁、IEEE、ACS、AIP、Vancouver（NLM）、APA 第 7 版、Chicago 第 18 版及 GB/T 7714—2025，并显示实际格式预览。选项保存在当前文档中，正文引用和尾注继续按首次出现顺序统一编号。切换的是参考文献表条目格式，不是完整的作者—年份引用系统。正文末尾、悬浮预览、Markdown 和 LaTeX 导出使用同一格式；尾注中的富文本与公式保留。所选 CSL 格式的 LaTeX 导出使用预排版的 `thebibliography`，无需 Biber；简洁格式保留原来的 BibLaTeX 导出。
 
@@ -140,6 +144,14 @@ Known upstream limitation: citeproc-js 2.4.63 renders only the first contributor
 
 MathJax 和编辑器会动态创建样式，因此 `dangerousDisableAssetCspModification` 仅设为 `["style-src"]`，保留已配置的 `style-src 'self' 'unsafe-inline'`。如果 Tauri 再向该指令注入 nonce/hash，浏览器会忽略 `unsafe-inline`，导致动态公式样式和行内布局失效。脚本的 nonce/hash 注入和其他 CSP 限制仍然保留。验证桌面排版时应检查打包后的策略，而不能只测试未经过 Tauri 处理的静态页面。
 
+## 独立公式编辑器
+
+`npm run math:build` 单独构建公式编辑器，输出到 `math-editor-dist/`。这个页面不加载 Plate、正文、文献库或校对组件；构建时检查依赖，防止这些功能被带入。`npm run math:dev` 启动本机服务，在终端显示可打开的地址。也可双击输出目录里的 `Start Math Editor.cmd`，它会启动服务并打开浏览器（需要本机 Node.js）。MathJax 及所用字体和扩展均随目录提供，不需要联网加载。
+
+页面从空公式开始，使用现有 MathJax 原位编辑组件。右侧数学输入板可在顶部开关；关闭后编辑区扩宽，显示选择会保留。下方查看面板可切换 LaTeX 与真实语法树，两者均只读。LaTeX 的查看、复制、下载及导入入口集中在一起；只有显式点击“导入 LaTeX”，再粘贴源码或选择文件并确认，才会转换公式，取消不会改变内容。语法树直接展示编辑模型的区域、节点、文本、JSON、光标和选区，展开状态随内容更新保留。新建会打开新标签页，不覆盖当前公式。`.vulgar-math` 文件以英文 JSON 保存公式树、光标及显示/编号设置；它独立于整篇文章的 `.vulgar` 格式。无效文件不会替换当前内容，未保存时关闭页面或打开另一份公式会提示。
+
+单公式应用接入位于 `src/standalone-math-editor.ts`，文件读写格式位于 `src/math-editor-file.ts`。实际编辑能力仍由 `src/math-editor.ts` 的 `createMathEditor` 提供，与正文中的公式共用一份实现。构建结果中的 `build-metafile.json` 可检查具体依赖。
+
 ## 开发
 
 首次安装依赖：`npm ci --legacy-peer-deps`。
@@ -150,6 +162,27 @@ MathJax 和编辑器会动态创建样式，因此 `dangerousDisableAssetCspModi
 - `npm run dev`：构建并在 <http://127.0.0.1:8767/> 启动预览。
 
 修改源文件后运行 `npm run build`，再刷新页面；服务器无需重启。启动前确保端口没有被另一个预览进程占用。MathJax 仍由 CDN 加载，首次打开需要网络连接。
+
+## Proofreading
+
+Open **Preferences → Proofreading** and choose **LanguageTool** or **AI (OpenAI-compatible)**. Proofreading is disabled until explicitly enabled. New installations select LanguageTool at `http://127.0.0.1:8081/v2` with US English; existing AI settings keep their selected service and credentials.
+
+LanguageTool requires a running service on your computer or a server you provide. Both the desktop and web editor accept your service URL. Its text-language setting is independent of the editor's interface language. The public free LanguageTool API is not the default: its usage rules restrict automated integrations and require attribution. For AI, configure an OpenAI-compatible API base URL, model and optional API key. Switching services preserves both configurations; AI credentials are never sent to LanguageTool.
+
+Online services use HTTPS; local services can use HTTP on `localhost` or `127.0.0.1`. The service must allow requests from the editor's browser origin (CORS).
+
+For a local LanguageTool server on Windows, run these from the repository root with Node.js installed:
+
+```powershell
+powershell -NoProfile -File scripts/setup-languagetool.ps1
+powershell -NoProfile -File scripts/start-languagetool.ps1
+```
+
+Setup downloads the pinned LanguageTool distribution and a portable Java runtime into the ignored `vendor/languagetool` directory, verifies their SHA-256 hashes and preserves their licenses. It does not require a system Java installation or change `PATH`. Start launches a background service bound to `127.0.0.1:8081`; no API key is needed. Use `node scripts/languagetool-local.cjs status` to inspect it and `powershell -NoProfile -File scripts/stop-languagetool.ps1` to stop it. For a custom editor origin, pass its exact origin to the start script with `-AllowedOrigin 'http://localhost:8768'`.
+
+Proofreading is manual. In the toolbar, click **Check paragraph** or **Check document** to send the current paragraph or the document's prose to the configured service. Typing, pasting, and accepting a suggestion never start a new check. Edits remove only affected suggestions; other suggestions follow their original text through insertions, deletions, and paragraph splits or merges. **Cancel checking** stops the current request and clears the remaining queue. Right-click a spelling or grammar underline to see corrections. Applying a suggestion verifies that its original text still matches and creates an undoable edit. Formulas, references and code are protected. Checks and their temporary annotations are not stored in document files or exports.
+
+The API key stays in the current browser session by default. **Remember API key on this device** stores it unencrypted in local application preferences, separately from documents. Neither keys nor proofreading settings are included in collaboration data.
 
 ## Large-document editing
 
@@ -167,9 +200,22 @@ The source repository is <https://github.com/zhaiyusci/vulgar-notes>. For a rele
 
 ## 源码
 
+功能规则与 UI 分开维护。功能层处理数据和操作流程，不创建按钮或弹窗，也不决定界面文案；UI 调用功能并展示结果。文件读写、窗口操作和用户确认通过明确接口接入，不能让某个按钮成为唯一实现。移动或隐藏入口不应改变文档内容与保存规则。
+
+公式编辑、文献库编辑、校对与文件管理分别提供自己的接口，由应用层装配。公式组件不创建正文编辑器，文献库组件不读取正文 host，校对界面不获取 Plate 选区。需要正文上下文的操作由 Plate 接入层提供；组件之间不直接调用对方的内部实现。
+
+- `src/application-editor.ts`：创建公式组件与 Plate 正文宿主并连接，提供页面元素、草稿存储及文档剪贴板适配，负责释放组件。
+- `src/math-editor.ts`：公式组件公开接口；`createMathEditor` 接收元素、可选初始模型、草稿和剪贴板接口，返回 `hooks`、`connect`、`render`、`dispose`。模块导入不初始化页面；每个实例独立持有编辑状态，卸载时释放监听器、观察器、计时器和临时 DOM。`MathDocumentAdapter` 只暴露公式操作，不包含文件保存和全文导出。
+- `src/math-clipboard.ts`：只识别公式快照和明确的 TeX 注释；`src/document-math-clipboard.ts` 由应用层注入，负责完整校验正文副本后提取单个公式。二者共享剪贴板编码，不把正文格式或文献库依赖带入数学组件。
+- `src/bibliography-editor-controller.ts`：文献库编辑会话、冲突检查与引用丢失确认；`BibliographyLibraryEditor` 通过 `BibliographyEditorAccess` 接收库数据和提交操作，能够脱离正文编辑器单独挂载。
+- `src/proofreading-client.ts`、`src/components/ui/proofreading-tools.tsx`：校对状态/操作接口和可复用界面；具体校对控制器负责正文定位，界面只调用接口，首选项入口由父组件传入。
+- `src/plate-editor-context.ts`：仅供 Plate 接入组件共享正文 host；公式、文献库编辑与校对的可复用组件不读取这个 Context。
+- `src/document-controller.ts`：独立的文档控制器，负责打开、保存、恢复、修改状态和离开前检查；通过注入接口连接存储、文件操作与用户决定，无 DOM、Tauri 或 i18n 运行时依赖。每个实例独立持有状态。
+- `src/document-lifecycle.ts`：把控制器接到当前浏览器／桌面窗口，处理快捷键、窗口标题、关闭事件及本地化展示。
+- `src/document-dialogs.ts`、`src/document-home.ts`、`src/document-recovery-preferences.ts`：文档弹窗、首页与恢复入口，仅负责界面交互。
 - `src/editor-model.ts`：公式树、区域、光标、选择、命令、结构变体及撤销；保存草稿的 JSON 在恢复时做运行时校验。
 - `src/extensions.ts`：Unicode-math 字体、physics 常用结构和 mhchem 化学源码区域。
-- `src/editor-ui.ts`：原位编辑、隐藏输入控件、命令候选、右键菜单、点击定位及渲染调度。
+- `src/editor-ui.ts`：公式组件实现，负责原位编辑、隐藏输入控件、命令候选、右键菜单、点击定位及 MathJax 渲染调度。
 - `src/document-host.ts`：公式与正文之间的框架无关接口。
 - `src/plate-host.tsx`：Plate 节点、React 容器、历史与公式模型之间的适配。
 - `src/components/editor/editor-kit.tsx`、`src/components/ui/`：官方开源 Editor Kit 和配套 Plate UI / shadcn 组件。
@@ -179,6 +225,7 @@ The source repository is <https://github.com/zhaiyusci/vulgar-notes>. For a rele
 - `src/mathjax-config.ts`、`src/mathjax.d.ts`：MathJax 启动配置及使用到的 API 类型。
 - `mathjax4_editor_prototype_document_typeset.html`：页面结构和 CSS。
 - `editor-model.test.cjs`：模型回归测试。
+- `document-controller.test.cjs`：无浏览器界面的功能测试，同时检查核心的运行时依赖；`document-lifecycle.test.cjs`、`document-dialogs.test.cjs` 验证界面与平台接入后的行为。
 
 根目录的 `editor-model.js`、`editor-ui.js`、`mathjax-config.js` 和对应 `.map` 都是构建产物，请勿手动修改。浏览器执行的是这些 JavaScript 文件；TypeScript 类型不进入运行时。构建脚本、测试入口和静态服务器保留 Node.js 的 `.cjs` 格式。
 
@@ -261,10 +308,10 @@ Endnotes and cited BibTeX entries share one “Notes and references” list at t
 
 ### BibTeX libraries
 
-The **BibTeX libraries** button opens a separate library manager. Add UTF-8 `.bib` files, search by author, title or citation key, then insert a citation. The citation dialog searches these entries alongside hand-written references. Replace a library to refresh its source while keeping citation keys; duplicate keys and invalid BibTeX are reported before any library is replaced. Removing a library keeps the citation nodes, which become unresolved until the source is added again. Library management is separate from prose undo.
+The **BibTeX libraries** button opens a separate library manager. Add UTF-8 `.bib` files, search by author, title or citation key, then insert a citation. Refresh rereads the linked source; duplicate keys and invalid BibTeX are reported before any library is changed. Each library also has an **Edit library** action for adding, editing, deleting and renaming entries, with import, export and backup controls. Saving edits updates the document's copy, not the external `.bib` file. Unchanged records, comments, macros and unsupported fields retain their original source; changed records update only the affected fields. The editor asks for confirmation if changes would leave document citations unresolved. Library management is separate from prose undo.
 
 The importer accepts straight and typographic apostrophes in citation keys, preserving the original keys and raw entries. It recognizes the common `sept` month abbreviation. Undefined BibTeX strings produce nonblocking notices and are displayed by name; unsupported LaTeX formatting does not prevent importing the library. Malformed BibTeX structure is still rejected.
 
-An attached `.bib` file is a source for choosing references. **Only cited entries and their necessary BibTeX dependencies are captured in the `.vulgar` document and draft, rather than the entire source library.** Complete libraries are saved separately in a local library catalog on this device, so refreshing the web page, restarting the desktop application, or opening another document does not narrow the library to its cited subset. Nothing is uploaded to a backend. When a document's captured entries exactly match a cached library, the full source becomes available again; conflicting versions preserve the document copy and show a notice. On a different device, or for documents saved before the local catalog existed, the manager labels captured subsets as **Document references only** and offers **Load full library**. Loading the original `.bib` once restores the full catalog for subsequent sessions. Library metadata sits outside the Plate prose tree, and mathematical formula snapshots remain independent.
+The `.vulgar` document and its draft preserve the complete attached library list and sources, including an explicitly empty list. Reopening a saved full-library document uses those copies: unrelated local catalogs and entries deleted from the file are not added back. Older documents containing cited-only captures still use the compatible local-catalog recovery path and retain **Document references only** markers when the original source is unavailable. Reference lists, exports, collaboration and prose clipboard fragments continue to include only the cited records and required dependencies. Nothing is uploaded to a backend. Library metadata sits outside the Plate prose tree, and mathematical formula snapshots remain independent.
 
 With BibTeX citations, the single-file `.tex` export embeds the captured bibliography resources and uses `biblatex` with Biber. Compile with **LuaLaTeX → Biber → LuaLaTeX → LuaLaTeX**, running Biber on the document basename. A document with only endnotes or legacy hand-written entries uses `thebibliography` and requires no Biber. Endnote keys are stable and avoid collisions with library citation keys. Markdown includes the cited library entries as readable `\bibitem` text.

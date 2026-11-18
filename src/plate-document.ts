@@ -18,12 +18,16 @@ export function documentContentKey(source:string):string {
   // Compare a legacy saved baseline with the same migrated content shown by the editor.
   if(saved.metadata!==undefined){saved.value=migrateDocumentMetadata(saved.value,parseDocumentMetadata(saved.metadata));delete saved.metadata;}
   saved.value=normalizeMetadataLayout(normalizeDocumentTitles(saved.value));
+  // Storage mode and attachment provenance do not alter the current document
+  // content. An old file without any library also equals an explicit empty list.
+  saved.bibliographyLibraries??=[];
+  delete saved.bibliographyMode;delete saved.bibliographyCapturedLibraryIds;
   return JSON.stringify(saved, (key,value)=>{
     if(key==='snapshot'&&typeof value==='string')return JSON.parse(value).root;
     return value;
   });
 }
-export interface DocumentEnvelope {version:1;value:Value;bibliographyLibraries:BibLibrary[];bibliographyStyle?:BibliographyStyle;metadata?:DocumentMetadata}
+export interface DocumentEnvelope {version:1;value:Value;bibliographyLibraries:BibLibrary[];bibliographyMode?:'full';bibliographyCapturedLibraryIds?:string[];bibliographyStyle?:BibliographyStyle;metadata?:DocumentMetadata}
 export class DocumentFormatError extends Error {
   readonly name='DocumentFormatError';
   constructor(readonly code:'invalid-json'|'invalid-document'){
@@ -46,10 +50,13 @@ export function parseDocumentEnvelope(source:string):DocumentEnvelope {
     if(saved.value.some((node:any)=>typeof node.type!=='string'||!Array.isArray(node.children)))throw Error('Invalid document root');
     const bibliographyLibraries=validateBibLibraries(saved.bibliographyLibraries);
     if(saved.bibliographyStyle!==undefined&&!isBibliographyStyle(saved.bibliographyStyle))throw Error('Invalid bibliography style');
+    if(saved.bibliographyMode!==undefined&&saved.bibliographyMode!=='full')throw Error('Invalid bibliography mode');
+    const bibliographyCapturedLibraryIds=saved.bibliographyCapturedLibraryIds;
+    if(bibliographyCapturedLibraryIds!==undefined&&(!Array.isArray(bibliographyCapturedLibraryIds)||saved.bibliographyMode!=='full'||bibliographyCapturedLibraryIds.some((id:unknown)=>typeof id!=='string'||!bibliographyLibraries.some(library=>library.id===id))||new Set(bibliographyCapturedLibraryIds).size!==bibliographyCapturedLibraryIds.length))throw Error('Invalid captured bibliography identities');
     const metadata=saved.metadata===undefined?undefined:parseDocumentMetadata(saved.metadata);
     // A paste can introduce a manual key already present in a source library.
     // Preserve both on reopen; reference resolution flags that ambiguity.
-    return {version:1,value:migrateDocumentMetadata(saved.value,metadata),bibliographyLibraries,...(saved.bibliographyStyle?{bibliographyStyle:saved.bibliographyStyle}:{})};
+    return {version:1,value:migrateDocumentMetadata(saved.value,metadata),bibliographyLibraries,...(saved.bibliographyMode==='full'?{bibliographyMode:'full' as const}:{}),...(bibliographyCapturedLibraryIds?.length?{bibliographyCapturedLibraryIds:[...bibliographyCapturedLibraryIds]}:{}),...(saved.bibliographyStyle?{bibliographyStyle:saved.bibliographyStyle}:{})};
   }catch{throw new DocumentFormatError('invalid-document');}
 }
 export function parseDocumentFile(source:string):Value {return parseDocumentEnvelope(source).value;}

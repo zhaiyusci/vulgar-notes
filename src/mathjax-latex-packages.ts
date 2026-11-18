@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import data from './mathjax-command-data.json';
 import {preferredMathCommand} from './letter-variants';
+import {parseMathDecorationOptions} from './math-color';
 
 export interface MathJaxLatexIssue {command:string;reason:string;suggestion:string}
 export interface MathJaxLatexRequirements {packages:string[];preamble:string;issues:MathJaxLatexIssue[]}
@@ -79,8 +80,16 @@ export function adaptMathJaxLatex(source:string):string {
 /** Insert after mathtools/amssymb, BEFORE extarrows, unicode-math and physics. */
 export function analyzeMathJaxLatex(mathSources:readonly string[]):MathJaxLatexRequirements {
   const names=new Set<string>(),environments=new Set<string>(),local=locallyDefinedCommands(mathSources);
+  let guiDecoration=false,otherBBox=false;
   for(const original of mathSources){const source=adaptMathJaxLatex(original);for(const command of commands(source)){
-    if(!local.has(command.name))names.add(command.name);
+    if(!local.has(command.name)){
+      names.add(command.name);
+      if(command.name==='bbox'){
+        const start=skip(source,command.next),end=source.indexOf(']',start);
+        const options=source[start]==='['&&end>=0?source.slice(start,end+1):'';
+        if(parseMathDecorationOptions(options))guiDecoration=true;else otherBBox=true;
+      }
+    }
     if(command.name==='begin'){
       const name=/^\s*\{\s*([A-Za-z]+\*?)\s*\}/.exec(source.slice(command.next))?.[1];if(name)environments.add(name);
     }
@@ -106,7 +115,15 @@ export function analyzeMathJaxLatex(mathSources:readonly string[]):MathJaxLatexR
     style:['CSS styling has no general TeX equivalent.','Translate recognized visual properties explicitly; retain and report unsupported CSS.'],
     htmlData:['HTML data attributes have no TeX equivalent.','Remove metadata-only annotations while retaining their mathematical contents.'],
   };
-  for(const [command,[reason,suggestion]] of Object.entries(unsupported))if(names.has(command))issues.push({command,reason,suggestion});
+  for(const [command,[reason,suggestion]] of Object.entries(unsupported))if(names.has(command)){
+    if(command==='bbox'){
+      if(guiDecoration)issues.push({command,
+        reason:'This MathJax background or outline does not occupy layout space. Replacing it with an ordinary TeX box can change glyph sizes, baselines or mathematical spacing.',
+        suggestion:'Export HTML to retain the MathJax decoration, or remove the decoration before exporting native TeX. The mathematical contents and source have been preserved.'});
+      if(!otherBBox)continue;
+    }
+    issues.push({command,reason,suggestion});
+  }
   if(names.has('units')&&!mathSources.some(source=>commands(source).some(command=>definitions.has(command.name))))issues.push({command:'units',reason:'This MathJax units command remains inside a protected text scope.',suggestion:'Use the native TeX units package command \\unit explicitly in this protected source.'});
   const order=['textcomp','upgreek','gensymb','xcolor','colortbl','cases','empheq','centernot','units','nicefrac','extpfeil'];
   const packages=order.filter(name=>wanted.has(name));return {packages,preamble:packages.map(name=>'\\usepackage{'+name+'}\n').join(''),issues};

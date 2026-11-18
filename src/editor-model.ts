@@ -12,11 +12,12 @@ import {isStandaloneMathEnvironmentName,standaloneMathEnvironmentBounds} from '.
 import {registerGuiSymbols,organizeGuiSymbols} from './gui-math-symbols';
 import {registerDelimiterVariants} from './gui-math-delimiters';
 import {isSourceOnlyMathCommand} from './math-input-policy';
+import {coloredTex,colorBoxTex,mathDecorationTex,hexMathColor,validMathColor,validDecorationColor,type MathColor,type MathColorTarget,type MathBoxStyle} from './math-color';
 export type ScriptSlot = 'lower' | 'upper' | 'leftLower' | 'leftUpper';
 export type Direction = -1 | 1;
 export type MathItem = string | MathNode;
 export interface Region {id:string; label:string; items:MathItem[]; slot?:ScriptSlot}
-export interface MathNode {id:string; type:string; regions:Region[]; atom?:boolean; operatorLayout?:boolean; rows?:number; columns?:number;texOptions?:string}
+export interface MathNode {id:string; type:string; regions:Region[]; atom?:boolean; operatorLayout?:boolean; rows?:number; columns?:number;texOptions?:string;texColor?:MathColor;texBackground?:MathColor;texBorder?:MathColor;texBoxStyle?:MathBoxStyle}
 export interface Cursor {region:string; offset:number; anchor:number}
 interface SavedState {root:Region;cursor:Cursor;pendingFont?:string}
 interface Parent {region:Region; index:number; node:MathNode; childIndex:number}
@@ -177,6 +178,9 @@ export interface FontWarning {region:string;index:number;message:string}
   // ordinary mathematical characters or partially interpreted as keystrokes.
   add('source-tex','LaTeX source','文字',['LaTeX source'],r=>r[0],{raw:true,hidden:true,commandCandidate:false});
   add('tex-group','TeX group','文字',['Content'],r=>`{${r[0]}}`,{hidden:true,commandCandidate:false});
+  add('textcolor','Formula color','重音与修饰',['Content'],r=>r[0],{hidden:true,commandCandidate:false,command:'\\textcolor',ungroupScriptBase:true});
+  for(const type of ['colorbox','fcolorbox'])add(type,'Formula color','重音与修饰',['Content'],r=>r[0],{hidden:true,commandCandidate:false,command:'\\'+type,ungroupScriptBase:true});
+  add('math-decoration','Formula color','重音与修饰',['Content'],r=>r[0],{hidden:true,commandCandidate:false,ungroupScriptBase:true});
   // physics Expression consumes literal parentheses itself, with a different
   // atom class from \left...\right. Render an editable fence but export the
   // exact consuming syntax so its surrounding spacing remains unchanged.
@@ -364,6 +368,15 @@ export interface FontWarning {region:string;index:number;message:string}
     const raw=definitions.get(node.type);
     if(raw?.raw)return raw.render(node.regions.map(r=>r.items.map(item=>typeof item==='string'?item:structureTex(item,latex)).join('')));
     const r = node.regions.map(renderRegion);
+    if(node.type==='textcolor'&&node.texColor)return coloredTex(node.texColor,r[0]);
+    if(node.type==='math-decoration'){
+      const decorated=mathDecorationTex(node.texBackground,node.texBorder,r[0]);
+      return node.texColor?coloredTex(node.texColor,decorated):decorated;
+    }
+    if((node.type==='colorbox'||node.type==='fcolorbox')&&node.texBackground){
+      const box=colorBoxTex(node.texBackground,node.texBorder,r[0],node.texBoxStyle);
+      return node.texColor?coloredTex(node.texColor,box):box;
+    }
     const definition=definitions.get(node.type);
     if(node.texOptions!==undefined&&definition?.texOptionsKind)return definition.command+node.texOptions+r.map(value=>'{'+value+'}').join('');
     if(renderRegion===latex&&definition?.exportRender)return definition.exportRender(r);
@@ -471,6 +484,16 @@ export interface FontWarning {region:string;index:number;message:string}
         const type=item.type.replace(/--(?:mathbbm(?:ss|tt)?|editorbbm(?:ss)?bold|mathds|editordssans)$/, '--editorbboldx');
         item.type=type;
         if(item.atom ? !symbolDefinitions.has(type) || item.regions.length!==0 : !definitions.has(type))return false;
+        const box=type==='colorbox'||type==='fcolorbox',decoration=type==='math-decoration';
+        if(type==='textcolor'?!validMathColor(item.texColor):item.texColor!==undefined&&(!(box||decoration)||!validMathColor(item.texColor)))return false;
+        if(decoration){
+          if(!item.texBackground&&!item.texBorder)return false;
+          if(item.texBackground!==undefined&&!validDecorationColor(item.texBackground)||item.texBorder!==undefined&&!validDecorationColor(item.texBorder))return false;
+        }else{
+          if(box?!validMathColor(item.texBackground):item.texBackground!==undefined)return false;
+          if(type==='fcolorbox'?!validMathColor(item.texBorder):item.texBorder!==undefined)return false;
+        }
+        if(item.texBoxStyle!==undefined&&(!box||!['textstyle','displaystyle','scriptstyle','scriptscriptstyle'].includes(String(item.texBoxStyle))))return false;
         if(item.texOptions!==undefined&&(item.atom||!definitions.get(type)?.texOptionsKind||!validateTexLayoutOptions(definitions.get(type)!.texOptionsKind!,item.texOptions)))return false;
         if((type==='source-tex'||type==='case-text')&&(item.regions.length!==1||!isObject(item.regions[0])||!Array.isArray(item.regions[0].items)||item.regions[0].items.some(child=>typeof child!=='string')))return false;
         for(const key of ['rows','columns'])if(item[key]!==undefined && (!Number.isSafeInteger(item[key]) || Number(item[key])<1))return false;
@@ -501,6 +524,19 @@ export interface FontWarning {region:string;index:number;message:string}
     if(typeof cursor.region!=='string' || !regionLengths.has(cursor.region))return false;
     const length=regionLengths.get(cursor.region)!;
     return [cursor.offset,cursor.anchor].every(n=>typeof n==='number' && Number.isSafeInteger(n) && n>=0 && n<=length);
+  }
+  /** Validate imported identities without mutating the source; allocate fresh
+   * identities for the destination, including every nested region. */
+  function cloneMathFragment(items:readonly MathItem[]):MathItem[] {
+    const source:unknown=JSON.parse(JSON.stringify(items));
+    if(!Array.isArray(source))throw Error('Invalid math fragment');
+    const used=new Set<string>();
+    const collect=(values:unknown[])=>{for(const value of values){if(!isObject(value))continue;if(typeof value.id==='string')used.add(value.id);if(Array.isArray(value.regions))for(const child of value.regions)if(isObject(child)){if(typeof child.id==='string')used.add(child.id);if(Array.isArray(child.items))collect(child.items);}}};
+    collect(source);const root=region('公式',source as MathItem[]);while(used.has(root.id))root.id='r'+nextSerial();
+    if(!isSavedState({version:2,root,cursor:{region:root.id,offset:0,anchor:0}}))throw Error('Invalid math fragment');
+    const cloneRegion=(r:Region):Region=>({...r,id:'r'+nextSerial(),items:r.items.map(cloneItem)});
+    const cloneItem=(item:MathItem):MathItem=>typeof item==='string'?item:{...item,id:'n'+nextSerial(),regions:item.regions.map(cloneRegion)};
+    return root.items.map(cloneItem);
   }
   class EditorModel {
  pendingFont:string|undefined;
@@ -632,6 +668,148 @@ export interface FontWarning {region:string;index:number;message:string}
     record() { this.undoStack.push(this.snapshot()); if (this.undoStack.length > 100) this.undoStack.shift(); this.redoStack = []; }
     undo() { if (!this.undoStack.length) return; this.redoStack.push(this.snapshot()); this.restore(this.undoStack.pop()!); }
     redo() { if (!this.redoStack.length) return; this.undoStack.push(this.snapshot()); this.restore(this.redoStack.pop()!); }
+    private colorParent(target:MathColorTarget='text',any=false):Parent|undefined {
+      let id=this.cursor.region,parent:Parent|undefined;
+      const property=target==='text'?'texColor':target==='background'?'texBackground':'texBorder';
+      while((parent=this.parents.get(id))){
+        if(any?['textcolor','colorbox','fcolorbox','math-decoration'].includes(parent.node.type):!!parent.node[property])return parent;
+        id=parent.region.id;
+      }
+      return undefined;
+    }
+    private selectedColorBox():{node:MathNode;region:Region;index:number}|undefined {
+      const [start,end]=this.range;
+      if(end-start===1){
+        let container=this.current,index=start,item=container.items[index];
+        // A foreground-only wrapper does not add box geometry. Reach its
+        // existing box rather than adding a second rectangle around it.
+        while(typeof item!=='string'&&item.type==='textcolor'&&item.regions[0].items.length===1){
+          const child=item.regions[0].items[0];if(typeof child==='string'||!['textcolor','colorbox','fcolorbox','math-decoration'].includes(child.type))break;
+          container=item.regions[0];index=0;item=child;
+        }
+        if(typeof item!=='string'&&['textcolor','colorbox','fcolorbox','math-decoration'].includes(item.type))return {node:item,region:container,index};
+      }
+      if(start===0&&end===this.current.items.length){
+        const parent=this.parents.get(this.current.id);
+        if(parent&&['colorbox','fcolorbox','math-decoration'].includes(parent.node.type))return parent;
+      }
+      return undefined;
+    }
+    canSetColor(target:MathColorTarget='text'):boolean {
+      if(this.rawInput)return false;
+      if(!['text','background','border'].includes(target))return false;
+      const [start,end]=this.range;
+      if(start===end)return !!this.colorParent(target)||!!this.colorParent('text',true);
+      // Display environments are document entries, not valid color arguments.
+      return !this.current.items.slice(start,end).some(item=>typeof item!=='string'&&
+        (definitions.get(item.type)?.scope==='formula'||item.type==='source-tex'&&!!standaloneMathEnvironmentBounds(item.regions[0].items.join(''))));
+    }
+    canResetColor(target:MathColorTarget='text'):boolean {
+      if(!this.canSetColor(target))return false;
+      const [start,end]=this.range;
+      if(target!=='text'){
+        const node=(start===end?this.colorParent(target):this.selectedColorBox())?.node;
+        // Native fcolorbox always has a real background. Removing it while
+        // retaining the frame would require non-TeX CSS colors or a fake fill.
+        return !!node&&(target==='background'?!!node.texBackground&&(node.type==='math-decoration'||!node.texBorder):!!node.texBorder);
+      }
+      if(start===end)return !!this.colorParent();
+      let id=this.cursor.region,parent:Parent|undefined,acrossStructure=false,inherited=false;
+      while((parent=this.parents.get(id))){
+        if(parent.node.type==='textcolor'){
+          // Removing only a numerator's inherited color must not silently
+          // recolor its fraction bar or denominator. There is no native TeX
+          // "document default color" token, so this operation is unavailable.
+          if(!acrossStructure)inherited=true;
+        }else acrossStructure=true;
+        id=parent.region.id;
+      }
+      const colored=(items:MathItem[]):boolean=>items.some(item=>typeof item!=='string'&&
+        (!!item.texColor||item.regions.some(child=>colored(child.items))));
+      return inherited||colored(this.current.items.slice(start,end));
+    }
+    private setBoxColor(next:MathColor|null,target:'background'|'border'):boolean {
+      const [start,end]=this.range;
+      let selected=start===end?this.colorParent('text',true):this.selectedColorBox();
+      this.record();this.pendingFont=undefined;
+      if(!selected){
+        const wrapper=structure('math-decoration',[region('Content',this.current.items.slice(start,end))]);
+        this.current.items.splice(start,end-start,wrapper);
+        selected={node:wrapper,region:this.current,index:start};
+        this.setCursor(this.current.id,this.cursor.offset>=this.cursor.anchor?start+1:start,this.cursor.offset>=this.cursor.anchor?start:start+1);
+      }
+      const {node,region:container,index}=selected;
+      const decoration=node.type==='math-decoration'||node.type==='textcolor';
+      if(target==='background'){
+        if(next)node.texBackground=next;else delete node.texBackground;
+      }else{
+        if(next){node.texBorder=next;if(!decoration)node.texBackground??={model:'RGB',value:'255,255,255'};}
+        else delete node.texBorder;
+      }
+      if(decoration&&(node.texBackground||node.texBorder)){
+        node.type='math-decoration';
+      }else if(node.texBackground){
+        node.type=node.texBorder?'fcolorbox':'colorbox';
+      }else if(node.texColor){node.type='textcolor';delete node.texBoxStyle;}
+      else{
+        const body=node.regions[0];container.items.splice(index,1,...body.items);
+        if(this.cursor.region===body.id)this.cursor={region:container.id,offset:index+this.cursor.offset,anchor:index+this.cursor.anchor};
+        else if(this.cursor.region===container.id){
+          const shift=(position:number)=>position>index?position+body.items.length-1:position;
+          this.cursor={region:container.id,offset:shift(this.cursor.offset),anchor:shift(this.cursor.anchor)};
+        }
+      }
+      this.index();return true;
+    }
+    setColor(color:string|null,target:MathColorTarget='text'):boolean {
+      const next=color===null?null:hexMathColor(color);
+      if(color!==null&&!next||!this.canSetColor(target)||color===null&&!this.canResetColor(target))return false;
+      if(target!=='text')return this.setBoxColor(next,target);
+      const [initialStart,initialEnd]=this.range;
+      if(initialStart===initialEnd){
+        const parent=(this.colorParent()??this.colorParent('text',true))!;
+        if(next&&JSON.stringify(parent.node.texColor)===JSON.stringify(next))return false;
+        this.record();this.pendingFont=undefined;
+        if(next)parent.node.texColor=next;
+        else if(parent.node.type!=='textcolor')delete parent.node.texColor;
+        else{
+          const body=parent.node.regions[0];
+          parent.region.items.splice(parent.index,1,...body.items);
+          if(this.cursor.region===body.id)this.cursor={region:parent.region.id,
+            offset:parent.index+this.cursor.offset,anchor:parent.index+this.cursor.anchor};
+        }
+        this.index();return true;
+      }
+      this.record();this.pendingFont=undefined;
+      const forward=this.cursor.offset>=this.cursor.anchor;
+      let container=this.current,start=initialStart,end=initialEnd;
+      // Split enclosing color runs at the selected boundaries. Only color
+      // scopes are transparent here; actual mathematical structures stay put.
+      let parent:Parent|undefined;
+      while((parent=this.parents.get(container.id))){
+        if(parent.node.type!=='textcolor')break;
+        const before=container.items.slice(0,start),selected=container.items.slice(start,end),after=container.items.slice(end);
+        const wrap=(items:MathItem[]):MathNode=>({...structure('textcolor',[region('Content',items)]),texColor:{...parent!.node.texColor!}});
+        const prefix=before.length?[wrap(before)]:[],suffix=after.length?[wrap(after)]:[];
+        parent.region.items.splice(parent.index,1,...prefix,...selected,...suffix);
+        start=parent.index+prefix.length;end=start+selected.length;container=parent.region;
+        this.cursor={region:container.id,offset:end,anchor:start};this.index();
+      }
+      const strip=(items:MathItem[]):MathItem[]=>items.flatMap(item=>{
+        if(typeof item==='string')return [item];
+        if(item.type==='textcolor')return strip(item.regions[0].items);
+        delete item.texColor;
+        for(const child of item.regions)child.items=strip(child.items);
+        return [item];
+      });
+      const contents=strip(container.items.slice(start,end));
+      const replacement:MathItem[]=next?[{...structure('textcolor',[region('Content',contents)]),texColor:next}]:contents;
+      container.items.splice(start,end-start,...replacement);this.index();
+      // Keep the same visible fragment selected in the surrounding sequence.
+      // Right/Left then leave the color scope, so later typing is not colored.
+      this.setCursor(container.id,forward?start+replacement.length:start,forward?start:start+replacement.length);
+      return true;
+    }
     replace(start:number, end:number, text:string) {
       this.record();
       const hadContent=this.current.items.length>0;
@@ -673,31 +851,38 @@ export interface FontWarning {region:string;index:number;message:string}
       return true;
     }
     insert(text:string) { this.replace(...this.range, text); }
+    private withSelectionColors(selected:MathItem[]):MathItem[] {
+      let items=selected,id=this.cursor.region,parent:Parent|undefined;
+      // Keep the nesting order: a border-only inner decoration can inherit a
+      // background from its parent without discarding either when copied.
+      while((parent=this.parents.get(id))){
+        const node=parent.node;id=parent.region.id;
+        if(!['textcolor','colorbox','fcolorbox','math-decoration'].includes(node.type))continue;
+        items=[{...structure(node.type,[region('Content',items)]),
+          ...(node.texColor?{texColor:{...node.texColor}}:{}),
+          ...(node.texBackground?{texBackground:{...node.texBackground}}:{}),
+          ...(node.texBorder?{texBorder:{...node.texBorder}}:{}),
+          ...(node.texBoxStyle?{texBoxStyle:node.texBoxStyle}:{})}];
+      }
+      return items;
+    }
     selectionSnapshot():string {
       const [start,end]=this.range,selected=this.current.items.slice(start,end);
       const parent=this.parents.get(this.cursor.region)?.node;
       // A selection inside source/text/chemistry is still in that language.
       // Keep its enclosing raw command when it is pasted into normal math.
-      const items=this.rawInput&&parent?[structure(parent.type,[region('内容',selected)])]:selected;
+      const items=this.withSelectionColors(this.rawInput&&parent?[structure(parent.type,[region('内容',selected)])]:selected);
       const root=region('公式',items);
       return JSON.stringify({version:2,root,cursor:{region:root.id,offset:root.items.length,anchor:root.items.length}},(key,value)=>key==='label'?undefined:value);
     }
     selectionLatex():string {
       const [start,end]=this.range,items=this.current.items.slice(start,end);
-      return this.rawInput?items.map(item=>typeof item==='string'?item:structureTex(item,latex)).join(''):latex({id:'',label:'',items});
+      return this.rawInput?items.map(item=>typeof item==='string'?item:structureTex(item,latex)).join(''):latex({id:'',label:'',items:this.withSelectionColors(items)});
     }
     replaceFragment(items:readonly MathItem[]):void {
       // Validate before touching history or the destination. Clipboard IDs are
       // only source identities; every inserted region/node receives a fresh ID.
-      const source:unknown=JSON.parse(JSON.stringify(items));
-      if(!Array.isArray(source))throw Error('Invalid math fragment');
-      const used=new Set<string>();
-      const collect=(values:unknown[])=>{for(const value of values){if(!isObject(value))continue;if(typeof value.id==='string')used.add(value.id);if(Array.isArray(value.regions))for(const child of value.regions)if(isObject(child)){if(typeof child.id==='string')used.add(child.id);if(Array.isArray(child.items))collect(child.items);}}};
-      collect(source);const root=region('公式',source as MathItem[]);while(used.has(root.id))root.id='r'+nextSerial();
-      if(!isSavedState({version:2,root,cursor:{region:root.id,offset:0,anchor:0}}))throw Error('Invalid math fragment');
-      const cloneRegion=(r:Region):Region=>({...r,id:'r'+nextSerial(),items:r.items.map(cloneItem)});
-      const cloneItem=(item:MathItem):MathItem=>typeof item==='string'?item:{...item,id:'n'+nextSerial(),regions:item.regions.map(cloneRegion)};
-      const cloned=root.items.map(cloneItem);
+      const cloned=cloneMathFragment(items);
       if(this.rawInput){this.replace(...this.range,latex({id:'',label:'',items:cloned}));return;}
       const isFormula=(item:MathNode):boolean=>definitions.get(item.type)?.scope==='formula'||item.type==='source-tex'&&!!standaloneMathEnvironmentBounds(item.regions[0].items.join(''));
       const hasFormula=(values:readonly MathItem[]):boolean=>values.some(item=>typeof item!=='string'&&(isFormula(item)||item.regions.some(child=>hasFormula(child.items))));
@@ -721,6 +906,33 @@ export interface FontWarning {region:string;index:number;message:string}
     insertSourceTex(source:string):void {
       if(this.rawInput){this.replace(...this.range,source);return;}
       this.replaceFragment([structure('source-tex',[region('LaTeX source',Array.from(source))])]);
+    }
+    /** Confirm a source command proved complete by the input layer. The final
+     * keystroke already recorded history, so conversion is part of that edit. */
+    commitSourceInput(items:readonly MathItem[],declaration=false):boolean {
+      const parent=this.parents.get(this.cursor.region),[start,end]=this.range;
+      if(parent?.node.type!=='source-tex'||start!==end||end!==this.current.items.length)return false;
+      let cloned:MathItem[];
+      try{cloned=cloneMathFragment(items);}catch{return false;}
+      if(!cloned.length)return false;
+      const isFormula=(values:readonly MathItem[]):boolean=>values.some(item=>typeof item!=='string'&&
+        (definitions.get(item.type)?.scope==='formula'||item.type==='source-tex'&&!!standaloneMathEnvironmentBounds(item.regions[0].items.join(''))||item.regions.some(child=>isFormula(child.items))));
+      if(isFormula(cloned))return false;
+      const color=cloned[0];
+      if(declaration&&(cloned.length!==1||typeof color==='string'||color.type!=='textcolor'))return false;
+      this.pendingFont=undefined;
+      if(declaration&&typeof color!=='string'){
+        const body=color.regions[0],typedLength=body.items.length;
+        // A declaration reaches the end of this exact region, including its
+        // existing suffix; it must not recolor a sibling numerator or cell.
+        body.items.push(...parent.region.items.slice(parent.index+1));
+        parent.region.items.splice(parent.index,parent.region.items.length-parent.index,color);
+        this.index();this.setCursor(body.id,typedLength);
+      }else{
+        parent.region.items.splice(parent.index,1,...cloned);
+        this.index();this.setCursor(parent.region.id,parent.index+cloned.length);
+      }
+      return true;
     }
     get rawInput():boolean {return !!definitions.get(this.parents.get(this.cursor.region)?.node.type || '')?.raw;}
     commandQuery() {
@@ -836,6 +1048,14 @@ export interface FontWarning {region:string;index:number;message:string}
         this.setCursor(parent.id,start+1+selected.length);return;
       }
       const node = structure(type, definition.labels.map((label,i)=>region(label,i===definition.selectedIndex?contents:[])));
+      // This hidden constructor is used by registry consumers; the GUI always
+      // supplies an explicit color through setColor instead.
+      if(type==='textcolor')node.texColor={model:'RGB',value:'0,0,0'};
+      if(type==='math-decoration')node.texBackground={model:'RGB',value:'255,255,255'};
+      if(type==='colorbox'||type==='fcolorbox'){
+        node.texBackground={model:'RGB',value:'255,255,255'};
+        if(type==='fcolorbox')node.texBorder={model:'RGB',value:'0,0,0'};
+      }
       if(record)this.record();
       // Move the selection into the new structure rather than flattening it.
       parent.items.splice(start, end - start, node);

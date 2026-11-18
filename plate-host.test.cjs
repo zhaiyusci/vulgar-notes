@@ -280,24 +280,24 @@ test('Plate document / independent MathJax mount integration',async t=>{
    }
   });
  });
- await t.test('full BibTeX sources survive restart independently while native files and drafts capture only cited entries',async()=>{
+ await t.test('native files and recovery drafts retain full attached BibTeX sources including uncited records',async()=>{
   const {flow,editor}=setup();flow.markDocumentSaved(flow.serializeDocument());
   const library={id:'papers',name:'Papers.bib',source:'@article{cited,title={Cited title},author={Writer, One},year={2026}}\n@book{later,title={Later title}}\n@book{unused,title={UNUSED_PRIVATE_ENTRY}}'};
   flow.setBibliographyLibraries([library]);await tick();
-  assert.equal(flow.hasUnsavedChanges(),false,'attaching uncited sources does not alter native content');
-  assert.equal(JSON.parse(flow.serializeDocument()).bibliographyLibraries,undefined);
+  assert.equal(flow.hasUnsavedChanges(),true,'attaching an uncited source changes the saved document');
+  assert.equal(JSON.parse(flow.serializeDocument()).bibliographyLibraries[0].source,library.source);
   const ref=keys=>({type:'tex_reference',command:'cite',keys,children:[{text:''}]});
   editor.tf.select(editor.api.end([]));editor.tf.insertNodes(ref(['cited']));await tick();
   assert.equal(flow.hasUnsavedChanges(),true);
   const saved=flow.serializeDocument(),draft=window.localStorage.getItem('math-plate-document-v1');
   for(const source of [saved,draft]){
    const libraries=JSON.parse(source).bibliographyLibraries;
-   assert.equal(libraries.length,1);assert.match(libraries[0].source,/Cited title/);
-   assert.doesNotMatch(source,/UNUSED_PRIVATE_ENTRY|Later title/);
+   assert.equal(libraries.length,1);assert.equal(libraries[0].source,library.source);
+   assert.equal(JSON.parse(source).bibliographyMode,'full');
   }
   assert.equal(flow.getBibliographyLibraries()[0].source,library.source,'saving must not narrow the session source');
   flow.markDocumentSaved(saved);editor.tf.insertText(' ');editor.tf.insertNodes(ref(['later']));await tick();
-  assert.match(flow.serializeDocument(),/Later title/);assert.doesNotMatch(flow.serializeDocument(),/UNUSED_PRIVATE_ENTRY/);
+  assert.match(flow.serializeDocument(),/Later title/);assert.match(flow.serializeDocument(),/UNUSED_PRIVATE_ENTRY/);
   assert.match(flow.exportMarkdown(),/\\bibitem\{cited\}/);assert.match(flow.exportMarkdown(),/\\bibitem\{later\}/);assert.doesNotMatch(flow.exportMarkdown(),/UNUSED_PRIVATE_ENTRY/);
   flow.destroy();
   const mount=document.createElement('div');document.body.append(mount);
@@ -305,10 +305,10 @@ test('Plate document / independent MathJax mount integration',async t=>{
   assert.match(restored.getBibliographyLibraries()[0].source,/Cited title/);assert.match(restored.getBibliographyLibraries()[0].source,/Later title/);
   assert.match(restored.getBibliographyLibraries()[0].source,/UNUSED_PRIVATE_ENTRY/);assert.equal(restored.isCapturedBibliographyLibrary('papers'),false);restored.destroy();
  });
- await t.test('opening another document does not erase a full local library or embed its uncited entries',async()=>{
+ await t.test('legacy documents still attach the local catalog and new saves preserve its whole source',async()=>{
   const {flow}=setup();const full={id:'catalog',name:'Catalog.bib',source:'@book{one,title={One}}\n@book{two,title={Two}}\n@book{three,title={Uncited third}}'};
   flow.setBibliographyLibraries([full]);flow.openDocument(JSON.stringify({version:1,value:[{type:'p',children:[{text:'A new document'}]}]}));await tick();
-  assert.equal(flow.getBibliographyLibraries()[0].source,full.source);assert.equal(JSON.parse(flow.serializeDocument()).bibliographyLibraries,undefined);
+  assert.equal(flow.getBibliographyLibraries()[0].source,full.source);assert.equal(JSON.parse(flow.serializeDocument()).bibliographyLibraries[0].source,full.source);
   assert.match(window.localStorage.getItem('vulgar-notes-bibliography-library-catalog-v1'),/Uncited third/);flow.destroy();
  });
  await t.test('a captured subset is marked honestly and adding another library never promotes it into a full catalog',async()=>{
@@ -317,8 +317,24 @@ test('Plate document / independent MathJax mount integration',async t=>{
   assert.equal(flow.isCapturedBibliographyLibrary('captured'),true);assert.equal(window.localStorage.getItem('vulgar-notes-bibliography-library-catalog-v1'),null);
   const added={id:'new',name:'New.bib',source:'@book{new,title={New full source}}'};flow.setBibliographyLibraries([...flow.getBibliographyLibraries(),added],['new']);
   const cache=JSON.parse(window.localStorage.getItem('vulgar-notes-bibliography-library-catalog-v1'));assert.deepEqual(cache.libraries.map(library=>library.id),['new']);assert.equal(flow.isCapturedBibliographyLibrary('captured'),true);
+  const saved=flow.serializeDocument();assert.deepEqual(JSON.parse(saved).bibliographyCapturedLibraryIds,['captured']);
+  flow.openDocument(saved);assert.equal(flow.isCapturedBibliographyLibrary('captured'),true);assert.equal(flow.isCapturedBibliographyLibrary('new'),false);
   flow.setBibliographyLibraries([{...copy,source:copy.source+'\n@book{later,title={Restored full source}}'},added],['captured']);await tick();
-  assert.equal(flow.isCapturedBibliographyLibrary('captured'),false);assert.doesNotMatch(flow.serializeDocument(),/Restored full source/);flow.destroy();
+  assert.equal(flow.isCapturedBibliographyLibrary('captured'),false);assert.match(flow.serializeDocument(),/Restored full source/);flow.destroy();
+ });
+ await t.test('opening a full document preserves its own attachments and an explicitly empty library list',async()=>{
+  const {flow}=setupBlank(),cached={id:'saved',name:'Saved.bib',source:'@book{one,title={Retained}}\n@book{deleted,title={Removed from document}}'},other={id:'other',name:'Other.bib',source:'@book{other,title={Unrelated local library}}'};
+  flow.setBibliographyLibraries([cached,other]);
+  const own={...cached,source:'@book{one,title={Retained}}\n'},fullDocument={version:1,value:[{type:'p',children:[{text:'Full document'}]}],bibliographyMode:'full',bibliographyLibraries:[own]};
+  flow.openDocument(JSON.stringify(fullDocument));await tick();
+  assert.deepEqual(flow.getBibliographyLibraries(),[own]);assert.equal(flow.isCapturedBibliographyLibrary(own.id),false);
+  assert.deepEqual(JSON.parse(flow.serializeDocument()).bibliographyLibraries,[own]);assert.equal(flow.hasUnsavedChanges(),false);
+  assert.match(window.localStorage.getItem('vulgar-notes-bibliography-library-catalog-v1'),/Removed from document|Unrelated local library/,'opening preserves independent cached sources');
+  flow.openDocument(JSON.stringify({...fullDocument,bibliographyLibraries:[]}));await tick();
+  assert.deepEqual(flow.getBibliographyLibraries(),[]);const empty=flow.serializeDocument();assert.equal(JSON.parse(empty).bibliographyMode,'full');assert.deepEqual(JSON.parse(empty).bibliographyLibraries,[]);
+  flow.destroy();
+  const mount=document.createElement('div');document.body.append(mount);const reopened=new PlateMathHost(mount,new EditorModel(),{activate(){},leave(){},change(){}});await tick();
+  assert.deepEqual(reopened.getBibliographyLibraries(),[],'restoring an empty full-mode recovery draft must not attach the cached catalog');reopened.destroy();
  });
  await t.test('an exact portable alias restores a complete library and removing it also removes its cached origin',async()=>{
   const {flow,editor}=setup();const full={id:'catalog-id',name:'Alias.bib',source:'@book{used,title={Used}}\n@book{unused,title={Complete source}}'};
@@ -579,12 +595,13 @@ test('Plate document / independent MathJax mount integration',async t=>{
    assert.equal(grouped,0,'empty-tail transitions without references do not scan the document');
   }finally{flow.destroy();}
  });
- await t.test('citation undo and redo update embedded snapshots while retaining attached source choices',async()=>{
+ await t.test('citation undo and redo update rendered references while retaining every saved library entry',async()=>{
   const {flow,editor}=setup();flow.setBibliographyLibraries([{id:'papers',name:'Papers.bib',source:'@book{a,title={Title A}}\n@book{b,title={Title B}}'}]);
   editor.tf.select(editor.api.end([]));editor.tf.withNewBatch(()=>editor.tf.insertNodes({type:'tex_reference',command:'cite',keys:['a'],children:[{text:''}]}));await tick();
-  assert.match(flow.serializeDocument(),/Title A/);assert.doesNotMatch(flow.serializeDocument(),/Title B/);
-  editor.tf.undo();await tick();assert.equal(JSON.parse(flow.serializeDocument()).bibliographyLibraries,undefined);assert.match(flow.getBibliographyLibraries()[0].source,/Title B/);
-  editor.tf.redo();await tick();assert.match(flow.serializeDocument(),/Title A/);assert.doesNotMatch(flow.serializeDocument(),/Title B/);flow.destroy();
+  const libraries=JSON.parse(flow.serializeDocument()).bibliographyLibraries;
+  assert.match(flow.exportMarkdown(),/Title A/);assert.doesNotMatch(flow.exportMarkdown(),/Title B/);
+  editor.tf.undo();await tick();assert.deepEqual(JSON.parse(flow.serializeDocument()).bibliographyLibraries,libraries);assert.doesNotMatch(flow.exportMarkdown(),/Title A|Title B/);
+  editor.tf.redo();await tick();assert.deepEqual(JSON.parse(flow.serializeDocument()).bibliographyLibraries,libraries);assert.match(flow.exportMarkdown(),/Title A/);assert.doesNotMatch(flow.exportMarkdown(),/Title B/);flow.destroy();
  });
  await t.test('pasted bibliography duplicates remain diagnosable and saved documents can still reopen',async()=>{
   const {flow,editor}=setup();flow.setBibliographyLibraries([{id:'papers',name:'Papers.bib',source:'@book{a,title={Library title}}'}]);

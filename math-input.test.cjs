@@ -1,3 +1,4 @@
+const {mountMathEditor}=require('./test/math-editor-harness.cjs');
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const {build}=require('esbuild');
@@ -11,7 +12,7 @@ test('switching formulas during composition does not lock the next formula',asyn
  window.eval(result.outputFiles[0].text+'\nwindow.mathUI=mathUI;');
  const input=window.document.getElementById('mathInput');
  let hooks,first,second;
- window.mathUI.mountMathEditor((mount,initial,h)=>{
+ mountMathEditor(window,window.mathUI,(mount,initial,h)=>{
   hooks=h;first={element:window.document.getElementById('formula'),model:initial};
   second={element:window.document.createElement('span'),model:new initial.constructor()};mount.append(second.element);
   for(const entry of [first,second]){entry.model.root.items=[];entry.model.index();entry.model.setCursor(entry.model.root.id,0);}
@@ -41,7 +42,7 @@ test('formula input and former preview controls never export the document',async
  window.eval(result.outputFiles[0].text+'\nwindow.mathUI=mathUI;');
  const input=window.document.getElementById('mathInput'),preview=window.document.getElementById('documentExports');
  let hooks,entry;const exports={latex:0,markdown:0};let syncs=0,persists=0;
- window.mathUI.mountMathEditor((mount,initial,h)=>{
+ mountMathEditor(window,window.mathUI,(mount,initial,h)=>{
   hooks=h;initial.root.items=[];initial.index();initial.setCursor(initial.root.id,0);
   entry={element:window.document.getElementById('formula'),model:initial};
   return {entries:()=>[entry],syncMath(){syncs++;},persist(){persists++;},exportLatex(){exports.latex++;return 'document latex: '+initial.exportLatex();},exportMarkdown(){exports.markdown++;return 'document markdown: '+initial.exportLatex();},isDisplay:()=>false,isNumbered:()=>false,readOnly:false};
@@ -90,7 +91,7 @@ test('math rendering requests only changed formulas in a multi-formula document'
  };
  const result=await build({entryPoints:['src/editor-ui.ts'],bundle:true,write:false,format:'iife',globalName:'mathUI'});
  window.eval(result.outputFiles[0].text+'\nwindow.mathUI=mathUI;');
- window.mathUI.mountMathEditor((mount,initial,h)=>{
+ mountMathEditor(window,window.mathUI,(mount,initial,h)=>{
   hooks=h;entries=Array.from({length:20},(_,index)=>{
    const model=index?new initial.constructor():initial,element=index?window.document.createElement('span'):window.document.getElementById('formula');
    element.classList.add('inline-formula');if(index)mount.append(element);
@@ -109,16 +110,16 @@ test('math rendering requests only changed formulas in a multi-formula document'
  assert.equal(requests.length,20,'initial layout renders each formula once');
  const untouched=entries.map(entry=>entry.element.firstChild);
  hooks.activate(entries[0].element,entries[0].model,'end');await draw();
- assert.equal(requests.length,21,'entering a formula redraws only its caret');
+ assert.equal(requests.length,20,'entering a formula decorates its existing layout without typesetting');
  const input=window.document.getElementById('mathInput');
  input.dispatchEvent(new window.InputEvent('beforeinput',{inputType:'insertText',data:'y'}));
  input.value+='y';input.dispatchEvent(new window.InputEvent('input',{inputType:'insertText',data:'y'}));await draw();
- assert.equal(requests.length,22,'typing redraws only the active formula');
+ assert.equal(requests.length,21,'typing redraws only the active formula');
  input.dispatchEvent(new window.KeyboardEvent('keydown',{key:'ArrowLeft'}));await draw();
- assert.equal(requests.length,23,'caret movement redraws only the active formula');
+ assert.equal(requests.length,21,'caret movement must preserve the current MathJax layout');
  for(let index=1;index<entries.length;index++)assert.equal(entries[index].element.firstChild,untouched[index],'unaffected formulas retain their rendered DOM');
  hooks.activate(entries[1].element,entries[1].model,'end');await draw();
- assert.equal(requests.length,25,'switching formulas redraws only the old and new active formulas');
+ assert.equal(requests.length,21,'switching the active formula must not typeset either unchanged formula');
  for(let index=2;index<entries.length;index++)assert.equal(entries[index].element.firstChild,untouched[index]);
  assert.equal(exports,0,'rendering does not generate document export formats');
  hooks.leave();await draw();
@@ -146,7 +147,7 @@ test('typed scripts stay inside the current input flow until the user leaves it'
  window.eval(result.outputFiles[0].text+'\nwindow.mathUI=mathUI;');
  const input=window.document.getElementById('mathInput');
  let hooks,entry;
- window.mathUI.mountMathEditor((mount,initial,h)=>{
+ mountMathEditor(window,window.mathUI,(mount,initial,h)=>{
   hooks=h;entry={element:window.document.getElementById('formula'),model:initial};
   return {entries:()=>[entry],syncMath(){},persist(){},exportLatex:()=>'',exportMarkdown:()=>'',isDisplay:()=>false,isNumbered:()=>false,readOnly:false};
  });

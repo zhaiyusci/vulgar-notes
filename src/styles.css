@@ -96,6 +96,12 @@ body[data-document-view="editor"] #documentHome { display:none; }
 .document-home-file-path { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--app-muted,#64748b); font-size:12px; }
 .document-home-date { flex:none; margin-left:12px; color:var(--app-muted,#64748b); font-size:12px; white-space:nowrap; }
 .document-home-remove { margin-right:3px; }
+.document-recovery-list { list-style:none; margin:0; padding:0; max-height:240px; overflow:auto; }
+.document-recovery-file { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; border:0; border-radius:4px; padding:8px; background:transparent; color:inherit; text-align:left; font:inherit; cursor:pointer; }
+.document-recovery-file:hover { background:var(--app-hover,#e8eff9); }
+.document-recovery-file:focus-visible { outline:2px solid var(--app-link,#246ec2); outline-offset:-2px; }
+.document-recovery-file span { min-width:0; overflow-wrap:anywhere; }
+.document-recovery-file time { flex:none; color:var(--app-muted,#64748b); font-size:12px; }
 .document-home-empty { margin:0; padding:16px 0; color:var(--app-muted,#64748b); }
 .document-home-status { margin:-20px 0 24px; color:var(--app-muted,#64748b); }
 .document-home-error { margin:0 0 24px; padding:10px 12px; border:1px solid var(--app-error,#b52c2c); border-radius:5px; color:var(--app-error,#b52c2c); overflow-wrap:anywhere; }
@@ -110,8 +116,8 @@ body[data-document-view="editor"] #documentHome { display:none; }
 .document-unsaved-dialog p { margin:0 0 24px; color:var(--app-muted,#64748b); overflow-wrap:anywhere; }
 .formula-source-dialog { width:min(720px,calc(100vw - 32px)); }
 .formula-source-dialog textarea { display:block; box-sizing:border-box; width:100%; min-height:220px; max-height:55dvh; resize:vertical; margin:0 0 20px; padding:12px; border:1px solid var(--app-border); border-radius:5px; background:var(--app-surface); color:var(--app-ink); font:14px/1.6 ui-monospace,monospace; tab-size:2; }
-#formulaSourceButton { border:1px solid var(--app-border); border-radius:4px; padding:2px 6px; background:var(--app-surface); color:var(--app-ink); font-size:11px; cursor:pointer; }
-#formulaSourceButton:disabled { opacity:.45; cursor:default; }
+:is(#formulaSourceButton,.formula-source-button) { border:1px solid var(--app-border); border-radius:4px; padding:2px 6px; background:var(--app-surface); color:var(--app-ink); font-size:11px; cursor:pointer; }
+:is(#formulaSourceButton,.formula-source-button):disabled { opacity:.45; cursor:default; }
 .document-unsaved-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:8px; }
 .document-unsaved-actions button { min-height:36px; padding:6px 12px; border:1px solid var(--app-border,#d8dfe8); border-radius:5px; background:var(--app-surface,#fff); color:var(--app-ink,#202124); font:inherit; cursor:pointer; }
 .document-unsaved-actions button:hover:not(:disabled) { background:var(--app-hover,#e8eff9); border-color:var(--app-hover-border,#bed0e8); }
@@ -120,3 +126,36 @@ body[data-document-view="editor"] #documentHome { display:none; }
 .document-unsaved-actions button[data-choice="discard"] { margin-right:auto; }
 .document-unsaved-actions button:focus-visible { outline:2px solid var(--app-link,#246ec2); outline-offset:3px; }
 .document-unsaved-actions button:disabled { opacity:.6; cursor:wait; }
+
+.proofreading-trigger { position:relative; }
+.proofreading-trigger[data-proofreading-active="true"] { color:var(--app-link,#2563eb); }
+.proofreading-count { position:absolute; top:-3px; right:-5px; padding:0 3px; border-radius:6px; background:var(--app-surface,#fff); color:var(--app-error,#b52c2c); font:10px/1.2 system-ui,sans-serif; }
+.proofreading-panel { box-sizing:border-box; width:340px; max-width:calc(100vw - 16px); max-height:calc(100dvh - 24px); overflow:auto; padding:12px; border:1px solid var(--app-border,#d8dfe8); border-radius:7px; background:var(--app-surface,#fff); color:var(--app-ink,#202124); box-shadow:0 8px 30px var(--app-shadow,rgb(23 36 59 / 20%)); font:13px/1.5 system-ui,sans-serif; }
+.proofreading-panel button { cursor:pointer; font:inherit; }
+.proofreading-panel button:disabled { opacity:.45; cursor:default; }
+.proofreading-panel button:focus-visible { outline:2px solid var(--app-link,#246ec2); outline-offset:2px; }
+.proofreading-heading { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.proofreading-heading strong { font-weight:600; }
+.proofreading-icon { display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; padding:5px; border:0; border-radius:4px; color:var(--app-muted,#64748b); background:transparent; }
+.proofreading-icon svg { width:16px; height:16px; }
+.proofreading-icon:hover { background:var(--app-hover,#e8eff9); color:var(--app-ink,#202124); }
+.proofreading-status { display:flex; flex-wrap:wrap; gap:3px 12px; margin:4px 0 9px; color:var(--app-muted,#64748b); font-size:11px; }
+.proofreading-actions,.proofreading-replacements { display:flex; flex-wrap:wrap; gap:5px; }
+.proofreading-actions button,.proofreading-replacements button,.proofreading-more { padding:3px 8px; border:1px solid var(--app-border,#d8dfe8); border-radius:4px; background:transparent; color:inherit; overflow-wrap:anywhere; text-align:left; }
+.proofreading-actions button:hover:not(:disabled),.proofreading-replacements button:hover:not(:disabled),.proofreading-more:hover { background:var(--app-hover,#e8eff9); border-color:var(--app-hover-border,#bed0e8); }
+.proofreading-empty,.proofreading-error { margin:9px 0 0; overflow-wrap:anywhere; font-size:12px; }
+.proofreading-empty { color:var(--app-muted,#64748b); }
+.proofreading-error { color:var(--app-error,#b52c2c); white-space:pre-wrap; }
+.proofreading-list { max-height:360px; overflow:auto; margin-top:10px; }
+.proofreading-issue { padding:9px 0; border-top:1px solid var(--app-border,#d8dfe8); }
+.proofreading-issue-heading { display:flex; align-items:baseline; gap:8px; margin-bottom:6px; }
+.proofreading-original { flex:1; min-width:0; border:0; padding:0; background:transparent; color:inherit; text-align:left; font-weight:600!important; white-space:pre-wrap; overflow-wrap:anywhere; }
+.proofreading-original:hover { text-decoration:underline; text-underline-offset:3px; }
+.proofreading-kind { flex:none; color:var(--app-muted,#64748b); font-size:10px; }
+.proofreading-explanation { margin:6px 0 3px; overflow-wrap:anywhere; font-size:12px; }
+.proofreading-ignore { border:0; padding:2px 0; background:transparent; color:var(--app-muted,#64748b); font-size:11px!important; }
+.proofreading-ignore:hover { color:var(--app-link,#2563eb); }
+.proofreading-more { margin-top:8px; }
+.proofreading-suggestion-menu { position:fixed; z-index:90; width:300px; max-height:calc(100dvh - 16px); }
+.proofreading-suggestion-menu .proofreading-issue { margin-top:5px; padding-bottom:0; }
+@media print { .proofreading-panel { display:none!important; } }

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vulgar Notes · Formula editor</title>
+<link rel="stylesheet" href="standalone-math-editor.css">
+<script src="mathjax-config.js"></script>
+<script defer src="vendor/mathjax/tex-chtml.js" onerror="window.mathjaxLoadFailed?.()"></script>
+<script type="module" src="standalone-math-editor.js"></script>
+</head>
+<body>
+<header class="formula-toolbar">
+  <span class="formula-app-name" data-i18n="Formula editor">Formula editor</span>
+  <nav class="formula-file-actions" aria-label="Formula file">
+    <button id="newFormula" type="button" data-i18n="New formula">New formula</button>
+    <button id="openFormula" type="button" data-i18n="Open formula">Open formula</button>
+    <button id="saveFormula" type="button" data-i18n="Save formula">Save formula</button>
+  </nav>
+  <span class="toolbar-divider" aria-hidden="true"></span>
+  <div class="document-actions">
+    <label><span class="visually-hidden" data-i18n="Current formula">Current formula</span>
+      <select id="formulaLayout" aria-label="Current formula"><option value="inline" data-i18n="Inline">Inline</option><option value="display" data-i18n="Display">Display</option></select>
+    </label>
+  </div>
+  <nav class="formula-view-actions" aria-label="Formula views">
+    <button id="toggleMathPanel" type="button" aria-controls="mathPanel" aria-pressed="true" data-i18n="Math input">Math input</button>
+    <button id="showLatex" type="button" aria-controls="latexPane" aria-pressed="false">LaTeX</button>
+    <button id="showSyntaxTree" type="button" aria-controls="syntaxTreePane" aria-pressed="true" data-i18n="Syntax tree">Syntax tree</button>
+  </nav>
+  <span id="formulaFileName" class="formula-file-name"></span>
+  <label class="formula-language"><span class="visually-hidden" data-i18n="Interface language">Interface language</span>
+    <select id="uiLocale"><option value="en">English</option><option value="zh-CN">中文</option></select>
+  </label>
+</header>
+<div class="formula-workspace">
+  <main class="formula-canvas">
+    <div id="preview">
+      <div id="textFlow"><span id="formula" class="inline-formula" tabindex="0" data-math-id="standalone-formula" aria-label="Formula"></span></div>
+      <textarea id="mathInput" hidden autocomplete="off" spellcheck="false" aria-label="Edit formula"></textarea>
+    </div>
+    <section id="formulaInspector" class="formula-inspector">
+      <header class="inspector-header">
+        <div class="inspector-tabs" role="tablist" aria-label="Formula inspector">
+          <button id="latexTab" type="button" role="tab" aria-selected="false" aria-controls="latexPane" tabindex="-1">LaTeX</button>
+          <button id="syntaxTreeTab" type="button" role="tab" aria-selected="true" aria-controls="syntaxTreePane" data-i18n="Syntax tree">Syntax tree</button>
+        </div>
+        <button id="closeInspector" class="inspector-close" type="button" aria-label="Close inspector"><span aria-hidden="true">×</span><span class="visually-hidden" data-i18n="Close inspector">Close inspector</span></button>
+      </header>
+      <div id="latexPane" class="inspector-pane latex-pane" role="tabpanel" aria-labelledby="latexTab" hidden>
+        <pre id="latexSource" aria-label="LaTeX source" tabindex="0"></pre>
+        <div class="latex-actions">
+          <button id="importLatex" type="button" data-i18n="Import LaTeX">Import LaTeX</button>
+          <button id="copyLatex" type="button" data-i18n="Copy LaTeX">Copy LaTeX</button>
+          <button id="downloadLatex" type="button" data-i18n="Download .tex">Download .tex</button>
+        </div>
+        <p id="latexStatus" class="latex-status" role="status" aria-live="polite"></p>
+      </div>
+      <div id="syntaxTreePane" class="inspector-pane syntax-tree-pane" role="tabpanel" aria-labelledby="syntaxTreeTab">
+        <div id="syntaxTree"></div>
+      </div>
+    </section>
+    <footer class="formula-status">
+      <p id="formulaStatus" role="status" aria-live="polite"></p>
+      <p id="error" role="status" aria-live="polite"></p>
+    </footer>
+  </main>
+  <aside id="mathPanel" aria-label="Math input">
+    <div class="board-heading">
+      <h1 data-i18n="Math input">Math input</h1>
+    </div>
+    <div id="insertToolbar" role="group" aria-label="Insert"></div>
+    <p id="pendingFontHint" role="status" aria-live="polite"></p>
+    <span id="structureCount" hidden></span>
+  </aside>
+</div>
+</body>
+</html>

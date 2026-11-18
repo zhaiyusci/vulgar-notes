@@ -1,10 +1,10 @@
 import {LabelMarker} from './components/ui/label-marker';
 import {t} from './i18n';
-import React,{createContext,useContext,useLayoutEffect,useRef} from 'react';
+import React,{useContext,useLayoutEffect,useRef} from 'react';
 import {PlateElement,useSelected,useFocused,type PlateElementProps} from 'platejs/react';
 import type {FormulaNode} from './plate-document';
-import type {PlateMathHost} from './plate-host';
-export const HostContext=createContext<PlateMathHost|null>(null);
+import {HostContext} from './plate-editor-context';
+export {HostContext} from './plate-editor-context';
 
 /** React owns the void wrapper and Slate child; MathJax exclusively owns the mount. */
 export function MathEquationElement(props:PlateElementProps){

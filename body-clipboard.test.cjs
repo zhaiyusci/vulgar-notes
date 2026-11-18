@@ -85,7 +85,10 @@ export const EditorKit=[ParagraphPlugin,BoldPlugin,ItalicPlugin,LinkPlugin,...Ma
     assert.equal(captured.bibliographyLibraries.length,1);assert.match(captured.bibliographyLibraries[0].source,/kept/);assert.doesNotMatch(captured.bibliographyLibraries[0].source,/uncopied|Private/);
     const target=flow();const cacheKey='vulgar-notes-bibliography-library-catalog-v1',cacheBefore=localStorage.getItem(cacheKey);target.editor.tf.select(target.editor.api.end([]));target.editor.insertData(clipboard);await tick();
     const saved=JSON.parse(target.serializeDocument());assert.equal(saved.bibliographyLibraries.length,1);assert.match(saved.bibliographyLibraries[0].source,/kept/);assert.doesNotMatch(saved.bibliographyLibraries[0].source,/uncopied/);assert.equal(localStorage.getItem(cacheKey),cacheBefore);
-    target.editor.tf.undo();await tick();assert.equal(JSON.parse(target.serializeDocument()).bibliographyLibraries,undefined);target.editor.tf.redo();await tick();assert.equal(JSON.parse(target.serializeDocument()).bibliographyLibraries.length,1);
+    const capturedIds=saved.bibliographyLibraries.map(library=>library.id);assert.equal(saved.bibliographyMode,'full');assert.deepEqual(saved.bibliographyCapturedLibraryIds,capturedIds);
+    target.editor.tf.undo();await tick();const undone=JSON.parse(target.serializeDocument());
+    assert.equal(nodes(target.editor.children,'tex_reference').length,0);assert.deepEqual(undone.bibliographyLibraries,saved.bibliographyLibraries,'undoing prose retains its independently attached citation excerpt');assert.equal(undone.bibliographyMode,'full');assert.deepEqual(undone.bibliographyCapturedLibraryIds,capturedIds);assert.equal(localStorage.getItem(cacheKey),cacheBefore);
+    target.editor.tf.redo();await tick();const redone=JSON.parse(target.serializeDocument());assert.equal(nodes(target.editor.children,'tex_reference').length,1);assert.deepEqual(redone.bibliographyLibraries,saved.bibliographyLibraries);assert.deepEqual(redone.bibliographyCapturedLibraryIds,capturedIds);assert.equal(localStorage.getItem(cacheKey),cacheBefore);
     source.destroy();target.destroy();
   });
   await t.test('math fragment pasted into prose preserves its native snapshot without converting to LaTeX',async()=>{
@@ -110,8 +113,10 @@ export const EditorKit=[ParagraphPlugin,BoldPlugin,ItalicPlugin,LinkPlugin,...Ma
     source.editor.tf.select(source.editor.api.range([0]));const clipboard=data();source.editor.setFragmentData(clipboard,'copy');
     const native=JSON.parse(clipboard.getData(api.nativeClipboardMime));assert.equal(native.value.length,1);assert.equal(native.endnoteDefinitions.length,1);
     const target=flow([p('Target ')]);target.editor.tf.select(target.editor.api.end([]));target.editor.insertData(clipboard);await tick();
-    const definitions=nodes(target.editor.children,'footnoteDefinition'),references=nodes(target.editor.children,'footnoteReference');assert.equal(definitions.length,1);assert.equal(references.length,1);assert.equal(references[0].identifier,definitions[0].identifier);assert.match(textOf(definitions[0]),/Note text/);assert.equal(JSON.parse(target.serializeDocument()).bibliographyLibraries.length,1);
-    target.editor.tf.undo();await tick();assert.equal(target.editor.api.string([]),'Target ');assert.equal(nodes(target.editor.children,'footnoteDefinition').length,0);assert.equal(JSON.parse(target.serializeDocument()).bibliographyLibraries,undefined);
+    const definitions=nodes(target.editor.children,'footnoteDefinition'),references=nodes(target.editor.children,'footnoteReference');assert.equal(definitions.length,1);assert.equal(references.length,1);assert.equal(references[0].identifier,definitions[0].identifier);assert.match(textOf(definitions[0]),/Note text/);
+    const saved=JSON.parse(target.serializeDocument()),capturedIds=saved.bibliographyLibraries.map(library=>library.id);assert.equal(saved.bibliographyLibraries.length,1);assert.equal(saved.bibliographyMode,'full');assert.deepEqual(saved.bibliographyCapturedLibraryIds,capturedIds);
+    target.editor.tf.undo();await tick();assert.equal(target.editor.api.string([]),'Target ');assert.equal(nodes(target.editor.children,'footnoteDefinition').length,0);
+    const undone=JSON.parse(target.serializeDocument());assert.deepEqual(undone.bibliographyLibraries,saved.bibliographyLibraries);assert.equal(undone.bibliographyMode,'full');assert.deepEqual(undone.bibliographyCapturedLibraryIds,capturedIds);
     target.editor.tf.redo();await tick();assert.equal(nodes(target.editor.children,'footnoteDefinition').length,1);
     source.editor.tf.select(source.editor.api.end([0]));source.editor.insertData(clipboard);await tick();assert.equal(nodes(source.editor.children,'footnoteDefinition').length,1,'pasting the reference back reuses its existing local definition');
     source.destroy();target.destroy();

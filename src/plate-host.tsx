@@ -2,7 +2,7 @@ import {documentSessionId,draftStorage,saveDocumentFile} from './platform';
 import {t} from './i18n';
 import React from 'react';
 import {DisplayBoundaryText} from './display-boundary-text';
-import {HostContext} from './plate-math-element';
+import {HostContext} from './plate-editor-context';
 import {createRoot,type Root} from 'react-dom/client';
 import {createPortal,flushSync} from 'react-dom';
 import {createPlateEditor,Plate,type PlateEditor} from 'platejs/react';
@@ -39,6 +39,7 @@ import {rememberCollaborationInvite,forgetCollaborationInvite} from './collabora
 import type {DocumentCollaborationSession} from './collaboration-session';
 import type {CollaborativeMathStore,MathCursorHandle} from './collaboration-math';
 import {formulaLocations} from './formula-locations';
+import {ProofreadingController} from './proofreading-controller';
 
 /** Empty/manual notifications and every non-text mutation take the full path. */
 function documentChangeKind(operations:readonly Operation[]):'text'|'selection'|'other'{
@@ -66,6 +67,7 @@ export class PlateMathHost implements DocumentHost {
   readonly models=new Map<string,EditorModel>();
   readonly mounts=new Map<string,HTMLElement>();
   readonly root:Root;
+  readonly proofreader:ProofreadingController;
   private collaboration:DocumentCollaborationSession|undefined;
   private collaborationApplying=false;
   private collaborationState:CollaborationState=inactiveCollaboration;
@@ -253,7 +255,7 @@ export class PlateMathHost implements DocumentHost {
     this.bibliographyLibraries=Object.freeze(libraries.map(library=>Object.freeze({...library})));
     for(const listener of this.bibliographyListeners)listener();
   }
-  /** Full sources live on this device; only cited entries belong to the document. */
+  /** Explicit library edits update this document and the independent local catalog. */
   setBibliographyLibraries(libraries:readonly BibLibrary[],updatedLibraryIds?:readonly string[]):void {
     if(this.readOnly)return;
     const next=validateBibLibraries(libraries);validateDocumentLibraries(this.editor.children,next);
@@ -279,22 +281,22 @@ export class PlateMathHost implements DocumentHost {
     this.libraryNotices=[];
     this.replaceBibliography(next);this.collaboration?.publishSettings();this.save();this.scheduleChange();
   }
-  private restoreBibliography(captured:readonly BibLibrary[],value:Value){
+  private restoreBibliography(captured:readonly BibLibrary[],value:Value,capturedIsFull=false,partialLibraryIds:readonly string[]=[]){
     const cache=readLibraryCache();
     const reserved=[...NodeApi.nodes({children:value} as PlateEditor)].filter(([node])=>node.type==='bibliography_entry').map(([node])=>String(node.citeKey));
-    const restored=restoreLibraryAttachments(captured,cache.libraries,reserved);
+    const restored=restoreLibraryAttachments(captured,cache.libraries,reserved,capturedIsFull,partialLibraryIds);
     this.capturedLibraryIds=new Set(restored.capturedOnlyIds);this.cacheLibraryIds=restored.cacheLibraryIds;
     this.libraryNotices=[...(cache.error?[t('The saved library cache could not be read. The original data has been kept.')]:[]),...restored.conflicts.map(conflict=>t('A local library differs from this document. Its captured references were preserved.')+' '+conflict.name)];
     this.replaceBibliography(restored.libraries);
   }
   private envelope(){
-    const bibliographyLibraries=this.bibliographyLibraries.length?citedBibLibraries(this.bibliographyLibraries,citedReferenceKeys(this.editor.children)):[];
-    return {version:1,value:this.editor.children,...(bibliographyLibraries.length?{bibliographyLibraries}:{}),...(this.bibliographyStyle!=='simple'?{bibliographyStyle:this.bibliographyStyle}:{})};
+    const bibliographyCapturedLibraryIds=this.bibliographyLibraries.filter(library=>this.capturedLibraryIds.has(library.id)).map(library=>library.id);
+    return {version:1,value:this.editor.children,bibliographyLibraries:this.bibliographyLibraries,bibliographyMode:'full' as const,...(bibliographyCapturedLibraryIds.length?{bibliographyCapturedLibraryIds}:{}),...(this.bibliographyStyle!=='simple'?{bibliographyStyle:this.bibliographyStyle}:{})};
   }
   get readOnly(){return this.collaborationState.active?!this.collaborationState.writable:this.mount.querySelector('[data-slate-editor]')?.getAttribute('contenteditable')==='false';}
   constructor(readonly mount:HTMLElement,initial:EditorModel,private hooks:MathHostHooks){
     try{const copies=JSON.parse(draftStorage().getItem(documentStorageKey+'-collaboration-recovery')??'[]');if(Array.isArray(copies))this.collaborationRecoveries=copies.filter(copy=>Number.isFinite(copy?.createdAt)&&typeof copy?.source==='string');}catch{/* An unreadable recovery must not prevent opening the document. */}
-    const restored=restoreDocumentEnvelope(initial);this.bibliographyStyle=restored.bibliographyStyle??'simple';this.restoreBibliography(restored.bibliographyLibraries,restored.value);
+    const restored=restoreDocumentEnvelope(initial);this.bibliographyStyle=restored.bibliographyStyle??'simple';this.restoreBibliography(restored.bibliographyLibraries,restored.value,restored.bibliographyMode==='full',restored.bibliographyCapturedLibraryIds);
     this.editor=createPlateEditor({plugins:EditorKit,value:restored.value,navigationFeedback:false,chunking:{chunkSize:32}});
     this.ensureFormulas();
     const originalNormalize=this.editor.tf.normalizeNode.bind(this.editor);
@@ -326,6 +328,7 @@ export class PlateMathHost implements DocumentHost {
     // Recovery is not a file save. The lifecycle restores a real saved baseline
     // after construction; otherwise restored content remains unsaved.
     this.savedDocument=isBlankDocument(this.editor.children,this.bibliographyStyle)?JSON.stringify(this.envelope(),null,2):JSON.stringify({version:1,value:[{type:'p',children:[{text:''}]}]},null,2);
+    this.proofreader=new ProofreadingController(this.editor,mount,()=>this.readOnly);
     mount.removeAttribute('contenteditable');mount.removeAttribute('role');mount.removeAttribute('aria-label');mount.id='plateMount';
     this.root=createRoot(mount,{onUncaughtError:error=>{
       this.renderFailure=error;this.initialized=false;
@@ -341,7 +344,7 @@ export class PlateMathHost implements DocumentHost {
       {zoomDock&&createPortal(<DocumentZoomControls />,zoomDock)}
       <CollaborationCursors host={this} />
     </CollaborationPlate><Toaster /></TooltipProvider></HostContext.Provider>));
-    if(this.renderFailure!==undefined){this.root.unmount();throw this.renderFailure;}
+    if(this.renderFailure!==undefined){this.proofreader.destroy();this.root.unmount();throw this.renderFailure;}
     this.initialized=true;this.persist();
     this.unregisterDraftProducer=registerDocumentDraftProducer(()=>{
       if(this.recoveryTimer!==undefined)this.saveNow();
@@ -535,6 +538,7 @@ export class PlateMathHost implements DocumentHost {
     queueMicrotask(()=>{this.pending=false;if(this.initialized)this.hooks.change();});
   }
   private changed(){
+    if(this.initialized)this.proofreader.changed(this.editor.operations);
     if(!this.initialized||this.syncing||this.collaborationApplying)return;
     const kind=documentChangeKind(this.editor.operations);
     if(kind==='selection'){
@@ -659,6 +663,7 @@ export class PlateMathHost implements DocumentHost {
   }
   openDocument(source:string){
     const opened=parseDocumentEnvelope(source);
+    this.proofreader.reset();
     this.finishCollaboration(true);
     this.persist();
     draftStorage().setItem(documentStorageKey+'-before-open',this.serializeDocument());
@@ -666,7 +671,7 @@ export class PlateMathHost implements DocumentHost {
     this.hooks.leave();this.activeFormula=undefined;this.pendingActivation.clear();this.models.clear();
     this.checkedFormulaSources.clear();this.formulaMigrations.clear();
     flushSync(()=>{
-      this.bibliographyStyle=opened.bibliographyStyle??'simple';this.restoreBibliography(opened.bibliographyLibraries,opened.value);this.editor.tf.setValue(opened.value);
+      this.bibliographyStyle=opened.bibliographyStyle??'simple';this.restoreBibliography(opened.bibliographyLibraries,opened.value,opened.bibliographyMode==='full',opened.bibliographyCapturedLibraryIds);this.editor.tf.setValue(opened.value);
       this.ensureFormulas();
       this.editor.tf.withoutSaving(()=>this.editor.tf.normalize({force:true}));
     });
@@ -675,7 +680,7 @@ export class PlateMathHost implements DocumentHost {
       const node=raw as FormulaNode;
       if(node.snapshot&&!this.models.has(node.id)){const model=new EditorModel();model.restore(node.snapshot);this.models.set(node.id,model);}
     }
-    this.editor.history={undos:[],redos:[]};
+    this.proofreader.reset();this.editor.history={undos:[],redos:[]};
     this.persist();this.markDocumentSaved(this.serializeDocument());this.scheduleChange();
   }
   exportMarkdown(){
@@ -895,5 +900,5 @@ export class PlateMathHost implements DocumentHost {
     const above=this.editor.api.above({at:point,match:n=>'type' in n&&isFormula(n),voids:true});
     if(above){const el=this.mounts.get((above[0] as FormulaNode).id);if(el){event.preventDefault();this.enter(el,dir<0?'end':'start');}}
   }
-  destroy(){this.collaborationAttempt++;if(this.isCollaborationGuest()&&this.hooks.pendingMathSnapshot?.())this.captureCollaborationRecovery();if(!this.recoverySuspended)this.persist();this.collaboration?.destroy();this.collaboration=undefined;this.initialized=false;this.unregisterDraftProducer?.();if(this.recoveryTimer!==undefined)clearTimeout(this.recoveryTimer);this.root.unmount();}
+  destroy(){this.collaborationAttempt++;if(this.isCollaborationGuest()&&this.hooks.pendingMathSnapshot?.())this.captureCollaborationRecovery();if(!this.recoverySuspended)this.persist();this.proofreader.destroy();this.collaboration?.destroy();this.collaboration=undefined;this.initialized=false;this.unregisterDraftProducer?.();if(this.recoveryTimer!==undefined)clearTimeout(this.recoveryTimer);this.root.unmount();}
 }

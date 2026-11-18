@@ -3,16 +3,17 @@ const assert=require('node:assert/strict');
 const {build}=require('esbuild');
 const path=require('node:path');
 
-const compiledSource=build({stdin:{contents:"export {BibtexLibrariesButton} from './bibtex-libraries-button';export {HostContext} from '@/plate-math-element';export {parseBibLibraries} from '@/bibtex';",resolveDir:path.resolve('src/components/ui'),loader:'tsx'},bundle:true,write:false,platform:'node',format:'cjs',target:'es2022',jsx:'automatic',external:['react','react/*','react-dom','react-dom/*'],plugins:[{name:'library-dialog-adapters',setup(b){
+const compiledSource=build({stdin:{contents:"export {BibtexLibrariesButton} from './bibtex-libraries-button';export {HostContext} from '@/plate-editor-context';export {parseBibLibraries} from '@/bibtex';",resolveDir:path.resolve('src/components/ui'),loader:'tsx'},bundle:true,write:false,platform:'node',format:'cjs',target:'es2022',jsx:'automatic',external:['react','react/*','react-dom','react-dom/*'],plugins:[{name:'library-dialog-adapters',setup(b){
  const adapters={
-  'platejs/react':`export const useEditorRef=()=>globalThis.bibtexLibrariesTest.editor;`,
-  '@/plate-math-element':`import{createContext}from'react';export const HostContext=createContext(null);`,
+  'platejs/react':`export const useEditorRef=()=>globalThis.bibtexLibrariesTest.editor;export const useEditorReadOnly=()=>!!globalThis.bibtexLibrariesTest.readOnly;`,
+  '@/plate-editor-context':`import{createContext}from'react';export const HostContext=createContext(null);`,
   '@/use-bibliography':`import{useSyncExternalStore}from'react';export const useBibliographyLibraries=()=>useSyncExternalStore(globalThis.bibtexLibrariesTest.subscribe,()=>globalThis.bibtexLibrariesTest.libraries);export const useBibliographyStyle=()=>useSyncExternalStore(globalThis.bibtexLibrariesTest.subscribe,()=>globalThis.bibtexLibrariesTest.style);`,
   '@/bibliography-source':`export const openBibliographySource=async()=>{const s=globalThis.bibtexLibrariesTest;s.calls.open++;return s.openResult;};export const refreshBibliographySource=async(id,name)=>{const s=globalThis.bibtexLibrariesTest;s.calls.refresh.push({id,name});return s.refreshResult;};export const rememberBibliographySource=async(id,file)=>{const s=globalThis.bibtexLibrariesTest;s.calls.remember.push({id,file});return {persisted:s.persisted};};export const forgetBibliographySource=async id=>{const s=globalThis.bibtexLibrariesTest;s.calls.forget.push(id);if(s.forgetResult)return s.forgetResult;};`,
-  '@/i18n':`export const t=value=>value;`,
+  '@/i18n':`export const locale='en';export const t=value=>value;`,
+  './bibliography-library-editor':`export const BibliographyLibraryEditor=props=>{globalThis.bibtexLibrariesTest.editProps=props;return <div data-library-editor={props.library.id}><button type="button" onClick={props.onClose}>Close editor</button></div>;};`,
   './toolbar':`export const ToolbarButton=({tooltip,...props})=><button type="button" {...props}/>;`,
   './button':`export const Button=({variant,size,...props})=><button type="button" {...props}/>;`,
-  './dialog':`export const Dialog=({open,children})=>open?<div role="dialog">{children}</div>:null;export const DialogContent=({onCloseAutoFocus,...props})=><div {...props}/>;export const DialogTitle=props=><h2 {...props}/>;export const DialogDescription=props=><p {...props}/>;`,
+  './dialog':`export const Dialog=({open,children})=>open?<div role="dialog">{children}</div>:null;export const DialogContent=({onCloseAutoFocus,onEscapeKeyDown,...props})=><div {...props} onKeyDown={event=>{if(event.key==='Escape')onEscapeKeyDown?.(event.nativeEvent);}}/>;export const DialogTitle=props=><h2 {...props}/>;export const DialogDescription=props=><p {...props}/>;`,
  };
  b.onResolve({filter:/.*/},args=>Object.hasOwn(adapters,args.path)?{path:args.path,namespace:'library-dialog-test'}:undefined);
  b.onLoad({filter:/.*/,namespace:'library-dialog-test'},args=>({contents:adapters[args.path],loader:'tsx',resolveDir:process.cwd()}));
@@ -20,7 +21,7 @@ const compiledSource=build({stdin:{contents:"export {BibtexLibrariesButton} from
 
 test('BibTeX library dialog source refresh and reference-list settings',async t=>{
  const {Window}=await import('happy-dom'),window=new Window({url:'http://localhost/'});
- for(const key of ['window','document','navigator','Node','Element','HTMLElement','HTMLInputElement','HTMLSelectElement','MutationObserver','Event','CustomEvent','MouseEvent'])Object.defineProperty(globalThis,key,{value:key==='window'?window:window[key],configurable:true});
+ for(const key of ['window','document','navigator','Node','Element','HTMLElement','HTMLInputElement','HTMLSelectElement','HTMLDialogElement','MutationObserver','Event','CustomEvent','MouseEvent','KeyboardEvent'])Object.defineProperty(globalThis,key,{value:key==='window'?window:window[key],configurable:true});
  const React=require('react'),{createRoot}=require('react-dom/client'),{flushSync}=require('react-dom');
  const compiled={exports:{}};new Function('require','module','exports',await compiledSource)(require,compiled,compiled.exports);const api=compiled.exports;
  const tick=()=>new Promise(resolve=>setTimeout(resolve,10));
@@ -28,10 +29,10 @@ test('BibTeX library dialog source refresh and reference-list settings',async t=
  const click=element=>{assert.ok(element,'expected button');flushSync(()=>element.click());};
  const input=(element,value)=>{const setter=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;flushSync(()=>{setter.call(element,value);element.dispatchEvent(new window.Event('input',{bubbles:true}));element.dispatchEvent(new window.Event('change',{bubbles:true}));});};
  const deferred=()=>{let resolve;const promise=new Promise(done=>{resolve=done;});return {promise,resolve};};
- function setup(){
+ function setup(readOnly=false){
   const listeners=new Set(),calls={prepare:0,set:[],style:[],open:0,refresh:[],remember:[],forget:[]};
-  const state=globalThis.bibtexLibrariesTest={calls,libraries:[{id:'one',name:'original.bib',source:'@book{alpha,title={Alpha original},author={Writer, Ann},year=2020}'},{id:'two',name:'other.bib',source:'@book{beta,title={Beta other},year=2021}'}],style:'simple',openResult:null,refreshResult:null,persisted:true,aliases:{one:'canonical-one',two:'canonical-two'},subscribe:listener=>{listeners.add(listener);return ()=>listeners.delete(listener);}};
-  const editor=state.editor={selection:{anchor:{path:[0,0],offset:0},focus:{path:[0,0],offset:0}},tf:{focus(){}}};
+  const state=globalThis.bibtexLibrariesTest={calls,readOnly,libraries:[{id:'one',name:'original.bib',source:'@book{alpha,title={Alpha original},author={Writer, Ann},year=2020}'},{id:'two',name:'other.bib',source:'@book{beta,title={Beta other},year=2021}'}],style:'simple',openResult:null,refreshResult:null,persisted:true,aliases:{one:'canonical-one',two:'canonical-two'},subscribe:listener=>{listeners.add(listener);return ()=>listeners.delete(listener);}};
+  const editor=state.editor={selection:{anchor:{path:[0,0],offset:0},focus:{path:[0,0],offset:0}},children:[{type:'p',children:[{text:''},{type:'tex_reference',command:'ref',keys:['section:a'],children:[{text:''}]},{type:'tex_reference',command:'eqref',keys:['equation:b'],children:[{text:''}]},{type:'tex_reference',command:'cite',keys:['alpha'],children:[{text:''}]}]}],tf:{focus(){}}};
   const changed=()=>{for(const listener of listeners)listener();};
   const host={prepareTextInsertion:()=>{calls.prepare++;},getBibliographyLibraries:()=>state.libraries,getBibliographySourceId:id=>state.aliases[id]??id,isCapturedBibliographyLibrary:()=>false,getBibliographyNotices:()=>[],setBibliographyLibraries:(libraries,updated)=>{
    api.parseBibLibraries(libraries);calls.set.push({libraries,updated});state.libraries=libraries;
@@ -44,6 +45,29 @@ test('BibTeX library dialog source refresh and reference-list settings',async t=
   const close=()=>{flushSync(()=>root.unmount());mount.remove();};
   return {state,calls,host,editor,mount,changed,close};
  }
+ await t.test('Edit opens the chosen library without changing it and supplies citation keys without ref or eqref labels',async()=>{
+  const h=setup();await tick();const before=h.state.libraries;
+  assert.match(h.mount.textContent,/Full libraries are saved with this document/);
+  click(h.mount.querySelector('button[aria-label="Edit library: original.bib"]'));
+  assert.equal(h.mount.querySelector('[data-library-editor]').getAttribute('data-library-editor'),'one');
+  assert.equal(h.state.editProps.library,before[0]);assert.deepEqual(h.state.editProps.access.getCitedKeys(),['alpha']);assert.equal(h.state.editProps.readOnly,false);
+  assert.equal(h.state.libraries,before);assert.equal(h.calls.set.length,0);
+  click(byText(h.mount,'Close editor'));assert.equal(h.mount.querySelector('[data-library-editor]'),null);assert.equal(h.state.libraries,before);h.close();
+ });
+ await t.test('Edit is unavailable in read-only mode or while a source refresh is pending',async()=>{
+  const readOnly=setup(true);await tick();const blocked=readOnly.mount.querySelector('button[aria-label="Edit library: original.bib"]');assert.equal(blocked.disabled,true);click(blocked);assert.equal(readOnly.state.editProps,undefined);readOnly.close();
+  const h=setup();await tick();const read=deferred();h.state.refreshResult=read.promise;
+  click(h.mount.querySelector('button[aria-label="Refresh library: original.bib"]'));await tick();
+  const edit=h.mount.querySelector('button[aria-label="Edit library: original.bib"]');assert.equal(edit.disabled,true);click(edit);assert.equal(h.state.editProps,undefined);
+  read.resolve(null);await tick();assert.equal(edit.disabled,false);h.close();
+ });
+ await t.test('Escape in an entry dialog uses its Close action and keeps the outer library editor open',async()=>{
+  const h=setup();await tick();click(h.mount.querySelector('button[aria-label="Edit library: original.bib"]'));
+  const inner=document.createElement('dialog'),close=document.createElement('button');inner.open=true;close.className='close';let entryClosed=0;
+  close.addEventListener('click',()=>{entryClosed++;inner.open=false;});inner.append(close);h.mount.querySelector('[data-library-editor]').append(inner);
+  const escape=new window.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true,composed:true});flushSync(()=>inner.dispatchEvent(escape));
+  assert.equal(escape.defaultPrevented,true);assert.equal(entryClosed,1);assert.equal(inner.open,false);assert.ok(h.mount.querySelector('[data-library-editor]'));assert.equal(h.calls.set.length,0);h.close();
+ });
  await t.test('Refresh rereads the canonical original source and preserves library identity, selected view and search',async()=>{
   const h=setup();await tick();click(byText(h.mount,'original.bib'));input(h.mount.querySelector('input[type="search"]'),'Alpha');
   assert.equal([...h.mount.querySelectorAll('button')].some(button=>/Replace library/.test(button.textContent+' '+button.getAttribute('aria-label'))),false);

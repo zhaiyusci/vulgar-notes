@@ -2,6 +2,7 @@
 import type {Value} from 'platejs';
 import {isFormula,type FormulaNode} from './plate-document';
 import {referenceTex,type ReferenceNode} from './references';
+import {extractMathClipboardHtml} from './math-clipboard';
 
 const escapeHtml=(value:string)=>value.replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]!));
 const safeUrl=(value:unknown,image=false):string|undefined=>{
@@ -75,11 +76,7 @@ export function prepareClipboardHtml(source:string):{html:string;math:Map<string
 
 /** A single annotated formula, with no surrounding prose, can enter math mode. */
 export function extractClipboardMathHtml(source:string):ClipboardMathAnnotation|null {
-  if(!source)return null;
-  const prepared=prepareClipboardHtml(source);if(prepared.math.size!==1)return null;
-  const [token,annotation]=prepared.math.entries().next().value!;
-  const body=new DOMParser().parseFromString(prepared.html,'text/html').body;
-  return body.textContent?.replace(token,'').trim()===''?annotation:null;
+  return extractMathClipboardHtml(source)??null;
 }
 
 /** Markup cannot manufacture a formula; only a captured explicit TeX annotation can. */

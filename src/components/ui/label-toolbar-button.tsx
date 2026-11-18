@@ -2,7 +2,7 @@ import {useContext,useEffect,useRef,useState} from 'react';
 import {TagIcon} from 'lucide-react';
 import {useEditorRef} from 'platejs/react';
 import type {Range} from 'slate';
-import {HostContext} from '@/plate-math-element';
+import {HostContext} from '@/plate-editor-context';
 import {planLabelRename,referenceTargets,validReferenceKey} from '@/references';
 import {t} from '@/i18n';
 import {ToolbarButton} from './toolbar';

@@ -51,6 +51,9 @@ license texts govern; this index is not a replacement for them.
   [plate-MIT.txt](licenses/plate-MIT.txt) and
   [shadcn-MIT.txt](licenses/shadcn-MIT.txt).
 - **BibTeX parser:** retains its [MIT notice](licenses/bibtex-parser-MIT.txt).
+- **Supplied bibliography editor:** see its [artifact provenance and integration
+  changes](licenses/bib-library/NOTICE.md), including the recorded source-package
+  limitations and the embedded Citation.js/CSL components.
 - **Yjs collaboration:** Yjs, y-protocols, lib0 and slate-yjs retain their upstream notices in
   [licenses/collaboration](licenses/collaboration).
 - **Community color palettes:** retain the notices for

@@ -30,6 +30,7 @@ import { DocumentFileToolbarButtons } from './document-file-toolbar-buttons';
 import { CollaborationToolbarButton } from './collaboration-toolbar-button';
 import { MetadataToolbarButton } from './metadata-toolbar-button';
 import { DocumentViewToolbarButtons } from './document-view-toolbar-buttons';
+import { ProofreadingToolbarButton } from './proofreading-toolbar-button';
 import { InsertFloatToolbarButton } from './insert-float-toolbar-button';
 import {
   IndentToolbarButton,
@@ -68,12 +69,12 @@ export function FixedToolbarButtons() {
         {!readOnly&&<><DocumentFileToolbarButtons /><ExportToolbarButton /></>}
         <CollaborationToolbarButton />
       </ToolbarGroup>
+      <ToolbarGroup>
+        {!readOnly&&<><MetadataToolbarButton /><DocumentViewToolbarButtons /></>}
+        <ProofreadingToolbarButton />
+      </ToolbarGroup>
       {!readOnly && (
         <>
-          <ToolbarGroup>
-            <MetadataToolbarButton />
-            <DocumentViewToolbarButtons />
-          </ToolbarGroup>
 
           <ToolbarGroup>
             <InsertToolbarButton />

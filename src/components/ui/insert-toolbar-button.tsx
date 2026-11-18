@@ -1,5 +1,5 @@
 import {useContext} from 'react';
-import {HostContext} from '../../plate-math-element';
+import {HostContext} from '../../plate-editor-context';
 'use client';
 
 import * as React from 'react';

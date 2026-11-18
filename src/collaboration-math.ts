@@ -2,7 +2,7 @@ import * as Y from 'yjs';
 import {EditorModel,type Cursor,type MathItem,type MathNode,type Region,type ScriptSlot} from './editor-model';
 
 type SequenceItem=string|{nodeId:string};
-interface NodeShape {id:string;type:string;regions:string[];atom?:boolean;operatorLayout?:boolean;rows?:number;columns?:number;texOptions?:string}
+type NodeShape=Omit<MathNode,'regions'>&{regions:string[]};
 interface Snapshot {root:Region;cursor:Cursor;pendingFont?:string}
 interface FlatSnapshot {snapshot:Snapshot;regions:Map<string,Region>;nodes:Map<string,NodeShape>}
 interface RegionBaseline {

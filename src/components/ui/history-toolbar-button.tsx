@@ -6,7 +6,7 @@ import { Redo2Icon, Undo2Icon } from 'lucide-react';
 import { useEditorRef, useEditorSelector } from 'platejs/react';
 
 import { ToolbarButton } from './toolbar';
-import {HostContext} from '@/plate-math-element';
+import {HostContext} from '@/plate-editor-context';
 import {inactiveCollaboration} from '@/collaboration-types';
 
 const noSubscription=()=>()=>{};

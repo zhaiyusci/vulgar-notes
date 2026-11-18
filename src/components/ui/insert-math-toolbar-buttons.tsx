@@ -1,6 +1,6 @@
 import {useContext} from 'react';
 import {RadicalIcon, SquareSigmaIcon} from 'lucide-react';
-import {HostContext} from '../../plate-math-element';
+import {HostContext} from '../../plate-editor-context';
 import {ToolbarButton} from './toolbar';
 import {formulaEntries} from '../../formula-layouts';
 import {t} from '../../i18n';

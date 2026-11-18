@@ -95,6 +95,7 @@ export function bibEntryToCSL(entry:Entry):CSLItem {
   put('DOI',first('doi').replace(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:\s*)/i,''));
   put('URL',first('url')||(first('eprinttype','archiveprefix').toLowerCase()==='arxiv'&&first('eprint')?'https://arxiv.org/abs/'+first('eprint'):''));
   put('ISBN',first('isbn'));put('ISSN',first('issn'));put('note',first('note'));put('abstract',first('abstract'));
+  put('keyword',first('keywords'));
   const language=first('langid','language');put('language',languages[language.toLowerCase()]||language);
   put('genre',first('type')||(entry.type==='phdthesis'?'PhD dissertation':entry.type==='mastersthesis'?"Master’s thesis":''));
   put('status',first('pubstate'));

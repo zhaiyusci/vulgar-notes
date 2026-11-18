@@ -6,9 +6,8 @@ import {citedBibLibraries,parseBibLibraries,validateBibLibraries,type BibLibrary
 import {citedReferenceKeys} from './references';
 import {parseVerbatim,type VerbatimEntry} from '@retorquere/bibtex-parser';
 
-export const nativeClipboardMime='application/x-vulgar-notes-fragment+json';
-export const nativeClipboardAttribute='data-vulgar-notes-fragment';
-const maxClipboardLength=50*1024*1024,maxDepth=200;
+import {nativeClipboardMime,maxClipboardLength,safeClipboardJson as safeJson,readNativeClipboardPayload,nativeClipboardPayloadHtml,type ClipboardReader,type ClipboardWriter} from './clipboard-fragment-wire';
+export {nativeClipboardMime,nativeClipboardAttribute} from './clipboard-fragment-wire';
 export interface NativeMathFragment {version:1;kind:'math';snapshot:string}
 export interface NativeDocumentFragment {
   version:1;kind:'document';value:Value;bibliographyLibraries?:BibLibrary[];
@@ -17,23 +16,7 @@ export interface NativeDocumentFragment {
   sourceDocumentId?:string;
 }
 export type NativeFragment=NativeMathFragment|NativeDocumentFragment;
-type ClipboardReader=Pick<DataTransfer,'getData'>;
-type ClipboardWriter=Pick<DataTransfer,'setData'>;
 const record=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==='object'&&!Array.isArray(value);
-
-/** Check the complete JSON boundary before calling extensible editor validators. */
-function safeJson(value:unknown,depth=0,seen=new Set<object>()):boolean {
-  if(depth>maxDepth)return false;
-  if(value===null||typeof value==='string'||typeof value==='boolean')return true;
-  if(typeof value==='number')return Number.isFinite(value);
-  if(typeof value!=='object'||seen.has(value))return false;
-  seen.add(value);
-  const prototype=Object.getPrototypeOf(value);
-  const okay=Array.isArray(value)?value.every(child=>safeJson(child,depth+1,seen)):
-    prototype!==null&&Object.getPrototypeOf(prototype)!==null?false:
-    Object.keys(value).every(key=>!['__proto__','prototype','constructor'].includes(key)&&safeJson((value as Record<string,unknown>)[key],depth+1,seen));
-  seen.delete(value);return okay;
-}
 
 function validateDocumentFragment(value:unknown):value is Value {
   if(!Array.isArray(value)||!value.length)return false;
@@ -71,32 +54,15 @@ export function validateNativeFragment(value:unknown):NativeFragment|null {
   }catch{return null;}
 }
 
-function parseFragment(source:string):NativeFragment|null {
-  if(!source||source.length>maxClipboardLength)return null;
-  try{return validateNativeFragment(JSON.parse(source));}catch{return null;}
-}
-function encodedFragment(fragment:NativeFragment):string {
-  const bytes=new TextEncoder().encode(JSON.stringify(fragment));
-  let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));
-  return btoa(binary);
-}
-
 /** Include only generated/sanitized fallback HTML, never external untrusted markup. */
 export function nativeClipboardHtml(fragment:NativeFragment,fallbackHtml:string):string {
   const checked=validateNativeFragment(fragment);if(!checked)throw Error('Invalid native clipboard fragment.');
-  return '<span '+nativeClipboardAttribute+'="'+encodedFragment(checked)+'">'+fallbackHtml+'</span>';
+  return nativeClipboardPayloadHtml(checked,fallbackHtml);
 }
 
 /** HTML is inspected as an inert string. No DOM is created and no HTML is executed. */
 export function readNativeClipboard(data:ClipboardReader):NativeFragment|null {
-  try{const direct=data.getData(nativeClipboardMime);if(direct)return parseFragment(direct);}catch{/* Clipboard MIME may be unavailable. */}
-  try{
-    const html=data.getData('text/html');if(html.length>maxClipboardLength*2)return null;
-    const marker=/\bdata-vulgar-notes-fragment\s*=\s*(["'])([A-Za-z0-9+/=]+)\1/i.exec(html);
-    if(!marker||marker[2].length>Math.ceil(maxClipboardLength*4/3)+4)return null;
-    const binary=atob(marker[2]),bytes=Uint8Array.from(binary,char=>char.charCodeAt(0));
-    return parseFragment(new TextDecoder('utf-8',{fatal:true}).decode(bytes));
-  }catch{return null;}
+  return validateNativeFragment(readNativeClipboardPayload(data));
 }
 export function hasNativeClipboard(data:ClipboardReader):boolean {
   try{if(data.getData(nativeClipboardMime))return true;}catch{/* Try the portable marker. */}

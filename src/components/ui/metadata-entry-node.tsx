@@ -7,7 +7,7 @@ import {NodeApi,type TElement} from 'platejs';
 import type {RangeRef} from 'slate';
 import {PlateElement,useEditorSelector,useReadOnly,type PlateEditor,type PlateElementProps} from 'platejs/react';
 import {metadataIndex,metadataNoteSymbol,metadataOrderedIds,reorderMetadataEntries,type MetadataEntry,type MetadataRole} from '@/document-metadata';
-import {HostContext} from '@/plate-math-element';
+import {HostContext} from '@/plate-editor-context';
 import {t} from '@/i18n';
 import {findMetadataTitle,metadataRoles,metadataRoleLabel} from './metadata-node';
 import {DropdownMenu,DropdownMenuTrigger,DropdownMenuContent,DropdownMenuItem,DropdownMenuSeparator} from './dropdown-menu';

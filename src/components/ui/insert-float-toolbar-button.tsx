@@ -4,7 +4,7 @@ import {NodeApi} from 'platejs';
 import {ImagePlusIcon,Table2Icon} from 'lucide-react';
 import {useEditorRef} from 'platejs/react';
 import type {Range} from 'slate';
-import {HostContext} from '@/plate-math-element';
+import {HostContext} from '@/plate-editor-context';
 import {createFigure,createTableFloat,floatBody,floatCaption,validFloatImageUrl,type FloatNode} from '@/document-floats';
 import {t} from '@/i18n';
 import {ToolbarButton} from './toolbar';

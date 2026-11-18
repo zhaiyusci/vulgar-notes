@@ -1,38 +1,13 @@
-import type {EditorModel} from './editor-model';
+import type {MathDocumentAdapter,MathEditorHooks,MathFormulaEntry} from './math-editor';
 
-/** Framework-free boundary: math never imports React, Slate or Plate. */
-export interface FormulaEntry { element:HTMLElement; model:EditorModel }
-export interface MathHostHooks {
-  activate(element:HTMLElement,model:EditorModel,edge:'start'|'end'):void;
-  leave():void;
-  change():void;
-  /** Wait for the current formula repaint only when explicitly exporting. */
-  renderForExport?():Promise<void>;
-  isComposing?():boolean;
-  /** Read a composing math draft without publishing it to a shared document. */
-  pendingMathSnapshot?():{formulaId:string;snapshot:string}|undefined;
-}
-export interface DocumentHost {
-  readonly readOnly:boolean;
-  entries():FormulaEntry[];
-  /** Synchronize edited math without forcing full-document recovery storage. */
-  syncMath?():void;
-  isCollaborating?():boolean;
+export type FormulaEntry=MathFormulaEntry;
+export type MathHostHooks=MathEditorHooks;
+
+/** Document integration adds file operations; the math component sees only MathDocumentAdapter. */
+export interface DocumentHost extends MathDocumentAdapter {
   isCollaborationGuest?():boolean;
-  getFormulaSource?(element:HTMLElement):string|undefined;
-  replaceFormulaSource?(element:HTMLElement,source:string):void;
   persist():void;
   exportLatex():string;
   exportMarkdown():string;
   exportHtml?():Promise<string>;
-  isDisplay(element:HTMLElement):boolean;
-  isNumbered(element:HTMLElement):boolean;
-  setNumbered(element:HTMLElement,numbered:boolean):void;
-  setDisplay(element:HTMLElement,display:boolean):void;
-  insertFormula(display?:boolean):FormulaEntry;
-  insertFormulaEntry?(type:string):FormulaEntry;
-  enter(element:HTMLElement,edge:'start'|'end'):void;
-  exit(element:HTMLElement,direction:-1|1):void;
-  removeEmpty(element:HTMLElement):void;
 }
-export type DocumentHostFactory=(mount:HTMLElement,initial:EditorModel,hooks:MathHostHooks)=>DocumentHost;

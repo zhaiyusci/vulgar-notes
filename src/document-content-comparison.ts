@@ -37,7 +37,8 @@ export class DocumentContentComparison {
     const normalizedValue=this.normalizedValues.get(value);
     if(normalizedValue)value=normalizedValue;
     else{const original=value;value=this.normalizeMetadata(value);this.normalizedValues.set(original,value);}
-    const normalized:Record<string,unknown>={...current,value};delete normalized.metadata;
+    const normalized:Record<string,unknown>={...current,value,bibliographyLibraries:current.bibliographyLibraries??[]};delete normalized.metadata;
+    delete normalized.bibliographyMode;delete normalized.bibliographyCapturedLibraryIds;
     return this.same(this.expected,normalized);
   }
 

@@ -10,6 +10,7 @@ editor-ui.css.map
 dist/
 desktop-dist/
 web-dist/
+math-editor-dist/
 portable/
 src-tauri/target/
 src-tauri/gen/

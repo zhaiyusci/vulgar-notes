@@ -5,7 +5,7 @@ import * as React from 'react';
 import { insertInlineEquation } from '@/plate-math-plugins';
 import { RadicalIcon } from 'lucide-react';
 import { useEditorRef } from 'platejs/react';
-import {HostContext} from '@/plate-math-element';
+import {HostContext} from '@/plate-editor-context';
 
 import { ToolbarButton } from './toolbar';
 

@@ -5,7 +5,7 @@ import {useContext} from 'react';
 import {FilePenLineIcon} from 'lucide-react';
 import {useEditorRef} from 'platejs/react';
 import {createMetadataBlock} from '@/document-metadata';
-import {HostContext} from '@/plate-math-element';
+import {HostContext} from '@/plate-editor-context';
 import {t} from '@/i18n';
 import {ToolbarButton} from './toolbar';
 

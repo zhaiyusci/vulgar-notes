@@ -105,4 +105,18 @@ test('existing structural math snapshots and snapshot-only legacy formulas remai
 test('bibliography validation failures also use the same public format error',()=>{
  rejects({version:1,value:[p(text('Text'))],bibliographyLibraries:[{id:'bad',name:'private.bib',source:'@article{PRIVATE_BIBTEX_INVALID,title='}]});
  rejects({version:1,value:[p(text('Text'))],bibliographyStyle:'unknown-style'});
+ rejects({version:1,value:[p(text('Text'))],bibliographyMode:'partial'});
+});
+
+test('full bibliography attachments and excerpt provenance round-trip with strict identities',()=>{
+ const library={id:'one',name:'Papers.bib',source:'@book{a,title={A}}'};
+ const value=[p(text('Body'))],input={version:1,value,bibliographyLibraries:[library],bibliographyMode:'full',bibliographyCapturedLibraryIds:['one']};
+ const parsed=api.parseDocumentEnvelope(JSON.stringify(input));
+ assert.equal(parsed.bibliographyMode,'full');assert.deepEqual(JSON.parse(JSON.stringify(parsed.bibliographyCapturedLibraryIds)),['one']);assert.equal(parsed.bibliographyLibraries[0].source,library.source);
+ const empty=api.parseDocumentEnvelope(JSON.stringify({version:1,value,bibliographyMode:'full',bibliographyLibraries:[]}));
+ assert.equal(empty.bibliographyMode,'full');assert.equal(empty.bibliographyLibraries.length,0);
+ for(const ids of ['one',[4],['missing'],['one','one'],[null]])rejects({...input,bibliographyCapturedLibraryIds:ids});
+ rejects({...input,bibliographyMode:undefined});
+ const old=api.parseDocumentEnvelope(JSON.stringify({version:1,value,bibliographyLibraries:[library]}));
+ assert.equal(old.bibliographyMode,undefined);assert.equal(old.bibliographyCapturedLibraryIds,undefined);
 });

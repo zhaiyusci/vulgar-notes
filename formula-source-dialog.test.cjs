@@ -1,3 +1,4 @@
+const {mountMathEditor}=require('./test/math-editor-harness.cjs');
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const {build}=require('esbuild');
@@ -13,7 +14,7 @@ test('the real formula source dialog converts an already active formula through 
   // MathJax is independent of this regression: inspect the actual model and
   // persisted native node, while all input/dialog/host event handlers are real.
   window.ready=false;
-  const result=await build({stdin:{contents:`export {mountMathEditor} from './src/editor-ui';export {PlateMathHost} from './src/plate-host';export {EditorModel} from './src/editor-model';export {convertMath} from './src/tex-convert';`,resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,platform:'node',format:'cjs',loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'source-dialog-test-kit',setup(builder){
+  const result=await build({stdin:{contents:`export {createMathEditor} from './src/editor-ui';export {PlateMathHost} from './src/plate-host';export {EditorModel} from './src/editor-model';export {convertMath} from './src/tex-convert';`,resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,platform:'node',format:'cjs',loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'source-dialog-test-kit',setup(builder){
     builder.onLoad({filter:/components[\\/]editor[\\/]editor-kit\.tsx$/},()=>({contents:`import {ParagraphPlugin} from 'platejs/react';import {TrailingBlockPlugin} from 'platejs';import {MathKit} from './plugins/math-kit';import {MarkdownKit} from './plugins/markdown-kit';import {ReferenceKit} from './plugins/reference-kit';import {FootnoteKit} from './plugins/footnote-kit';export const EditorKit=[ParagraphPlugin,...MathKit,...ReferenceKit,TrailingBlockPlugin,...MarkdownKit,...FootnoteKit];`,loader:'tsx',resolveDir:path.resolve('src/components/editor')}));
     if(process.env.FORMULA_SOURCE_REPRO_OLD_GATE==='1')builder.onLoad({filter:/src[\\/]plate-host\.tsx$/},args=>{
       const source=fs.readFileSync(args.path,'utf8'),oldGate=source.replace('const unchanged=source===node.texExpression;','const unchanged=source===node.texExpression; if(unchanged)return;');assert.notEqual(oldGate,source);return {contents:oldGate,loader:'tsx',resolveDir:path.dirname(args.path)};
@@ -25,7 +26,7 @@ test('the real formula source dialog converts an already active formula through 
   try{compiled._compile(result.outputFiles[0].text,path.resolve('.formula-source-dialog-test.cjs'));}finally{globalThis.setTimeout=originalTimeout;}
   const api=compiled.exports,tick=()=>new Promise(resolve=>setTimeout(resolve,15));
   let host;
-  api.mountMathEditor((mount,model,hooks)=>host=new api.PlateMathHost(mount,model,hooks));
+  mountMathEditor(window,api,(mount,model,hooks)=>host=new api.PlateMathHost(mount,model,hooks));
   const input=document.getElementById('mathInput'),button=document.getElementById('formulaSourceButton'),dialog=document.getElementById('formulaSourceDialog'),source=document.getElementById('formulaSourceInput'),apply=dialog.querySelector('[data-choice="save"]');
   const pointer=(element,type='pointerdown')=>element.dispatchEvent(new window.PointerEvent(type,{button:0,pointerId:1,bubbles:true,cancelable:true}));
   const click=element=>{if(pointer(element))element.focus();element.dispatchEvent(new window.MouseEvent('click',{button:0,bubbles:true,cancelable:true}));};

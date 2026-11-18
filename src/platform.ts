@@ -2,10 +2,9 @@ import {invoke,isTauri} from '@tauri-apps/api/core';
 import {t} from './i18n';
 import {recordRuntimeEvent} from './runtime-diagnostics';
 import {getDocumentDraftStorage} from './document-draft-store';
+import type {DocumentFile,OpenedDocument} from './document-file';
+export type {DocumentFile,OpenedDocument} from './document-file';
 export {initializeDocumentDraftStore,flushDocumentDraftStore,refreshDocumentDraftStore} from './document-draft-store';
-
-export interface DocumentFile {name: string; path?: string}
-export interface OpenedDocument extends DocumentFile {text: string}
 
 /** Browser handles stay out of the document's serializable data. */
 export interface DocumentFileHandle {

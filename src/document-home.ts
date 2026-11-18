@@ -7,15 +7,8 @@ export interface DocumentHomeRecent {
   lastOpened?: number | string;
 }
 
-export interface DocumentHomeRecovery {
-  id: string;
-  name: string;
-  updatedAt?: number | string;
-}
-
 export interface DocumentHomeState {
   recentDocuments?: readonly DocumentHomeRecent[];
-  recoveries?: readonly DocumentHomeRecovery[];
   loading?: boolean;
   error?: string;
 }
@@ -24,7 +17,6 @@ export interface DocumentHomeCallbacks {
   onNew: () => void | Promise<void>;
   onOpen: () => void | Promise<void>;
   onRecent: (id: string) => void | Promise<void>;
-  onRecover?: (id: string) => void | Promise<void>;
   onRemoveRecent?: (id: string) => void | Promise<void>;
   onPreferences: () => void | Promise<void>;
 }
@@ -102,11 +94,9 @@ export function mountDocumentHome(
   status.setAttribute('aria-live', 'polite');
   const error = element('p', 'document-home-error');
   error.setAttribute('role', 'alert');
-  const recoveries = element('section', 'document-home-section');
-  recoveries.setAttribute('aria-label', t('Unsaved documents'));
   const recent = element('section', 'document-home-section');
   recent.setAttribute('aria-label', t('Recent documents'));
-  inner.append(header, actions, status, error, recoveries, recent);
+  inner.append(header, actions, status, error, recent);
   root.append(inner);
   container.append(root);
 
@@ -183,28 +173,6 @@ export function mountDocumentHome(
         list.append(row);
       }
       recent.append(list);
-    }
-    recoveries.replaceChildren();
-    recoveries.hidden = !callbacks.onRecover || !state.recoveries?.length;
-    if (!recoveries.hidden) {
-      recoveries.append(element('h2', 'document-home-heading', t('Unsaved documents')));
-      const list = element('ul', 'document-home-list');
-      for (const item of state.recoveries!) {
-        const row = element('li', 'document-home-row');
-        const open = element('button', 'document-home-file');
-        open.type = 'button';
-        open.dataset.recoveryId = item.id;
-        open.append(icon('file'));
-        const details = element('span', 'document-home-file-details');
-        details.append(element('span', 'document-home-file-name', item.name));
-        open.append(details);
-        const date = dateLabel(item.updatedAt, 'Last edited');
-        if (date) open.append(date);
-        open.addEventListener('click', () => { void run(() => callbacks.onRecover!(item.id)); });
-        row.append(open);
-        list.append(row);
-      }
-      recoveries.append(list);
     }
     updateStatus();
   }

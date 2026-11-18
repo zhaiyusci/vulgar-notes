@@ -209,6 +209,11 @@ function rawLibrary(library:BibLibrary):VerbatimLibrary {
   return cached.verbatim??=(verbatimSource(library.source,library.name));
 }
 
+/** An editable view of the original records, without exposing the parser cache. */
+export function bibLibrarySourceEntries(library:BibLibrary):VerbatimEntry[] {
+  return rawLibrary(library).entries.map(entry=>({...entry,fields:{...entry.fields}}));
+}
+
 /** Expanded grammar values retain raw TeX; no display/CSL normalization occurs. */
 export interface CitedBibRecord {
   key:string;

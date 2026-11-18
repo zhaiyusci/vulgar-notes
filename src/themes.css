@@ -226,6 +226,7 @@
 :root[data-color-scheme] .variant-menu button[aria-checked="true"]::after { color: var(--app-link); }
 :root[data-color-scheme] .variant-menu [role="separator"] { border-color: var(--app-border); }
 :root[data-color-scheme] .math-caret::after { background: var(--app-link); }
+:root.dark :is(.math-code,.command-menu code,.formula-source-dialog textarea) { color:#82b5ff; }
 :root[data-color-scheme] .math-active-region {
   background: var(--app-math-active);
   box-shadow: 0 2px 0 var(--app-math-edge);
@@ -356,3 +357,19 @@
     outline: none;
   }
 }
+.math-color-button { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; flex:none; padding:3px; border:1px solid transparent; border-radius:4px; background:transparent; color:var(--app-ink,#202124); font:16px Georgia,serif; cursor:pointer; }
+.math-color-button span { line-height:19px; border-bottom:3px solid #0000ff; min-width:14px; }
+.math-color-button:hover:not(:disabled) { background:var(--app-hover,#e8eff9); }
+.math-color-button:disabled { opacity:.35; cursor:default; }
+.math-color-popup { position:fixed; z-index:1001; width:216px; padding:10px; border:1px solid var(--app-border,#d8dfe8); border-radius:7px; background:var(--app-surface,#fff); color:var(--app-ink,#202124); box-shadow:0 5px 20px var(--app-shadow,#0002); font:12px/1.5 system-ui,sans-serif; }
+.math-color-popup[hidden] { display:none; }
+.math-color-swatches { display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:4px; padding:3px; }
+.math-color-swatches button { width:100%; min-width:0; height:20px; padding:0; border:1px solid #8886; border-radius:3px; cursor:pointer; }
+.math-color-swatches button:disabled { opacity:.4; cursor:default; }
+.math-color-popup button:focus-visible { outline:2px solid var(--app-link,#246ec2); outline-offset:2px; }
+.math-color-swatches button:hover:not(:disabled) { outline:2px solid var(--app-link,#246ec2); outline-offset:2px; }
+.math-color-custom { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:10px; }
+.math-color-custom input { width:30px; height:24px; padding:1px; border:1px solid var(--app-border,#d8dfe8); border-radius:3px; background:transparent; cursor:pointer; }
+.math-color-reset { display:block; width:100%; margin-top:8px; padding:4px; border:0; border-radius:3px; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+.math-color-reset:hover { background:var(--app-hover,#e8eff9); }
+.math-color-reset:disabled { opacity:.4; cursor:default; background:transparent; }

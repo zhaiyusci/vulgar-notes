@@ -10,6 +10,7 @@ const sourceOnlyCommands=new Set([
   'cramped','crampedllap','crampedrlap','crampedclap',
   'mathord','mathbin','mathrel','mathop','mathopen','mathclose','mathinner','mathpunct',
   'vcenter','vtop','vbox','mathmakebox','mathmbox','bbox','enclose',
+  'colorbox','fcolorbox',
   'tripledash','textcompwordmark','TeX','LaTeX',
   'arrowvert','Arrowvert','bracevert','qcomma','qc','Residue','intop','ointop',
   // Macro definitions and raw output attributes are authoring mechanisms,

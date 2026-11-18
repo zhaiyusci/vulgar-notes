@@ -1,7 +1,6 @@
 import {draftStorage,documentSessionId} from './platform';
 import {parseDocumentEnvelope,documentContentKey,fromTiptap,isBlankDocument} from './plate-document';
 import {migrateLegacy} from './document-format';
-import {t} from './i18n';
 
 const prefix='math-plate-document-v1';
 const uuid=/^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/i;
@@ -40,8 +39,8 @@ export async function prepareDocumentRecovery():Promise<string|undefined>{
     if(destination!==id&&documentSessionId()===id)remappedActive=destination;
     sessionStorage.setItem(marker,stamp);
   }
-  // Earlier versions used a singleton draft. It appears as a recovery item,
-  // never as a document that automatically opens at application launch.
+  // Earlier versions used a singleton draft. Keep it available for explicit
+  // recovery in Preferences, never as a document on the start page.
   const legacyKeys=[prefix,'math-tiptap-document-v1','math-text-flow-state'];
   const seen=new Set<string>();
   for(const storage of [target,sessionStorage]){
@@ -72,7 +71,7 @@ function documentContentKeySafe(source:string):string{
     return documentContentKey(JSON.stringify({version:1,value:parsed.value,...(parsed.bibliographyLibraries.length?{bibliographyLibraries:parsed.bibliographyLibraries}:{}),...(parsed.bibliographyStyle&&parsed.bibliographyStyle!=='simple'?{bibliographyStyle:parsed.bibliographyStyle}:{})}));
   }catch{return source;}
 }
-export interface RecoverableDocument {id:string;name:string;updatedAt?:number}
+export interface RecoverableDocument {id:string;name?:string;updatedAt?:number}
 export function listRecoverableDocuments():RecoverableDocument[]{
   const storage=draftStorage(),items:RecoverableDocument[]=[];
   for(let index=0;index<storage.length;index++){
@@ -85,7 +84,7 @@ export function listRecoverableDocuments():RecoverableDocument[]{
       if(baseline)try{parseDocumentEnvelope(baseline);}catch{baseline=undefined;}
       if(baseline?documentContentKeySafe(source)===documentContentKeySafe(baseline):isBlankDocument(parsed.value,parsed.bibliographyStyle))continue;
       const updatedAt=Number(storage.getItem(key+'-updated-at'));
-      items.push({id,name:typeof metadata.name==='string'?metadata.name:t('Untitled'),...(updatedAt>0?{updatedAt}:{})});
+      items.push({id,...(typeof metadata.name==='string'&&metadata.name?{name:metadata.name}:{}),...(updatedAt>0?{updatedAt}:{})});
     }catch{/* A corrupt entry must never replace a usable document. */}
   }
   return items.sort((a,b)=>(b.updatedAt??0)-(a.updatedAt??0));

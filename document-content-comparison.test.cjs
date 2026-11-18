@@ -5,6 +5,16 @@ const bundled=buildSync({stdin:{contents:`export {DocumentContentComparison} fro
 const compiled={exports:{}};new Function('module','exports',bundled)(compiled,compiled.exports);
 const {DocumentContentComparison,documentContentKey,migrateDocumentMetadata,normalizeMetadataLayout,normalizeDocumentTitles}=compiled.exports;
 const p=text=>({type:'p',children:[{text}]}),envelope=value=>({version:1,value,bibliographyLibraries:[],bibliographyStyle:'acs'});
+
+test('bibliography persistence metadata does not dirty an unchanged legacy document',()=>{
+ const old={version:1,value:[p('Body')]},comparison=new DocumentContentComparison(JSON.stringify(old));
+ assert.equal(comparison.isEqual({...old,bibliographyMode:'full',bibliographyLibraries:[]}),true);
+ const library={id:'one',name:'Papers.bib',source:'@book{a,title={A}}'},saved={...old,bibliographyLibraries:[library]};
+ comparison.reset(JSON.stringify(saved));
+ assert.equal(comparison.isEqual({...saved,bibliographyMode:'full',bibliographyCapturedLibraryIds:['one']}),true);
+ assert.equal(comparison.isEqual({...saved,bibliographyMode:'full',bibliographyLibraries:[]}),false);
+ assert.equal(comparison.isEqual({...saved,bibliographyMode:'full',bibliographyLibraries:[{...library,source:'@book{a,title={Updated}}'}]}),false);
+});
 const clone=value=>JSON.parse(JSON.stringify(value));
 const metadataEntry=(role,id,text)=>({type:'metadata_entry',role,id,children:[p(text)]});
 const mathRoot=text=>({id:'root',type:'sequence',items:[{id:'token',type:'text',text}]});

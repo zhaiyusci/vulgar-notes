@@ -1,3 +1,4 @@
+const {mountMathEditor}=require('./test/math-editor-harness.cjs');
 const test=require('node:test'),assert=require('node:assert/strict');
 const {build}=require('esbuild');
 
@@ -92,7 +93,7 @@ test('native math keyboard, palette and IME are gated immediately, with a separa
   window.document.write('<!doctype html><body><div id="preview"><div id="textFlow"><span class="inline-formula" id="formula" data-math-id="test-formula"></span></div><textarea id="mathInput" hidden></textarea></div><div id="mathPanel"><div id="insertToolbar"></div></div><div id="error"></div><div id="pendingFontHint"></div><div id="structureCount"></div><select id="formulaLayout"></select></body>');
   window.setTimeout=()=>0;window.requestAnimationFrame=()=>0;window.MathJax={typesetClear(){},async typesetPromise(){}};
   window.eval(source+'\nwindow.mathUI=mathUI;');let hooks,model,readOnly=false;
-  window.mathUI.mountMathEditor((mount,initial,h)=>{hooks=h;model=initial;model.root.items=['x'];model.index();model.setCursor(model.root.id,1);return {get readOnly(){return readOnly;},entries:()=>[{element:window.document.getElementById('formula'),model}],syncMath(){},persist(){},exportLatex:()=>'',exportMarkdown:()=>'',isDisplay:()=>false,isNumbered:()=>false};});
+  mountMathEditor(window,window.mathUI,(mount,initial,h)=>{hooks=h;model=initial;model.root.items=['x'];model.index();model.setCursor(model.root.id,1);return {get readOnly(){return readOnly;},entries:()=>[{element:window.document.getElementById('formula'),model}],syncMath(){},persist(){},exportLatex:()=>'',exportMarkdown:()=>'',isDisplay:()=>false,isNumbered:()=>false};});
   t.after(()=>window.happyDOM.abort());
   const input=window.document.getElementById('mathInput');hooks.activate(window.document.getElementById('formula'),model,'end');
   const formula=window.document.getElementById('formula'),region=window.document.createElement('span'),item=window.document.createElement('span');

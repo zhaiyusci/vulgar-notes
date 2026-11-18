@@ -1,16 +1,17 @@
+const {mountMathEditor}=require('./test/math-editor-harness.cjs');
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const {build}=require('esbuild');
 
 const mime='application/x-vulgar-notes-fragment+json';
-const compiled=build({entryPoints:['src/editor-ui.ts'],bundle:true,write:false,format:'iife',globalName:'mathUI'});
+const compiled=build({stdin:{contents:"export {createMathEditor} from './src/editor-ui';export {documentMathClipboard} from './src/document-math-clipboard';",resolveDir:__dirname,loader:'ts'},bundle:true,write:false,format:'iife',globalName:'mathUI'});
 async function editor(){
   const {Window}=await import('happy-dom'),window=new Window({url:'http://localhost/'});
   window.document.write('<!doctype html><body><div id="preview"><div id="textFlow"><span id="formula"></span></div><textarea id="mathInput" hidden></textarea></div><div id="mathPanel"><div id="insertToolbar"></div></div><div id="error"></div><div id="pendingFontHint"></div><div id="structureCount"></div><select id="formulaLayout"></select></body>');
   window.setTimeout=()=>0;window.requestAnimationFrame=()=>0;
   window.eval((await compiled).outputFiles[0].text+'\nwindow.mathUI=mathUI;');
   let hooks,model,exports=0;
-  window.mathUI.mountMathEditor((mount,initial,h)=>{
+  mountMathEditor(window,window.mathUI,(mount,initial,h)=>{
     hooks=h;model=initial;model.root.items=[];model.index();model.setCursor(model.root.id,0);
     const entry={element:window.document.getElementById('formula'),model};
     return {entries:()=>[entry],syncMath(){},persist(){},exportLatex(){exports++;return '';},exportMarkdown(){exports++;return '';},isDisplay:()=>false,isNumbered:()=>false,readOnly:false};

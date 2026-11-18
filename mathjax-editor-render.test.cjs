@@ -1,3 +1,4 @@
+const {mathElements}=require('./test/math-editor-harness.cjs');
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
@@ -26,31 +27,32 @@ test('the actual editor region renderer preserves MathJax alignment and argument
   // changing the TeX parser, rendering, errors or the production preflight.
   const chtml=runtime.tex2chtmlPromise.bind(runtime);
   runtime.tex2chtmlPromise=async(...args)=>new DOMParser().parseFromString(runtime.startup.adaptor.outerHTML(await chtml(...args)),'text/html').body.firstElementChild;
-  const result=await build({stdin:{contents:"export {regionTex,prepareRegionTex,renderFormulaDocument} from './src/editor-ui';export {convertMath} from './src/tex-convert';export {EditorModel,catalog,symbols} from './src/editor-model';export {formulaEntries,formulaLayouts} from './src/formula-layouts';",resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,platform:'node',format:'cjs',loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'actual-region-renderer-export',setup(builder){
+  const result=await build({stdin:{contents:"export {createMathEditor} from './src/editor-ui';export {convertMath} from './src/tex-convert';export {EditorModel,catalog,symbols} from './src/editor-model';export {formulaEntries,formulaLayouts} from './src/formula-layouts';",resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,platform:'node',format:'cjs',loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'actual-region-renderer-export',setup(builder){
     builder.onLoad({filter:/src[\\/]editor-ui\.ts$/},args=>{
       let source=fs.readFileSync(args.path,'utf8');
       if(process.env.MATHJAX_EDITOR_REPRO_GROUPED_CASES==='1'){
         const before=source;source=source.replace(/  \/\/ A numbered-cases body[\s\S]*?(?=  const descriptive=)/,'');assert.notEqual(source,before,'Reproduce the previous grouped cases-body rendering in memory');
       }
-      return {contents:source+`
-export {regionTex};
-export async function prepareRegionTex(editor:EditorModel){model=editor;await validateChemistry();}
-export async function renderFormulaDocument(editors:EditorModel[],active=-1){
+      return {contents:source.replace('return {initialModel,hooks,connect,openSource,render,notifyLoadFailure,dispose};',`
+const inspect={regionTex,
+async prepareRegionTex(editor:EditorModel){model=editor;await validateChemistry();},
+async renderFormulaDocument(editors:EditorModel[],active=-1){
   const previous={flow,model,formula,editing};
-  const mount=elementById('textFlow',HTMLElement);
+  const mount=elements.content;
   const entries=editors.map((editor,index)=>{const element=document.createElement('span');element.dataset.mathId='test-'+index;element.dataset.display='true';element.dataset.numbered='true';mount.append(element);return {element,model:editor};});
-  flow={entries:()=>entries,isDisplay:()=>true,isNumbered:()=>true} as DocumentHost;
+  flow={entries:()=>entries,isDisplay:()=>true,isNumbered:()=>true} as MathDocumentAdapter;
   model=editors[Math.max(0,active)];formula=entries[Math.max(0,active)].element;editing=active>=0;
   try{await renderCurrent();if(lastRenderFailure)throw lastRenderFailure;return entries.map(entry=>entry.element.outerHTML);}
   finally{for(const entry of entries)entry.element.remove();({flow,model,formula,editing}=previous);}
-}
-`,loader:'ts',resolveDir:path.dirname(args.path)};
+}};
+return {initialModel,hooks,connect,openSource,render,notifyLoadFailure,dispose,inspect};
+`),loader:'ts',resolveDir:path.dirname(args.path)};
     });
   }}]});
   const compiled=new Module(path.resolve('.mathjax-editor-render-test.cjs'),module);compiled.paths=module.paths;const originalTimeout=globalThis.setTimeout;
   globalThis.setTimeout=(callback,delay,...args)=>{const timer=originalTimeout(callback,delay,...args);if(delay===10000)timer.unref();return timer;};
   try{compiled._compile(result.outputFiles[0].text,compiled.id);}finally{globalThis.setTimeout=originalTimeout;}
-  const api=compiled.exports;
+  const api=compiled.exports,component=api.createMathEditor({elements:mathElements(window)});Object.assign(api,component.inspect);t.after(()=>component.dispose());
   await t.test('component buttons and their variants never create equation numbers',async()=>{
     const visible=[...api.catalog,...api.symbols].filter(entry=>!entry.hidden&&!entry.legacy);
     assert.equal(document.querySelector('#insertToolbar button[data-insert="multlined"]'),null,'The unsupported numbered multlined preview is not an insertion button');
@@ -90,6 +92,10 @@ export async function renderFormulaDocument(editors:EditorModel[],active=-1){
     ['mathchoice',String.raw`\mathchoice{a}{b}{c}{d}`],
     ['prescript',String.raw`\prescript{a}{b}{x}`],
     ['descriptive text',String.raw`\textnormal{eq 中文 \% \_}`],
+    ['colored nested math',String.raw`\textcolor[RGB]{214,39,40}{x^2+\alpha}+\frac{a}{b}`],
+    ['background box math',String.raw`\colorbox[RGB]{255,240,180}{$\textstyle\frac{x}{y}$}+z`],
+    ['framed box math',String.raw`\textcolor{red}{\fcolorbox[RGB]{36,110,194}[rgb]{1,1,0.8}{$\textstyle\hat{P}^{T}$}}+z`],
+    ['scoped color declaration',String.raw`x+\color{red}{y}+z`],
     ['long arrow',String.raw`\xrightarrow[n]{m}`]
   ];
   for(const [name,source] of samples)await t.test(name,async()=>{
@@ -103,6 +109,7 @@ export async function renderFormulaDocument(editors:EditorModel[],active=-1){
     const output=await runtime.tex2mmlPromise(display.slice(2,-2),{display:true});
     assert.doesNotMatch(output,/<merror\b/,source+'\n'+display+'\n'+output);
     assert.match(output,/class="[^"]*math-region/,'MathJax must retain the editor region markers');assert.match(output,/class="[^"]*math-item/,'MathJax must retain the editor item markers');
+    if(name==='colored nested math')assert.match(output,/mathcolor="#d62728"/);
     for(const tag of ['mfrac','msqrt','mroot','msub','msup','msubsup','munder','mover','munderover','mtable','mtr','mlabeledtr','mtd','mmultiscripts','menclose']){
       const pattern=new RegExp('<'+tag+'\\b','g'),count=value=>(value.match(pattern)||[]).length;
       assert.equal(count(output),count(baseline),'Editor class wrappers must preserve the '+tag+' structure of the original source');
@@ -252,6 +259,116 @@ export async function renderFormulaDocument(editors:EditorModel[],active=-1){
         assert.ok([...xml.querySelectorAll('mo')].some(element=>element.textContent==='>'),'Numbering changes must keep the condition inequality mathematical, not turn it into descriptive text: '+type);
       }
     }
+  });
+  await t.test('raw chemistry and pending TeX commands are literal monospace without changing stored math',async()=>{
+    for(const type of ['chem-ce','chem-pu','source-tex']){
+      const model=blank();model.insertStructure(type);model.insert(String.raw`H2O \alpha{a_b} ^~ 中`);
+      const source=model.exportLatex(),snapshot=model.snapshot();
+      const tex=api.regionTex(model.root,model,true);
+      assert.match(tex,/\\texttt\{/);assert.match(tex,/math-code/);
+      const output=await runtime.tex2mmlPromise(tex,{display:false});
+      assert.doesNotMatch(output,/<merror\b/);assert.match(output,/mathvariant="monospace"/);
+      assert.equal(model.exportLatex(),source);assert.equal(model.snapshot(),snapshot);
+    }
+    const pending=blank();pending.insert(String.raw`x+\al`);
+    const tex=api.regionTex(pending.root,pending,true);
+    assert.equal((tex.match(/\\class\{math-code\}/g)||[]).length,3);
+    pending.setCursor(pending.root.id,1);
+    assert.equal(api.regionTex(pending.root,pending,true),tex,'Moving the caret must not change the command glyphs');
+    pending.setCursor(pending.root.id,pending.root.items.length);pending.commitCommand(true,'alpha');
+    assert.doesNotMatch(api.regionTex(pending.root,pending,true),/math-code|\\texttt/);
+    assert.match(pending.exportLatex(),/\\alpha/);
+    const chemistry=blank();chemistry.insertStructure('chem-ce');chemistry.insert('H2O');
+    chemistry.setCursor(chemistry.root.id,1);await api.prepareRegionTex(chemistry);
+    const rendered=api.regionTex(chemistry.root,chemistry,false);
+    assert.match(rendered,/\\ce\{H2O\}/);assert.doesNotMatch(rendered,/math-code|\\texttt/);
+    const text=blank();text.insertStructure('text-normal');text.insert('中文 -- description');
+    assert.doesNotMatch(api.regionTex(text.root,text,true),/math-code|\\texttt/);
+  });
+  await t.test('coloring a cases condition retains descriptive text and embedded mathematics',async()=>{
+    const tokens=value=>{
+      const xml=new DOMParser().parseFromString(value,'text/xml');
+      return [...xml.querySelectorAll('mi,mn,mo,mtext')].map(element=>[element.localName,element.textContent]);
+    };
+    for(const target of ['text','background','border']){
+      const model=api.convertMath(String.raw`\begin{numcases}{f(x)=}x&if $x>0$ 中文\\-x&otherwise\end{numcases}`);
+      const text=[...model.nodes.values()].find(node=>node.type==='case-text');
+      const parent=model.parents.get(text.regions[0].id);
+      model.setCursor(parent.region.id,parent.index+1,parent.index);assert.equal(model.setColor('#d97706',target),true);
+      await api.prepareRegionTex(model);
+      runtime.texReset();const original=await runtime.tex2mmlPromise(model.exportLatex(),{display:true});
+      runtime.texReset();const edited=await runtime.tex2mmlPromise(api.regionTex(model.root,model,false),{display:true});
+      assert.doesNotMatch(edited,/<merror\b/);assert.deepEqual(tokens(edited),tokens(original),target);
+      assert.ok(tokens(edited).some(([kind,text])=>kind==='mtext'&&text.includes('if')));
+    }
+  });
+  await t.test('GUI background and border preserve native math and descriptive-text sizes in every editing region',async()=>{
+    const jax=runtime.startup.document.outputJax,processMath=jax.processMath;
+    let metrics;
+    // Capture the real CHTML wrapper tree after typesetting. HappyDOM cannot
+    // measure fonts, so inspect MathJax's actual glyph boxes and final scales,
+    // not source equality or a synthetic DOM font-size calculation.
+    jax.processMath=function(root,node){
+      const result=processMath.call(this,root,node),tokens=[];
+      const visit=wrapper=>{
+        const math=wrapper.node,text=math.getText?.();
+        if(['mi','mn','mo','mtext'].includes(math.kind)&&text){
+          const box=wrapper.getBBox(),attributes=math.attributes;
+          tokens.push({kind:math.kind,text,variant:wrapper.variant,
+            level:attributes.get('scriptlevel'),display:attributes.get('displaystyle'),
+            scale:box.scale,width:box.w*box.scale,height:box.h*box.scale,depth:box.d*box.scale});
+        }
+        for(const child of wrapper.childNodes??[])visit(child);
+      };
+      visit(root);metrics=tokens;return result;
+    };
+    const measure=async(model,display)=>{
+      await api.prepareRegionTex(model);
+      const tex=api.regionTex(model.root,model,true);runtime.texReset();
+      const output=await runtime.tex2chtmlPromise(tex,{display});
+      assert.doesNotMatch(output.outerHTML,/mjx-merror/);assert.match(output.outerHTML,/math-region/);
+      assert.ok(metrics?.length);return {tokens:metrics,tex,html:output.outerHTML};
+    };
+    try{
+      const body=String.raw`a+\frac{b}{c}+\sum_{i=0}^{n}d+\textnormal{AB}`;
+      const fixtures=[
+        ['display',body,true,0],['inline',body,false,0],
+        ['superscript','x^{'+body+'}',true,1],['subscript','x_{'+body+'}',true,1],
+        ['nested superscript','x^{y^{'+body+'}}',true,2],
+        ['display numerator','\\frac{'+body+'}{z}',true,0],
+        ['inline numerator','\\frac{'+body+'}{z}',false,1],
+        ['display denominator','\\frac{z}{'+body+'}',true,0],
+        ['inline denominator','\\frac{z}{'+body+'}',false,1],
+        ['root index','\\sqrt[{'+body+'}]{z}',true,2],
+        ['descriptive superscript',String.raw`x^{\textnormal{AB}}`,true,1],
+        ['descriptive subscript',String.raw`x_{\textnormal{AB}}`,true,1],
+        ['empty fraction slot in superscript',String.raw`x^{\frac{}{c}+\textnormal{AB}}`,true,1],
+      ];
+      for(const [name,source,display,level]of fixtures)for(const target of ['background','border']){
+        const model=api.convertMath(source),text=[...model.nodes.values()].find(node=>node.type==='text-normal');
+        assert.ok(text,name+' contains editable descriptive text');
+        const region=model.parents.get(text.regions[0].id).region;
+        model.setCursor(region.id,region.items.length,0);
+        const before=await measure(model,display),description=before.tokens.filter(token=>token.kind==='mtext'&&/[AB]/.test(token.text));
+        assert.ok(description.length,name+' contains rendered description glyphs');
+        assert.ok(description.every(token=>token.level===level&&token.variant==='normal'),name+' baseline description has its native style');
+        assert.equal(model.setColor('#ff8080',target),true,name+' applies '+target);
+        const colored=await measure(model,display);
+        assert.deepEqual(colored.tokens,before.tokens,name+' '+target+' must not reset inherited styles or resize any glyph');
+        const box=[...model.nodes.values()].find(node=>node.type==='math-decoration');
+        assert.ok(box);assert.equal(box.texBoxStyle,undefined,'A GUI decoration does not reopen text mode or force textstyle');
+        assert.match(colored.tex,/\\bbox\[0px,/,'Use native MathJax mathematical decoration with no padding');
+        assert.doesNotMatch(colored.tex,/\\f?colorbox/,'The GUI does not insert a text-mode color box');
+        if(target==='border')assert.equal(box.texBackground,undefined,'An outline does not manufacture a white background');
+        for(const offset of [0,box.regions[0].items.length]){
+          model.setCursor(box.regions[0].id,offset);
+          const moved=await measure(model,display);
+          assert.deepEqual(moved.tokens,before.tokens,name+' '+target+' caret movement keeps every glyph size');
+          assert.equal(moved.tex,colored.tex,'Moving the caret does not change MathJax source');
+        }
+        if(name.startsWith('empty'))assert.match(colored.html,/math-placeholder/,'The empty fraction retains its editable placeholder');
+      }
+    }finally{jax.processMath=processMath;}
   });
   await window.happyDOM.close();
 });

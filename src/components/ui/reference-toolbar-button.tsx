@@ -3,7 +3,7 @@ import {Link2Icon} from 'lucide-react';
 import {NodeApi} from 'platejs';
 import {useEditorRef,useEditorSelector} from 'platejs/react';
 import type {Range} from 'slate';
-import {HostContext} from '@/plate-math-element';
+import {HostContext} from '@/plate-editor-context';
 import {referenceTargets,validReferenceKey,type ReferenceCommand,type ReferenceNode,type ReferenceTarget} from '@/references';
 import {validCitationKey} from '@/bibtex';
 import {useBibliographyLibraries} from '@/use-bibliography';

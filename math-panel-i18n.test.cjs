@@ -1,3 +1,4 @@
+const {mountMathEditor}=require('./test/math-editor-harness.cjs');
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const {build}=require('esbuild');
@@ -21,7 +22,7 @@ async function uiHarness(t,locale){
  window.MathJax={typesetClear(){},async typesetPromise(){}};
  window.eval(await uiSource+'\nwindow.mathUI=mathUI;');
  let hooks,entry;
- window.mathUI.mountMathEditor((mount,initial,h)=>{
+ mountMathEditor(window,window.mathUI,(mount,initial,h)=>{
   hooks=h;initial.root.items=[];initial.index();initial.setCursor(initial.root.id,0);
   entry={element:window.document.getElementById('formula'),model:initial};
   return {entries:()=>[entry],syncMath(){},persist(){},exportLatex:()=>'',exportMarkdown:()=>'',isDisplay:()=>true,isNumbered:()=>true,readOnly:false};

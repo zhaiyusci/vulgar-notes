@@ -32,7 +32,7 @@ test('structured metadata edits stay in place in the real Plate editor',async t=
       import {MetadataToolbarButton} from './src/components/ui/metadata-toolbar-button';
       import {Toolbar} from './src/components/ui/toolbar';
       import {TooltipProvider} from './src/components/ui/tooltip';
-      import {HostContext} from './src/plate-math-element';
+      import {HostContext} from './src/plate-editor-context';
       import {createMetadataBlock,createMetadataEntry} from './src/document-metadata';
       export {createMetadataBlock,createMetadataEntry,flushSync};
       export function createEditor(value){

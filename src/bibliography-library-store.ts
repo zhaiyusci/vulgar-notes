@@ -1,6 +1,6 @@
 import {citedBibLibraries,parseBibLibrary,parseBibLibraries,validateBibLibraries,type BibLibrary} from './bibtex';
 
-/** Full local sources are deliberately separate from cited-only document data. */
+/** The local source catalog is independent of each document's saved attachments. */
 export const CACHE_KEY='vulgar-notes-bibliography-library-catalog-v1';
 type ReadStorage=Pick<Storage,'getItem'>;
 type WriteStorage=Pick<Storage,'setItem'>&Partial<ReadStorage>;
@@ -79,8 +79,21 @@ function sameCapturedSource(captured:BibLibrary,full:BibLibrary,keys:readonly st
  * A skipped full source remains in the caller's catalog for explicit recovery;
  * callers must not save this merged attachment view back as the full catalog.
  */
-export function restoreLibraryAttachments(capturedLibraries:readonly BibLibrary[],cachedLibraries:readonly BibLibrary[],reservedCitationKeys:readonly string[]=[]):LibraryAttachmentResult {
+export function restoreLibraryAttachments(capturedLibraries:readonly BibLibrary[],cachedLibraries:readonly BibLibrary[],reservedCitationKeys:readonly string[]=[],capturedIsFull=false,partialLibraryIds:readonly string[]=[]):LibraryAttachmentResult {
   const captured=validateBibLibraries(capturedLibraries),cached=validateBibLibraries(cachedLibraries);
+  if(capturedIsFull){
+    // A complete attachment list is authoritative. In particular, a local
+    // superset must not resurrect deleted entries or attach unrelated sources.
+    const partial=new Set(partialLibraryIds),used=new Set<string>();
+    const cacheLibraryIds:Record<string,string>=Object.create(null),conflicts:LibraryAttachmentConflict[]=[];
+    for(const copy of captured){
+      const full=cached.find(library=>library.id===copy.id)??cached.find(library=>!used.has(library.id)&&library.name===copy.name&&library.source===copy.source);
+      if(!full)continue;
+      used.add(full.id);cacheLibraryIds[copy.id]=full.id;
+      if(full.source!==copy.source)conflicts.push({libraryId:copy.id,name:copy.name,keys:parseBibLibrary(copy).map(entry=>entry.key),reason:'source-mismatch'});
+    }
+    return {libraries:captured,fullLibraryIds:captured.filter(library=>!partial.has(library.id)).map(library=>library.id),capturedOnlyIds:captured.filter(library=>partial.has(library.id)).map(library=>library.id),cacheLibraryIds,conflicts};
+  }
   const capturedKeys=new Map(captured.map(library=>[library.id,parseBibLibrary(library).map(entry=>entry.key)]));
   const capturedOwners=new Map(captured.flatMap(library=>capturedKeys.get(library.id)!.map(key=>[key,library.id] as const)));
   const fullLibraryIds:string[]=[],capturedOnlyIds:string[]=[],conflicts:LibraryAttachmentConflict[]=[],used=new Set<string>();

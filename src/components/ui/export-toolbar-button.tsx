@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { saveExport } from '@/platform';
 import { latexDocument } from '@/latex-document';
 import { t } from '@/i18n';
-import { HostContext } from '@/plate-math-element';
+import { HostContext } from '@/plate-editor-context';
 import { useBibliographyLibraries,useBibliographyStyle } from '@/use-bibliography';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuGroup,

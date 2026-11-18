@@ -40,7 +40,7 @@ async function harness(t,{desktop=false,home=false,metadata,content=edited,basel
  const tick=()=>new Promise(resolve=>setTimeout(resolve,0));
  const prompt=choice=>{const button=window.document.querySelector(`dialog[data-document-unsaved-prompt] button[data-choice="${choice}"]`);assert.ok(button,'Save / Discard / Cancel must be explicit choices');button.click();};
  t.after(async()=>{detach?.();cleanup();await window.happyDOM.abort();});
- return {window,storage,state,api,host,calls,events,tick,prompt,reattach(){detach?.();detach=api.attachDocumentHost(host);}};
+ return {window,storage,state,api,host,calls,events,tick,prompt,detach(){detach?.();},reattach(){detach?.();detach=api.attachDocumentHost(host);}};
 }
 
 test('home opens a validated file with its own prepared draft, baseline and recent source',async t=>{
@@ -249,6 +249,73 @@ test('recent files reopen their current source through the same UUID preparation
  h.state.openResult=null;await h.api.openRecentDocumentCommand('canceled-source');assert.equal(h.events.start.length,1);
 });
 
+test('manual recovery reuses the session and saved baseline without registering a recent file',async t=>{
+ const h=await harness(t,{home:true});const recoveryId='091cffef-c6bb-4a27-a1f4-111111111111';
+ const metadata=JSON.stringify({name:'recovered.vulgar',path:'C:\\notes\\recovered.vulgar',recentId:'existing-source',baseline:saved});
+ h.storage.setItem(h.api.documentDraftKey(recoveryId),edited);h.storage.setItem(h.api.documentMetadataKey(recoveryId),metadata);
+ await h.api.openRecoveredDocumentCommand(recoveryId.toUpperCase());
+ assert.equal(h.events.start.length,1);assert.equal(h.events.start[0].documentId,recoveryId);assert.equal(h.events.start[0].opened,undefined);
+ assert.equal(h.storage.getItem(h.api.documentDraftKey(recoveryId)),edited);assert.equal(h.storage.getItem(h.api.documentMetadataKey(recoveryId)),metadata);
+ assert.equal(h.state.remembered.length,0);assert.equal(h.state.openedRecent.length,0);assert.equal(h.state.pickers,0);assert.equal(h.events.errors.length,0);
+ h.window.location.href='http://localhost/vulgar-notes/?document='+recoveryId;h.reattach();
+ assert.equal(h.host.baseline,saved);assert.equal(h.host.content,edited);assert.equal(h.api.getDocumentState().dirty,true);assert.equal(h.api.getDocumentState().name,'recovered.vulgar');
+ assert.equal(h.storage.getItem(h.api.documentMetadataKey(recoveryId)),metadata);
+});
+
+test('manual recovery Cancel and canceled Save retain the active document',async t=>{
+ const h=await harness(t,{metadata:{name:'active.vulgar',baseline:saved}}),recoveryId='091cffef-c6bb-4a27-a1f4-222222222222';
+ h.storage.setItem(h.api.documentDraftKey(recoveryId),doc('Old recovery'));
+ for(const choice of ['cancel','save']){
+  const pending=h.api.openRecoveredDocumentCommand(recoveryId);await h.tick();h.prompt(choice);await pending;
+  assert.equal(h.events.start.length,0);assert.equal(h.host.content,edited);assert.equal(h.host.baseline,saved);
+  assert.equal(h.storage.getItem(h.api.documentDraftKey(id)),edited);assert.equal(h.api.getDocumentState().dirty,true);
+ }
+ assert.equal(h.state.saves.length,1);assert.equal(h.state.remembered.length,0);assert.equal(h.events.errors.length,0);
+});
+
+test('manual recovery Discard affects only the previous document and leaves the target untouched',async t=>{
+ const h=await harness(t,{metadata:{name:'active.vulgar',baseline:saved}}),recoveryId='091cffef-c6bb-4a27-a1f4-333333333333';
+ const source=doc('Recovery without a saved file');h.storage.setItem(h.api.documentDraftKey(recoveryId),source);
+ const pending=h.api.openRecoveredDocumentCommand(recoveryId);await h.tick();h.prompt('discard');await pending;
+ assert.equal(h.events.start.length,1);assert.equal(h.events.start[0].documentId,recoveryId);
+ assert.equal(h.storage.getItem(h.api.documentDraftKey(id)),saved);assert.equal(h.storage.getItem(h.api.documentDraftKey(recoveryId)),source);
+ assert.equal(h.storage.getItem(h.api.documentMetadataKey(recoveryId)),null);assert.equal(h.state.remembered.length,0);assert.equal(h.events.errors.length,0);
+});
+
+test('invalid recovery IDs, missing copies and malformed sources never discard the current document',async t=>{
+ const h=await harness(t,{metadata:{name:'active.vulgar',baseline:saved}}),recoveryId='091cffef-c6bb-4a27-a1f4-444444444444';
+ await h.api.openRecoveredDocumentCommand('not-a-document-id');
+ await h.api.openRecoveredDocumentCommand(recoveryId);
+ for(const source of ['not JSON',JSON.stringify({settings:{language:'en'}})]){
+  h.storage.setItem(h.api.documentDraftKey(recoveryId),source);await h.api.openRecoveredDocumentCommand(recoveryId);
+  assert.equal(h.storage.getItem(h.api.documentDraftKey(recoveryId)),source);
+ }
+ assert.equal(h.events.errors.length,4);assert.ok(h.events.errors.every(error=>error.action==='open'));
+ assert.equal(h.events.start.length,0);assert.equal(h.window.document.querySelector('dialog'),null);
+ assert.equal(h.host.content,edited);assert.equal(h.host.baseline,saved);assert.equal(h.storage.getItem(h.api.documentDraftKey(id)),edited);
+ assert.equal(h.state.remembered.length,0);assert.equal(h.api.getDocumentState().busy,false);
+});
+
+test('recovery disappearing or becoming invalid during the save prompt cannot discard active edits',async t=>{
+ for(const replacement of [null,'invalid JSON']){
+  const h=await harness(t,{metadata:{name:'active.vulgar',baseline:saved}}),recoveryId='091cffef-c6bb-4a27-a1f4-555555555555';
+  h.storage.setItem(h.api.documentDraftKey(recoveryId),doc('Valid recovery'));
+  const pending=h.api.openRecoveredDocumentCommand(recoveryId);await h.tick();
+  if(replacement===null)h.storage.removeItem(h.api.documentDraftKey(recoveryId));else h.storage.setItem(h.api.documentDraftKey(recoveryId),replacement);
+  h.prompt('discard');await pending;
+  assert.equal(h.events.errors.length,1);assert.equal(h.events.start.length,0);assert.equal(h.storage.getItem(h.api.documentDraftKey(id)),edited);
+  assert.equal(h.host.content,edited);assert.equal(h.host.baseline,saved);assert.equal(h.api.getDocumentState().dirty,true);
+ }
+});
+
+test('recovering the active session does nothing and does not prompt to save',async t=>{
+ const h=await harness(t,{metadata:{name:'active.vulgar',baseline:saved}}),metadata=h.storage.getItem(h.api.documentMetadataKey(id));
+ await h.api.openRecoveredDocumentCommand(id.toUpperCase());
+ assert.equal(h.events.start.length,0);assert.equal(h.window.document.querySelector('dialog'),null);assert.equal(h.calls.persist,0);
+ assert.equal(h.storage.getItem(h.api.documentMetadataKey(id)),metadata);assert.equal(h.host.content,edited);assert.equal(h.host.baseline,saved);
+ assert.equal(h.state.remembered.length,0);assert.equal(h.events.errors.length,0);
+});
+
 test('Save preserves restored browser targets; Save As deliberately asks for a new target',async t=>{
  const target={name:'original.vulgar',opaqueHandle:'private-to-platform'};
  const h=await harness(t,{metadata:{name:'original.vulgar',baseline:saved,recentId:'original'}});h.state.restoredTarget=target;
@@ -284,6 +351,14 @@ test('native close commits the latest clean-document recovery before destroying 
  let prevented=0;h.state.closeHandler({preventDefault(){prevented++;}});await h.tick();
  assert.equal(prevented,1);assert.equal(h.state.destroyed,0);assert.equal(h.window.document.querySelector('dialog'),null);
  release();await h.tick();assert.equal(h.state.destroyed,1);assert.equal(h.events.errors.length,0);
+});
+
+test('native close without a host is not blocked by a stale view during departure',async t=>{
+ const h=await harness(t,{desktop:true,metadata:{name:'saved.vulgar',baseline:saved},content:saved});await h.tick();
+ await h.api.runDocumentCommand('home');h.detach();
+ let prevented=0;h.state.closeHandler({preventDefault(){prevented++;}});await h.tick();
+ assert.equal(prevented,0,'a detached editor cannot take responsibility for native close');
+ assert.equal(h.state.destroyed,0);assert.equal(h.window.document.querySelector('dialog'),null);
 });
 
 test('edits during the recovery commit after Save remain dirty and prevent Home',async t=>{

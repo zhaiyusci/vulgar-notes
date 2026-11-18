@@ -6,14 +6,14 @@ const fs=require('node:fs');
 const fixedChildren=new Map([...fs.readFileSync('src/components/ui/fixed-toolbar-buttons.tsx','utf8').matchAll(/import\s*\{([^}]+)\}\s*from\s*['"](\.\/[^'"]+)['"]/g)].map(match=>[match[2],match[1].split(',').map(name=>name.trim()).filter(Boolean)]));
 
 const code=build({
- stdin:{contents:"export {CrossReferenceToolbarButton,CitationReferenceEditor} from './reference-toolbar-button';export {LabelToolbarButton} from './label-toolbar-button';export {FixedToolbarButtons} from './fixed-toolbar-buttons';export {HostContext} from '@/plate-math-element';",resolveDir:path.resolve('src/components/ui'),loader:'tsx'},
+ stdin:{contents:"export {CrossReferenceToolbarButton,CitationReferenceEditor} from './reference-toolbar-button';export {LabelToolbarButton} from './label-toolbar-button';export {FixedToolbarButtons} from './fixed-toolbar-buttons';export {HostContext} from '@/plate-editor-context';",resolveDir:path.resolve('src/components/ui'),loader:'tsx'},
  bundle:true,write:false,platform:'node',format:'cjs',target:'es2022',jsx:'automatic',external:['react','react/*','react-dom','react-dom/*'],
  plugins:[{name:'toolbar-adapters',setup(build){
   const adapters={
    'platejs':`export const KEYS=new Proxy({},{get:(_,key)=>key});export const NodeApi={nodes:function*(editor){function* walk(nodes,parent=[]){for(let i=0;i<nodes.length;i++){const node=nodes[i],path=[...parent,i];yield[node,path];if(node.children)yield*walk(node.children,path);}}yield*walk(editor.children);}};`,
    'platejs/react':`import {useCallback,useSyncExternalStore} from 'react';export const useEditorRef=()=>globalThis.referenceToolbarTest.editor;export const useEditorSelector=(selector,deps=[])=>{const state=globalThis.referenceToolbarTest;useSyncExternalStore(state.subscribe,state.getVersion);return useCallback(selector,deps)(state.editor);};export const useEditorReadOnly=()=>globalThis.referenceToolbarTest.editor.api.isReadOnly();`,
    '@/references':`export * from './src/references.ts';import {referenceTargets as original} from './src/references.ts';export const referenceTargets=(...args)=>{globalThis.referenceToolbarTest.referenceQueries++;return original(...args);};`,
-   '@/plate-math-element':`import{createContext}from'react';export const HostContext=createContext(null);`,
+   '@/plate-editor-context':`import{createContext}from'react';export const HostContext=createContext(null);`,
    '@/use-bibliography':`export const useBibliographyLibraries=()=>globalThis.referenceToolbarTest.libraries;export const useBibliographyStyle=()=> 'simple';`,
    '@/i18n':`export const t=value=>value;`,
    './toolbar':`export const ToolbarButton=({tooltip,...props})=><button type="button" {...props}/>;export const ToolbarGroup=({children})=><div data-toolbar-group>{children}</div>;`,

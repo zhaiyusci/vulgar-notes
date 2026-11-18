@@ -10,6 +10,7 @@ import {parseTexLayoutStructure} from './tex-layout-structures';
 import {parseTexCatalogStructure} from './tex-structure-grammar';
 import {parseTexSideSet} from './tex-sideset';
 import {isStandaloneMathEnvironmentName} from './tex-display-environment';
+import {validMathColor,parseMathDecorationOptions,type MathColor,type MathBoxStyle} from './math-color';
 
 interface Argument {body:string;next:number;braced:boolean}
 interface Term {items:MathItem[];next:number;scriptable:boolean;operator?:MathNode;prefix?:MathItem[]}
@@ -66,6 +67,46 @@ function argument(source:string,start:number):Argument|null {
     return {body:source.slice(i,token.next),next:token.next,braced:false};
   }
   const char=String.fromCodePoint(source.codePointAt(i)!);return {body:char,next:i+char.length,braced:false};
+}
+
+function colorArgument(source:string,start:number,defaultModel:MathColor['model']=''):{color:MathColor;next:number}|null {
+  let at=whitespace(source,start),model=defaultModel;
+  if(source[at]==='['){const option=balanced(source,at,'[',']');if(!option)return null;model=option.body as MathColor['model'];at=whitespace(source,option.next);}
+  const value=balanced(source,at);if(!value)return null;
+  const color={model,value:value.body};return validMathColor(color)?{color,next:value.next}:null;
+}
+
+function colorBoxMath(body:string):{source:string;style?:MathBoxStyle}|null {
+  if(body[0]!=='$'||body.at(-1)!=='$')return null;
+  let source=body.slice(1,-1);
+  for(let i=0;i<source.length;i++)if(source[i]==='$'){
+    let escapes=0;for(let before=i-1;before>=0&&source[before]==='\\';before--)escapes++;
+    if(escapes%2===0)return null; // Mixed text/math remains native source.
+  }
+  const style=/^\s*\\(textstyle|displaystyle|scriptstyle|scriptscriptstyle)(?![A-Za-z])\s*/.exec(source);
+  if(style)source=source.slice(style[0].length);
+  return {source,...(style?{style:style[1] as MathBoxStyle}:{})};
+}
+
+/** A typed command remains literal source until its parameter boundary is
+ * complete. This does not run on file import, source inspection or rendering. */
+export function convertTypedColorCommand(source:string,explicit=false):{model:EditorModel;declaration:boolean}|null {
+  const token=control(source,whitespace(source,0));
+  if(!token||!['color','textcolor','colorbox','fcolorbox'].includes(token.name))return null;
+  const first=colorArgument(source,token.next);if(!first)return null;
+  const declaration=token.name==='color';
+  if(!declaration){
+    const last=token.name==='fcolorbox'?colorArgument(source,first.next,first.color.model):first;
+    const body=last&&argument(source,last.next);
+    // A control word may still be growing. Tab/Enter explicitly ends a bare
+    // argument; automatic confirmation waits for its closing source brace.
+    if(!body||!body.braced&&!explicit)return null;
+  }
+  const model=convertMath(source),items=model.root.items;
+  if(declaration)return items.length===1&&typeof items[0]!=='string'&&items[0].type==='textcolor'?{model,declaration}:null;
+  const contains=(items:MathItem[]):boolean=>items.some(item=>typeof item!=='string'&&
+    (item.type===token.name||item.regions.some(child=>contains(child.items))));
+  return contains(items)?{model,declaration}:null;
 }
 
 /** Capture a complete unknown command and adjacent explicit argument groups. */
@@ -174,7 +215,17 @@ export function convertMath(source:string):EditorModel {
         const sideSet=parseTexSideSet(text,start,parseRegion,node);
         if(sideSet)return {items:[sideSet.node],next:sideSet.next,scriptable:false};
         const catalogStructure=parseTexCatalogStructure(text,start,parseRegion,node);
-        if(catalogStructure)return {items:[catalogStructure.node],next:catalogStructure.next,scriptable:true};
+        if(catalogStructure){
+          const value=text.slice(start,catalogStructure.next);
+          if(/\\color(?![A-Za-z])/.test(value)){
+            // Fixed-size fences are not TeX groups: their color declaration
+            // may also affect the closing fence and the following sequence.
+            if(/^\\(?:bigl|Bigl|biggl|Biggl)(?![A-Za-z])/.test(value)||catalogStructure.node.type.startsWith('physics-'))
+              return {items:[opaque(text.slice(start))],next:text.length,scriptable:false};
+            if(catalogStructure.node.type==='atop')return {items:[opaque(value)],next:catalogStructure.next,scriptable:false};
+          }
+          return {items:[catalogStructure.node],next:catalogStructure.next,scriptable:true};
+        }
       }
       if(ch==='{'){
         const group=balanced(text,start);if(!group)return {items:[opaque(text.slice(start))],next:text.length,scriptable:false};
@@ -188,6 +239,44 @@ export function convertMath(source:string):EditorModel {
       }
       const token=control(text,start);if(!token)return {items:[opaque(text.slice(start))],next:text.length,scriptable:false};
       const name=token.name;
+      if(name==='textcolor'||name==='color'){
+        const specification=colorArgument(text,token.next);
+        if(name==='color'){
+          if(specification){
+            const remainder=text.slice(specification.next),body=parseRegion(remainder)!;
+            const hasSource=(items:MathItem[]):boolean=>items.some(item=>typeof item!=='string'&&
+              (item.type==='source-tex'||item.regions.some(child=>hasSource(child.items))));
+            // Definitions or unknown declarations may have effects outside
+            // this run. Never hide them in a newly introduced argument group.
+            if(!hasSource(body.items)){
+              const result=node('textcolor',[body]);result.texColor=specification.color;
+              return {items:[result],next:text.length,scriptable:false};
+            }
+          }
+          return {items:[opaque(text.slice(start))],next:text.length,scriptable:false};
+        }
+        const body=specification?argument(text,specification.next):null;
+        if(specification&&body){
+          const contents=parseRegion(body.body)!,only=contents.items.length===1?contents.items[0]:undefined;
+          const result=only&&typeof only!=='string'&&only.type==='math-decoration'&&!only.texColor?only:node('textcolor',[contents]);result.texColor=specification.color;
+          return {items:[result],next:body.next,scriptable:true};
+        }
+        // Unsupported models and unfinished arguments stay verbatim, without
+        // reinterpreting color definitions or inventing an xcolor dialect.
+        const next=commandEnd(text,start);return {items:[opaque(text.slice(start,next))],next,scriptable:false};
+      }
+      if(name==='colorbox'||name==='fcolorbox'){
+        const first=colorArgument(text,token.next),second=name==='fcolorbox'&&first?colorArgument(text,first.next,first.color.model):null;
+        const background=name==='colorbox'?first:second,body=background?argument(text,background.next):null;
+        const math=body?.braced?colorBoxMath(body.body):null;
+        if(first&&background&&math&&body){
+          const result=node(name,[parseRegion(math.source)!]);result.texBackground=background.color;
+          if(name==='fcolorbox')result.texBorder=first.color;
+          if(math.style)result.texBoxStyle=math.style;
+          return {items:[result],next:body.next,scriptable:true};
+        }
+        const next=commandEnd(text,start);return {items:[opaque(text.slice(start,next))],next,scriptable:false};
+      }
       if(scopeCommands.has(name))return {items:[opaque(text.slice(start))],next:text.length,scriptable:false};
       if(name==='begin'){
         const parsed=parseTexEnvironment(text,start,parseRegion,node);if(parsed)return {items:[parsed.node],next:parsed.next,scriptable:true};
@@ -195,13 +284,22 @@ export function convertMath(source:string):EditorModel {
         return {items:[opaque(text.slice(start,next))],next,scriptable:false};
       }
       if(name==='left'){
+        const boundary=scanTexDelimiter(text,start);
+        if(boundary&&/\\color(?![A-Za-z])/.test(text.slice(start,boundary.next)))
+          return {items:[opaque(text.slice(start,boundary.next))],next:boundary.next,scriptable:false};
         const parsed=parseTexDelimiter(text,start,parseRegion,node);if(parsed)return {items:[parsed.node],next:parsed.next,scriptable:true};
-        const boundary=scanTexDelimiter(text,start),next=boundary?.next??text.length;
+        const next=boundary?.next??text.length;
         return {items:[opaque(text.slice(start,next))],next,scriptable:false};
       }
       if(name==='end'||name==='right'||name==='middle')return {items:[opaque(text.slice(start))],next:text.length,scriptable:false};
       const layout=parseTexLayoutStructure(text,start,parseRegion,node);
-      if(layout)return {items:[layout.node],next:layout.next,scriptable:true};
+      if(layout){
+        if(layout.node.type==='layout-bbox'&&layout.node.texOptions){
+          const decoration=parseMathDecorationOptions(layout.node.texOptions);
+          if(decoration){layout.node.type='math-decoration';delete layout.node.texOptions;Object.assign(layout.node,decoration);}
+        }
+        return {items:[layout.node],next:layout.next,scriptable:true};
+      }
       const immediate=whitespace(text,token.next),hasOption=text[immediate]==='['||text[token.next]==='*';
       if(!hasOption&&['textnormal','ce','pu'].includes(name)){
         const value=argument(text,token.next);
@@ -266,6 +364,7 @@ export function convertMath(source:string):EditorModel {
         if(closing&&(opening==='('?functionGrammar?.automaticParentheses:functionGrammar?.automaticDelimiters?.some(delimiter=>delimiter===opening))){
           const group=balanced(text,at,opening,closing);
           if(!group)return {items:[opaque(text.slice(start))],next:text.length,scriptable:false};
+          if(/\\color(?![A-Za-z])/.test(group.body))return {items:[opaque(text.slice(start))],next:text.length,scriptable:false};
           const type=opening==='('?'parens':opening==='['?'brackets':'braces';
           return {prefix:[operator],items:[node('physics-auto-'+type,[parseRegion(group.body)!])],next:group.next,scriptable:true};
         }

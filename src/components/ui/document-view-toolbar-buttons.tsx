@@ -3,7 +3,7 @@
 import * as React from 'react';
 import {TableOfContentsIcon} from 'lucide-react';
 import {useEditorRef} from 'platejs/react';
-import {HostContext} from '@/plate-math-element';
+import {HostContext} from '@/plate-editor-context';
 import {insertBlock} from '@/components/editor/transforms';
 import {ToolbarButton} from './toolbar';
 

@@ -1,7 +1,7 @@
 import {useContext,useRef,useState,useSyncExternalStore} from 'react';
 import {CheckIcon,CopyIcon,LogOutIcon,UsersIcon} from 'lucide-react';
 import {toast} from 'sonner';
-import {HostContext} from '@/plate-math-element';
+import {HostContext} from '@/plate-editor-context';
 import {inactiveCollaboration,type CollaborationState} from '@/collaboration-types';
 import {collaborationInviteUrl,parseCollaborationInvite} from '@/collaboration-invite';
 import {openCollaborationInvitation} from '@/collaboration-navigation';

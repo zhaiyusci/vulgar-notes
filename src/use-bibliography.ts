@@ -1,5 +1,5 @@
 import {useContext,useSyncExternalStore} from 'react';
-import {HostContext} from './plate-math-element';
+import {HostContext} from './plate-editor-context';
 import type {BibLibrary} from './bibtex';
 import type {BibliographyStyle} from './bibliography-style';
 

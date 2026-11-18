@@ -52,4 +52,45 @@ test('migrating a clean legacy file does not confuse absent and empty library me
 test('corrupt metadata and old malformed bytes never erase readable recovery content',async()=>{
  const h=await load();h.localStorage.setItem(key,doc('Readable content'));h.localStorage.setItem('editor.open-document:'+id,'bad metadata');
  h.localStorage.setItem('math-plate-document-v1','bad original document');await h.api.prepareDocumentRecovery();assert.equal(h.api.listRecoverableDocuments().length,1);assert.equal(h.localStorage.getItem('math-plate-document-v1'),'bad original document');
+ assert.deepEqual(JSON.parse(JSON.stringify(h.api.listRecoverableDocuments())),[{id}],'missing names remain data, not a translated UI label');
+ h.localStorage.setItem('editor.open-document:'+id,JSON.stringify({name:''}));
+ assert.deepEqual(JSON.parse(JSON.stringify(h.api.listRecoverableDocuments())),[{id}],'an empty name does not invent a document title');
+});
+
+const preferencesUI=build({entryPoints:['src/document-recovery-preferences.ts'],bundle:true,write:false,format:'iife',globalName:'recoveryPreferences',plugins:[{name:'recovery-ui-locale',setup(b){
+ b.onResolve({filter:/^\.\/i18n$/},()=>({path:'i18n',namespace:'recovery-ui-test'}));
+ b.onLoad({filter:/.*/,namespace:'recovery-ui-test'},()=>({contents:"export const locale='en';export const t=value=>value;"}));
+}}]}).then(result=>result.outputFiles[0].text);
+async function recoveryUI(t,list){
+ const {Window}=await import('happy-dom'),fs=require('node:fs');
+ const window=new Window({url:'http://localhost/'});t.after(()=>window.happyDOM.abort());
+ const markup=fs.readFileSync('mathjax4_editor_prototype_document_typeset.html','utf8').match(/<dialog id="preferencesDialog"[\s\S]*?<\/dialog>/)[0];
+ window.document.write(markup);window.eval(await preferencesUI+'\nwindow.recoveryPreferences=recoveryPreferences;');
+ const dialog=window.document.getElementById('preferencesDialog'),section=window.document.getElementById('documentRecovery'),opened=[];
+ window.recoveryPreferences.initDocumentRecoveryPreferences({list,open:id=>opened.push({id,preferencesOpen:dialog.open})});
+ const tick=()=>new Promise(resolve=>setTimeout(resolve,10));
+ return {window,dialog,section,opened,tick};
+}
+
+test('recovery is read only on explicit expansion in Preferences, never on the start page',async t=>{
+ let reads=0;
+ const h=await recoveryUI(t,async()=>{reads++;return [{id,name:'<img src=x>.vulgar',updatedAt:1793050000000},{id:'unnamed'}];});
+ await h.tick();assert.equal(reads,0);
+ h.dialog.showModal();await h.tick();assert.equal(reads,0,'opening Preferences does not scan documents');
+ h.section.open=true;await h.tick();assert.equal(reads,1);
+ const button=h.section.querySelector('[data-recovery-id]');assert.equal(button.textContent.startsWith('<img src=x>.vulgar'),true);assert.equal(h.section.querySelector('img'),null);
+ assert.equal(h.section.querySelector('[data-recovery-id="unnamed"]').textContent,'Untitled','only the UI supplies the missing-name label');
+ button.click();await h.tick();assert.deepEqual(h.opened,[{id,preferencesOpen:false}]);
+ assert.equal(h.section.open,false);assert.equal(h.section.querySelector('[data-recovery-id]'),null);
+ h.dialog.showModal();await h.tick();assert.equal(reads,1,'reopening Preferences leaves recovery collapsed');
+});
+
+test('closing Preferences ignores late recovery results; failures leave old recovery available to retry',async t=>{
+ let resolve,fail=false;
+ const h=await recoveryUI(t,()=>fail?Promise.reject(Error('unavailable')):new Promise(done=>{resolve=done;}));
+ h.dialog.showModal();h.section.open=true;await h.tick();h.dialog.close();
+ resolve([{id,name:'late.vulgar'}]);await h.tick();assert.equal(h.section.querySelector('[data-recovery-id]'),null);assert.deepEqual(h.opened,[]);
+ fail=true;h.dialog.showModal();h.section.open=true;await h.tick();
+ assert.equal(h.window.document.getElementById('documentRecoveryStatus').textContent,'Local recovery storage could not be read. Existing data has been kept.');
+ assert.equal(h.dialog.open,true);
 });

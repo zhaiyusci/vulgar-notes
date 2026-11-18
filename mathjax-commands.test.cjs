@@ -75,6 +75,8 @@ test('implementation commands stay out of partial completion but complete source
   for(const [name,source] of [
     ['def',String.raw`\def\F#1{#1^2}\F{x}`],
     ['class',String.raw`\class{example}{x+y}`],
+    ['colorbox',String.raw`\colorbox{yellow}{$x+y$}`],
+    ['fcolorbox',String.raw`\fcolorbox{red}{yellow}{$x+y$}`],
     ['kern',String.raw`\kern1pt x`],
     ['overwithdelims',String.raw`{a\overwithdelims()b}`],
     ['qcomma',String.raw`a\qcomma b`],

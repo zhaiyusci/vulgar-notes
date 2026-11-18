@@ -33,6 +33,27 @@ test('MathJax-only commands are reported specifically without fake same-name pac
   assert.deepEqual(api.analyzeMathJaxLatex([String.raw`\newcommand{\bbox}[1]{\boxed{#1}}\bbox{x}`]).issues,[],'a user-provided real TeX definition is not a MathJax-only primitive');
   assert.deepEqual(api.analyzeMathJaxLatex([String.raw`\textnormal{\textendash}\textnormal{\textemdash}`]).packages,['textcomp']);
 });
+test('non-occupying GUI decorations remain source with an accurate native-TeX limitation',()=>{
+  for(const source of [
+    String.raw`\bbox[0px,#FFFF99]{a+b}`,
+    String.raw`a\bbox[0px,outline:1px solid #00FFFF]{=}b`,
+    String.raw`x^{\bbox[0px,#FFFF99,outline:1px solid #00FFFF]{y}}`
+  ]){
+    assert.equal(api.adaptMathJaxLatex(source),source,'Never silently replace a decoration by a spacing-changing box or discard it');
+    const requirements=api.analyzeMathJaxLatex([source]);
+    assert.deepEqual(requirements.packages,[]);assert.equal(requirements.preamble,'');
+    assert.equal(requirements.issues.length,1);assert.equal(requirements.issues[0].command,'bbox');
+    assert.match(requirements.issues[0].reason,/does not occupy layout space/);
+    assert.match(requirements.issues[0].reason,/glyph sizes, baselines or mathematical spacing/);
+    assert.match(requirements.issues[0].suggestion,/Export HTML/);assert.match(requirements.issues[0].suggestion,/remove the decoration/);
+  }
+  const generic=api.analyzeMathJaxLatex([String.raw`\bbox[red]{x}`]).issues;
+  assert.equal(generic[0].reason,'MathJax bbox options are not a LaTeX package interface.');
+  assert.equal(api.analyzeMathJaxLatex([String.raw`\bbox[0px,#FFFF99]{x}+\bbox[red]{y}`]).issues.length,2,'Keep the separate unsupported generic-bbox limitation');
+  const native=String.raw`\colorbox{yellow}{$x$}+\fcolorbox{red}{yellow}{$\scriptstyle y$}`;
+  assert.equal(api.adaptMathJaxLatex(native),native,'Explicit native boxes retain their native meaning');
+  const requirements=api.analyzeMathJaxLatex([native]);assert.deepEqual(requirements.issues,[]);assert.deepEqual(requirements.packages,['xcolor']);
+});
 test('the generated optional preamble and adaptations compile with actual TeX Live when available',t=>{
   if(spawnSync('lualatex',['--version'],{encoding:'utf8'}).status!==0){t.skip('LuaLaTeX is not installed on this runner');return;}
   const body=String.raw`

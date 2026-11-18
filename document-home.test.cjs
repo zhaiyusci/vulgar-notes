@@ -25,7 +25,7 @@ test('start page lists individual files without inventing a default document',as
   const calls=[];
   const home=mountDocumentHome(container,{
     onNew:()=>{calls.push('new');},onOpen:()=>{calls.push('open');},onRecent:id=>{calls.push(['recent',id]);},
-    onRemoveRecent:id=>{calls.push(['remove',id]);},onRecover:id=>{calls.push(['recover',id]);},onPreferences:()=>{calls.push('preferences');},
+    onRemoveRecent:id=>{calls.push(['remove',id]);},onPreferences:()=>{calls.push('preferences');},
   });
   assert.match(container.textContent,/No recent documents/);
   assert.equal(container.querySelectorAll('[data-recent-id],[data-recovery-id]').length,0);
@@ -33,8 +33,10 @@ test('start page lists individual files without inventing a default document',as
   home.refresh({recentDocuments:[
     {id:'one',name:'notes.vulgar',path:'C:\\notes\\notes.vulgar',lastOpened:1793050000000},
     {id:'two',name:'<img src=x onerror=alert(1)>.vulgar',lastOpened:'invalid'},
-  ],recoveries:[{id:'recovery',name:'Unsaved equations',updatedAt:1793050000000}]});
+  ]});
   assert.equal(container.querySelectorAll('[data-recent-id]').length,2);
+  assert.equal(container.querySelector('[data-recovery-id]'),null);
+  assert.doesNotMatch(container.textContent,/Unsaved documents|Untitled/);
   assert.equal(container.querySelectorAll('img').length,0,'file names must be rendered as text');
   assert.equal(container.querySelector('[data-recent-id="one"] .document-home-file-path').textContent,'C:\\notes\\notes.vulgar');
   assert.ok(container.querySelector('[data-recent-id="one"] time').dateTime);
@@ -42,11 +44,10 @@ test('start page lists individual files without inventing a default document',as
   assert.equal(container.querySelector('button button'),null,'removing a recent entry must be independent of opening it');
   container.querySelector('[data-recent-id="one"]').click();await tick();
   container.querySelector('.document-home-remove').click();await tick();
-  container.querySelector('[data-recovery-id="recovery"]').click();await tick();
   container.querySelector('.document-home-action-primary').click();await tick();
   container.querySelector('.document-home-action:not(.document-home-action-primary)').click();await tick();
   container.querySelector('[aria-label="Preferences"]').click();await tick();
-  assert.deepEqual(calls,[['recent','one'],['remove','one'],['recover','recovery'],'new','open','preferences']);
+  assert.deepEqual(calls,[['recent','one'],['remove','one'],'new','open','preferences']);
   home.unmount();
   assert.equal(container.children.length,0);
 });

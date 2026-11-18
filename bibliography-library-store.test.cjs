@@ -7,7 +7,7 @@ const {CACHE_KEY,readLibraryCache,writeLibraryCache,restoreLibraryAttachments,ci
 const full={id:'full',name:'Papers.bib',source:'@string{press={A Press}}\n@book{a,title={Book A},publisher=press}\n@book{b,title={Book B}}\n@book{c,title={UNSELECTED_LOCAL_RECORD}}'};
 function storage(){const data=new Map();return {data,getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value)};}
 
-test('full local catalog survives restart while portable snapshots still contain only cited records',()=>{
+test('legacy cited-only snapshots still reattach the independent full local catalog',()=>{
  const local=storage();writeLibraryCache([full],local);
  const snapshot=citedBibLibraries([full],['a','b']);
  assert.equal(parseBibLibraries(snapshot).length,2);assert.doesNotMatch(JSON.stringify(snapshot),/UNSELECTED_LOCAL_RECORD/);
@@ -17,6 +17,30 @@ test('full local catalog survives restart while portable snapshots still contain
  assert.equal(parseBibLibraries(runtime.libraries).length,3);assert.deepEqual(runtime.fullLibraryIds,['full']);assert.deepEqual(runtime.capturedOnlyIds,[]);
  assert.equal(runtime.cacheLibraryIds.full,'full');assert.equal(runtime.conflicts.length,0);
  assert.doesNotMatch(JSON.stringify(citedBibLibraries(runtime.libraries,['a','b'])),/UNSELECTED_LOCAL_RECORD/);
+});
+
+test('full document attachments remain authoritative over cached supersets and unrelated sources',()=>{
+ const [deleted]=citedBibLibraries([full],['a']);
+ const unrelated={id:'unrelated',name:'Other.bib',source:'@book{other,title={Other}}'};
+ const original=JSON.stringify({deleted,full,unrelated});
+ const restored=restoreLibraryAttachments([deleted],[full,unrelated],[],true);
+ assert.deepEqual(restored.libraries,[deleted]);assert.doesNotMatch(JSON.stringify(restored.libraries),/Book B|UNSELECTED_LOCAL_RECORD|Other/);
+ assert.deepEqual(restored.fullLibraryIds,['full']);assert.deepEqual(restored.capturedOnlyIds,[]);
+ assert.equal(restored.conflicts[0].reason,'source-mismatch');assert.equal(restored.cacheLibraryIds.full,'full');
+ assert.equal(JSON.stringify({deleted,full,unrelated}),original);
+ const empty=restoreLibraryAttachments([],[full,unrelated],[],true);
+ assert.deepEqual(empty.libraries,[]);assert.deepEqual(empty.conflicts,[]);
+});
+
+test('full attachment lists retain exact source aliases and honest legacy excerpt provenance',()=>{
+ const alias={...full,id:'portable',name:full.name};
+ const restored=restoreLibraryAttachments([alias],[full],[],true);
+ assert.deepEqual(restored.libraries,[alias]);assert.equal(restored.cacheLibraryIds.portable,'full');
+ const partial={id:'partial',name:'Excerpt.bib',source:'@book{saved,title={Excerpt only}}'};
+ const mixed=restoreLibraryAttachments([alias,partial],[full],[],true,['partial']);
+ assert.deepEqual(mixed.fullLibraryIds,['portable']);assert.deepEqual(mixed.capturedOnlyIds,['partial']);
+ const missing=restoreLibraryAttachments([alias,partial],[],[],true,['partial']);
+ assert.deepEqual(missing.libraries,[alias,partial]);assert.deepEqual(missing.capturedOnlyIds,['partial']);
 });
 
 test('default cache uses window localStorage, independently of draft or unrelated globals',()=>{

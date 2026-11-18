@@ -1,8 +1,10 @@
 import {useContext,useMemo,useRef,useState} from 'react';
-import {LibraryBigIcon,PlusIcon,RefreshCwIcon,Trash2Icon} from 'lucide-react';
-import {useEditorRef} from 'platejs/react';
+import {LibraryBigIcon,PencilIcon,PlusIcon,RefreshCwIcon,Trash2Icon} from 'lucide-react';
+import {useEditorReadOnly,useEditorRef} from 'platejs/react';
+import {BibliographyLibraryEditor} from './bibliography-library-editor';
+import type {BibliographyEditorAccess} from '@/bibliography-editor-controller';
 import type {Range} from 'slate';
-import {HostContext} from '@/plate-math-element';
+import {HostContext} from '@/plate-editor-context';
 import {bibLibraryWarnings,parseBibLibraries,type BibEntry,type BibLibrary} from '@/bibtex';
 import {useBibliographyLibraries,useBibliographyStyle} from '@/use-bibliography';
 import {openBibliographySource,refreshBibliographySource,rememberBibliographySource,forgetBibliographySource} from '@/bibliography-source';
@@ -13,12 +15,20 @@ import {t} from '@/i18n';
 import {ToolbarButton} from './toolbar';
 import {Dialog,DialogContent,DialogDescription,DialogTitle} from './dialog';
 import {Button} from './button';
+import {citedReferenceKeys} from '@/references';
 
 export function BibtexLibrariesButton({compact=false,onChooseKey}:{compact?:boolean;onChooseKey?:(key:string)=>void}){
-  const editor=useEditorRef(),host=useContext(HostContext),libraries=useBibliographyLibraries(),style=useBibliographyStyle();
+  const editor=useEditorRef(),host=useContext(HostContext),libraries=useBibliographyLibraries(),style=useBibliographyStyle(),readOnly=useEditorReadOnly();
+  const libraryAccess=useMemo<BibliographyEditorAccess>(()=>({
+    isReadOnly:()=>readOnly||!host||!!host.readOnly,
+    getLibraries:()=>host?.getBibliographyLibraries()??[],
+    getCitedKeys:()=>citedReferenceKeys(editor.children),
+    commitLibraries:next=>{if(!host||readOnly||host.readOnly)throw Error('This document is read-only.');host.setBibliographyLibraries(next);},
+  }),[host,editor,readOnly]);
   const entries=useMemo(()=>parseBibLibraries(libraries),[libraries]);
   const warnings=useMemo(()=>libraries.flatMap(library=>bibLibraryWarnings(library).map(message=>({libraryId:library.id,libraryName:library.name,message}))),[libraries]);
   const [open,setOpen]=useState(false),[working,setWorking]=useState(false),[error,setError]=useState('');
+  const [editId,setEditId]=useState('');
   const [selectedId,setSelectedId]=useState(''),[query,setQuery]=useState(''),[removeId,setRemoveId]=useState('');
   const [status,setStatus]=useState('');
   const selection=useRef<Range|null>(null),busy=useRef(false);
@@ -78,7 +88,7 @@ export function BibtexLibrariesButton({compact=false,onChooseKey}:{compact?:bool
     <Dialog open={open} onOpenChange={value=>{if(!busy.current)setOpen(value);}}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-4xl" onCloseAutoFocus={event=>event.preventDefault()}>
         <DialogTitle>{t('BibTeX libraries')}</DialogTitle>
-        <DialogDescription>{t('Full libraries are kept on this device. Only cited entries and their required dependencies are saved with this document.')}</DialogDescription>
+        <DialogDescription>{t('Full libraries are saved with this document.')}</DialogDescription>
         {libraries.some(library=>host?.isCapturedBibliographyLibrary(library.id))&&<p className="rounded border border-amber-200 bg-amber-50 p-3 text-sm">{t('This document contains only its cited entries. Load the original .bib file to browse the full library.')}</p>}
         {!!host?.getBibliographyNotices().length&&<div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm">{host.getBibliographyNotices().map((notice,index)=><p key={index}>{notice}</p>)}</div>}
         <div className="flex flex-wrap items-center gap-2">
@@ -107,6 +117,7 @@ export function BibtexLibrariesButton({compact=false,onChooseKey}:{compact?:bool
               <div className="flex items-center justify-between gap-1 px-2 pb-1">
                 <span className="text-xs text-muted-foreground">{entries.filter(entry=>entry.libraryId===library.id).length} {t('Entries')}</span>
                 <span className="flex">
+                  <button type="button" className="rounded p-1 hover:bg-background disabled:opacity-50" title={t('Edit library')} aria-label={t('Edit library')+': '+library.name} disabled={working||readOnly} onClick={()=>setEditId(library.id)}><PencilIcon className="size-4" /></button>
                   <button type="button" className="rounded p-1 hover:bg-background disabled:opacity-50" title={t('Refresh library')} aria-label={t('Refresh library')+': '+library.name} disabled={working} onClick={()=>void read(library)}><RefreshCwIcon className="size-4" /></button>
                   <button type="button" className="rounded p-1 hover:bg-background disabled:opacity-50" title={t('Remove library')} aria-label={t('Remove library')+': '+library.name} disabled={working} onClick={()=>setRemoveId(library.id)}><Trash2Icon className="size-4" /></button>
                 </span>
@@ -147,5 +158,18 @@ export function BibtexLibrariesButton({compact=false,onChooseKey}:{compact?:bool
         <div className="flex justify-end"><Button type="button" variant="outline" disabled={working} onClick={()=>setOpen(false)}>{t('Close')}</Button></div>
       </DialogContent>
     </Dialog>
+    {!!editId&&<Dialog open onOpenChange={value=>{if(!value)setEditId('');}}>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-hidden sm:max-w-5xl" onCloseAutoFocus={event=>event.preventDefault()} onEscapeKeyDown={event=>{
+        // Radix listens at document capture before a native dialog handles Esc.
+        // Close just the entry form through its own cleanup path, keeping the library draft.
+        const inner=event.composedPath().find((node):node is HTMLDialogElement=>node instanceof HTMLDialogElement&&node.open);
+        const close=inner?.querySelector<HTMLButtonElement>('button.close');
+        if(close){event.preventDefault();close.click();}
+      }}>
+        <DialogTitle>{t('Edit library')}: {libraries.find(library=>library.id===editId)?.name??''}</DialogTitle>
+        <DialogDescription>{t('Add, edit and remove bibliography entries.')}</DialogDescription>
+        {(()=>{const library=libraries.find(item=>item.id===editId);return library?<BibliographyLibraryEditor key={library.id} library={library} access={libraryAccess} onClose={()=>setEditId('')} readOnly={readOnly}/>:<p role="alert">{t('This library is no longer available.')}</p>;})()}
+      </DialogContent>
+    </Dialog>}
   </>;
 }
