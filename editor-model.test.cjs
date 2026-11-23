@@ -104,6 +104,99 @@ test('accepting a partial command preserves neighbors, undo and structure entry'
   }
 });
 
+test('left command offers each delimiter pair and preserves selection, neighbors and undo',()=>{
+  const pairs=[['(','parens'],['[','brackets'],['\\{','braces'],['|','abs'],['\\lVert','norm'],['\\langle','angles'],['\\lfloor','floor'],['\\lceil','ceil'],['\\lBrack','doubleBrackets']];
+  for(const [delimiter,type] of pairs){
+    const m=new EditorModel();m.root.items=['a','b'];m.index();m.setCursor(m.root.id,1);
+    m.replaceInput(...m.range,'\\left');const before=m.snapshot();
+    assert.equal(m.commandCandidates()[0].name,'left(');
+    assert.ok(m.commandCandidates().some(entry=>entry.name==='left'+delimiter&&entry.type===type),delimiter);
+    assert.ok(m.commitCommand(true,'left'+delimiter));
+    assert.equal(m.root.items[1].type,type);assert.equal(m.current.id,m.root.items[1].regions[0].id);
+    assert.equal(m.root.items[0],'a');assert.equal(m.root.items[2],'b');
+    const after=m.snapshot();m.undo();assert.equal(m.snapshot(),before);m.redo();assert.equal(m.snapshot(),after);
+  }
+});
+
+test('typed left delimiters create the requested pair in streamed and batched input',()=>{
+  for(const [opening,type,expected] of [
+    ['\\left[','brackets','\\left[ x\\right]'],
+    ['\\left(','parens','\\left( x\\right)'],
+    ['\\left\\{','braces','\\left\\{ x\\right\\}'],
+    ['\\left|','abs','\\left| x\\right|'],
+    ['\\left \\langle ','angles','\\left\\langle x\\right\\rangle'],
+    ['\\left\\lceil ','ceil','\\left\\lceil x\\right\\rceil'],
+  ])for(const chunks of [[opening+'x'],Array.from(opening+'x')]){
+    const m=new EditorModel();m.root.items=[];m.index();m.setCursor(m.root.id,0);
+    for(const chunk of chunks)m.replaceInput(...m.range,chunk);
+    assert.equal(m.root.items[0].type,type,opening);assert.equal(m.exportLatex(),expected);
+  }
+});
+
+test('every visible command structure is reachable without collapsing distinct templates',()=>{
+  const {catalog}=require('./editor-model.js');
+  const m=new EditorModel();m.root.items=[];m.index();m.setCursor(m.root.id,0);
+  const queries=new Map();
+  for(const definition of catalog){
+    if(definition.hidden||definition.legacy)continue;
+    const sample=definition.render(definition.labels.map(()=>'…'));
+    const prefix=definition.commandName??sample.match(/^\\begin\{([A-Za-z]+)/)?.[1]??sample.match(/^\\([A-Za-z]+)/)?.[1];
+    if(!prefix)continue; // Script/infix structures do not begin with a command.
+    if(!queries.has(prefix)){
+      m.root.items=Array.from('\\'+prefix);m.index();m.setCursor(m.root.id,m.root.items.length);
+      const choices=m.commandCandidates();
+      assert.equal(new Set(choices.map(choice=>choice.name)).size,choices.length,'unique selection keys: '+prefix);
+      queries.set(prefix,choices.slice(0,80)); // Must also be reachable in the UI.
+    }
+    const choices=queries.get(prefix);
+    assert.ok(choices.some(choice=>choice.type===definition.type),prefix+' must offer '+definition.type);
+  }
+});
+
+test('colliding command variants insert their own syntax and preserve neighbors and undo',()=>{
+  for(const [query,type,args,expected] of [
+    ['sqrt','nthroot',['x','3'],'\\sqrt[3]{x}'],
+    ['cfrac','cfracl',['a','b'],'\\cfrac[l]{a}{b}'],
+    ['cfrac','cfracr',['a','b'],'\\cfrac[r]{a}{b}'],
+    ['pmatrix','matrix3',['a','b','c','d','e','f','g','h','i'],'\\begin{pmatrix}a&b&c\\\\d&e&f\\\\g&h&i\\end{pmatrix}'],
+    ['pmatrix','pmatrixr',['a','b','c','d'],'\\begin{pmatrix*}[r]a&b\\\\c&d\\end{pmatrix*}'],
+    ['subarray','subarrayc',['a','b'],'\\begin{subarray}{c}a\\\\b\\end{subarray}'],
+    ['prescript','leftPower',['x','a'],'\\prescript{a}{}{x}'],
+    ['sum','sumLimits',[],'\\sum\\limits '],
+    ['int','intSide',[],'\\int\\nolimits '],
+    ['dv','physics-dvFlat',['f','x'],'\\dv*{f}{x}'],
+    ['derivative','physics-dvOrder',['f','x','2'],'\\dv[2]{f}{x}'],
+    ['pdv','physics-pdvMixed',['f','x','y'],'\\pdv{f}{x}{y}'],
+    ['qty','physics-qtyBrackets',['x'],'\\qty[x]'],
+    ['quantity','physics-qtyBars',['x'],'\\qty|x|'],
+    ['left','rightBrace',['x'],'\\left. x\\right\\}'],
+    ['Bigl','brackets-Big',['x'],'\\Bigl[ x\\Bigr]'],
+  ]){
+    const m=new EditorModel();m.root.items=['a','b'];m.index();m.setCursor(m.root.id,1);
+    m.replaceInput(...m.range,'\\'+query);const before=m.snapshot();
+    const candidate=m.commandCandidates().find(entry=>entry.type===type);assert.ok(candidate,query+': '+type);
+    assert.ok(m.commitCommand(true,candidate.name));const inserted=m.snapshot();
+    const node=m.root.items[1];assert.equal(node.type,type);
+    m.undo();assert.equal(m.snapshot(),before);m.redo();assert.equal(m.snapshot(),inserted);
+    const restored=m.root.items[1];args.forEach((value,index)=>{m.setCursor(restored.regions[index].id,0);m.insert(value);});
+    assert.equal(m.exportLatex(),'a'+expected+'b',type);
+  }
+});
+
+test('fixed-size bracket input keeps its geometry in streamed and batched typing',()=>{
+  for(const size of ['big','Big','bigg','Bigg'])for(const chunks of [[`\\${size}l[x`],Array.from(`\\${size}l[x`)]){
+    const m=new EditorModel();m.root.items=[];m.index();m.setCursor(m.root.id,0);
+    for(const chunk of chunks)m.replaceInput(...m.range,chunk);
+    assert.equal(m.exportLatex(),`\\${size}l[ x\\${size}r]`);
+  }
+  for(const command of ['left','bigl']){
+    const m=new EditorModel();m.root.items=['𝛼','b'];m.index();m.setCursor(m.root.id,1);
+    m.replaceInput(...m.range,'\\'+command+'[x');
+    assert.equal(m.root.items[0],'𝛼');assert.equal(m.root.items[1].type,command==='left'?'brackets':'brackets-big');
+    assert.equal(m.root.items[2],'b');assert.deepEqual(m.current.items,['x']);
+  }
+});
+
 test('LaTeX command input accepts functions and symbols with delimiters, streamed or pasted',()=>{
   for(const [input,expected] of [['\\sin x','\\sin x'],['\\sinh(x)','\\sinh (x)'],['\\alpha+\\beta ','\\alpha +\\beta '],['\\sin^2','\\sin^{2} ']]){
     for(const chunks of [[input],Array.from(input)]){

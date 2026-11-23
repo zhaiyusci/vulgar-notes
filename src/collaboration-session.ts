@@ -15,17 +15,18 @@ import type {CollaborationInvite} from './collaboration-invite';
 import type {CollaborationState,CollaborationRemoteCursor,CollaborationPeer} from './collaboration-types';
 import type {BibLibrary} from './bibtex';
 import {citedReferenceKeys} from './references';
+import {defaultTypography,parseTypography,type DocumentTypography} from './document-typography';
 import {isBibliographyStyle,type BibliographyStyle} from './bibliography-style';
 
 export interface CollaborationAdapter {
   editor:PlateEditor;
-  data():{value:Value;libraries:readonly BibLibrary[];style:BibliographyStyle};
+  data():{typography?:DocumentTypography;value:Value;libraries:readonly BibLibrary[];style:BibliographyStyle};
   snapshots():Map<string,string>;
   activeSnapshot?():[string,string]|undefined;
   applying(value:boolean):void;
   replace?():void;
   recover?(reason:string):void;
-  reconcile(math:CollaborativeMathStore,cursors:ReadonlyMap<string,MathCursorHandle>,libraries:readonly BibLibrary[],style:BibliographyStyle,changedMath?:ReadonlySet<string>):void;
+  reconcile(math:CollaborativeMathStore,cursors:ReadonlyMap<string,MathCursorHandle>,libraries:readonly BibLibrary[],style:BibliographyStyle,changedMath?:ReadonlySet<string>,typography?:DocumentTypography):void;
   state(value:CollaborationState):void;
 }
 export interface CollaborationSessionOptions {
@@ -112,7 +113,7 @@ export class DocumentCollaborationSession {
         this.doc.transact(()=>{
           for(const [id,snapshot] of snapshots)this.math.ensure(id,snapshot);
           this.prose.seed(data.value);this.bibliography.publish(data.libraries,citedReferenceKeys(data.value));
-          this.metadata.set('bibliographyStyle',data.style);this.metadata.set('protocol',1);
+          this.metadata.set('bibliographyStyle',data.style);this.metadata.set('typography',data.typography??defaultTypography);this.metadata.set('protocol',1);
         });
         this.initializing=false;this.reconcile();
       }
@@ -270,7 +271,7 @@ export class DocumentCollaborationSession {
     try{
       const first=!this.ready;if(first){this.prose.connect();this.ready=true;this.prose.undoManager.clear();}
       const style=this.metadata.get('bibliographyStyle');
-      this.adapter.reconcile(this.math,this.cursors,this.bibliography.read(),isBibliographyStyle(style)?style:'simple',first?undefined:this.changedMath);
+      this.adapter.reconcile(this.math,this.cursors,this.bibliography.read(),isBibliographyStyle(style)?style:'simple',first?undefined:this.changedMath,parseTypography(this.metadata.get('typography')));
       this.changedMath.clear();this.cursors.clear();
     }finally{this.reconciling=false;this.setApplying(false);}
     this.publishPresence();this.emit();
@@ -283,7 +284,7 @@ export class DocumentCollaborationSession {
   flush():void {if(this.writable&&this.binding)this.prose.flush();}
   publishSettings():void {
     if(!this.writable)return;const data=this.adapter.data();
-    this.doc.transact(()=>{if(this.metadata.get('bibliographyStyle')!==data.style)this.metadata.set('bibliographyStyle',data.style);this.bibliography.publish(data.libraries,citedReferenceKeys(data.value));},this.origin);
+    this.doc.transact(()=>{if(JSON.stringify(this.metadata.get('typography'))!==JSON.stringify(data.typography??defaultTypography))this.metadata.set('typography',data.typography??defaultTypography);if(this.metadata.get('bibliographyStyle')!==data.style)this.metadata.set('bibliographyStyle',data.style);this.bibliography.publish(data.libraries,citedReferenceKeys(data.value));},this.origin);
   }
   undo():void {if(this.writable){this.prose.flush();this.prose.undo();}}
   redo():void {if(this.writable){this.prose.flush();this.prose.redo();}}

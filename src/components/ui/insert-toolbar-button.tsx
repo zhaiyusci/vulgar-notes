@@ -7,12 +7,8 @@ import * as React from 'react';
 import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu';
 
 import {
-  CalendarIcon,
-  ChevronRightIcon,
   Code2,
-  Columns3Icon,
   FileCodeIcon,
-  FilmIcon,
   Heading1Icon,
   Heading2Icon,
   Heading3Icon,
@@ -123,26 +119,6 @@ const groups: Group[] = [
         label: 'To-do list',
         value: KEYS.listTodo,
       },
-      {
-        icon: <ChevronRightIcon />,
-        label: 'Toggle list',
-        value: KEYS.toggle,
-      },
-    ].map((item) => ({
-      ...item,
-      onSelect: (editor, value) => {
-        insertBlock(editor, value);
-      },
-    })),
-  },
-  {
-    group: 'Media',
-    items: [
-      {
-        icon: <FilmIcon />,
-        label: 'Embed',
-        value: KEYS.mediaEmbed,
-      },
     ].map((item) => ({
       ...item,
       onSelect: (editor, value) => {
@@ -157,11 +133,6 @@ const groups: Group[] = [
         icon: <TableOfContentsIcon />,
         label: 'Table of contents',
         value: KEYS.toc,
-      },
-      {
-        icon: <Columns3Icon />,
-        label: '3 columns',
-        value: 'action_three_columns',
       },
       {
         focusEditor: false,
@@ -193,12 +164,6 @@ const groups: Group[] = [
         icon: <Link2Icon />,
         label: 'Link',
         value: KEYS.link,
-      },
-      {
-        focusEditor: true,
-        icon: <CalendarIcon />,
-        label: 'Date',
-        value: KEYS.date,
       },
       {
         focusEditor: true,

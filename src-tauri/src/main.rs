@@ -2,6 +2,7 @@
 
 mod runtime_diagnostics;
 mod system_documents;
+mod pdf_export;
 
 fn main() {
     let app = tauri::Builder::default()
@@ -22,7 +23,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             runtime_diagnostics::record_runtime_event,
             runtime_diagnostics::runtime_log_path,
-            system_documents::take_system_document
+            system_documents::take_system_document,
+            pdf_export::export_pdf
         ])
         .build(tauri::generate_context!())
         .expect("failed to run Vulgar Notes");

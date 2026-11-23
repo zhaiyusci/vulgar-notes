@@ -4,6 +4,7 @@ const path = require('node:path');
 const vendorPackages = [
   ['mathjax', 'mathjax'],
   ['@mathjax/mathjax-newcm-font', 'mathjax-newcm'],
+  ['@mathjax/mathjax-stix2-font', 'mathjax-stix2'],
   ['@mathjax/mathjax-bboldx-font-extension', 'mathjax-bboldx'],
   ['@mathjax/mathjax-mhchem-font-extension', 'mathjax-mhchem'],
 ];

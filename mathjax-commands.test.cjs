@@ -32,6 +32,10 @@ test('runtime character maps provide real symbols while unknown argument grammar
 });
 test('command completion covers public math commands without promoting implementation helpers or duplicate fonts',()=>{
   const candidates=modelFor('\\').commandCandidates(),names=new Set(candidates.map(command=>command.name));
+  // Delimiter constructors are offered with an explicit opening delimiter.
+  for(const name of ['left','bigl','Bigl','biggl','Biggl']){
+    assert.ok(names.has(name+'('));assert.ok(names.has(name+'['));names.add(name);
+  }
   const missing=api.mathjaxSourceCommands().map(command=>command.name).filter(name=>!names.has(name)&&!api.isSourceOnlyMathCommand(name));assert.deepEqual(missing,[]);
   assert.ok(candidates.some(command=>command.atom));assert.ok(candidates.some(command=>command.source));
   for(const command of api.mathjaxSourceCommands().filter(command=>api.isSourceOnlyMathCommand(command.name))){

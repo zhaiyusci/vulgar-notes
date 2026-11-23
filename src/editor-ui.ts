@@ -1,4 +1,5 @@
 import {t,locale,mathLabel,mathRegionLabel} from './i18n';
+import {selectMathFont} from './mathjax-document-font';
 import {fontPresentation} from './font-diagnostics';
 import {textNormal,preferredMathCommand} from './letter-variants';
 import type {MathDocumentAdapter,MathEditor,MathEditorHooks,MathEditorOptions,MathSourceEditorContext} from './math-editor';
@@ -666,6 +667,10 @@ export function createMathEditor(options:MathEditorOptions):MathEditor {
         await validateChemistry();if(disposed)return;
         if(stage)MathJax.typesetClear([stage]);
         const edge = (side:string) => `\\class{math-boundary boundary-${side}}{\\vphantom{Xg}\\kern0.15em}`;
+        const surface=elements.content.closest<HTMLElement>('.document-zoom-surface');
+        const font=surface?.dataset.mathFont==='mathjax-stix2'?'mathjax-stix2':'mathjax-newcm';
+        await selectMathFont(font,document);
+        const typographyKey=(surface?.dataset.typeSizes??'')+font;
         let equationNumber=0;
         for(const entry of flow?.entries()||[{element:formula,model}]){
           const intrinsic=intrinsicMathLayout(entry.model),display=flow?.isDisplay(entry.element)||!!intrinsic;
@@ -673,19 +678,21 @@ export function createMathEditor(options:MathEditorOptions):MathEditor {
           const firstNumber=equationNumber;
           if(numbered)equationNumber+=intrinsic?.count??1;
           const label=entry.element.dataset.texLabel;
-          // A complete display has no editable sequence outside its environment.
-          // Keep the inline edge targets only for ordinary expression sequences.
           const content=regionTex(entry.model.root,entry.model,editing&&entry.model===model);
-          const source=(intrinsic?'\\[':display?`\\begin{${environment}}`:'\\(')+(intrinsic?content:edge('start')+content+edge('end'))+(intrinsic?'\\]':display?`\\end{${environment}}`:'\\)');
+          // Display boundaries locate the prose caret next to a centered equation.
+          // Inline formulas use their existing box for hit testing.
+          const expression=display&&!intrinsic?edge('start')+content+edge('end'):content;
+          const source=(intrinsic?'\\[':display?`\\begin{${environment}}`:'\\(')+expression+(intrinsic?'\\]':display?`\\end{${environment}}`:'\\)');
           const width=elements.content.clientWidth;
-          const cacheKey=(label||'')+(display?`${equationNumber}:${width}:`:'')+source;
+          const cacheKey=typographyKey+(label||'')+(display?`${equationNumber}:${width}:`:'')+source;
           if(renderedSources.get(entry.element)===cacheKey)continue;
           if(!stage){
             stage=document.createElement('div');activeStage=stage;stage.id=idFor('renderStage');stage.className='math-render-stage';stage.setAttribute('aria-hidden','true');
-            stage.style.fontSize=window.getComputedStyle(elements.content).fontSize;
             document.body.append(stage);
           }
-          MathJax.typesetClear([stage]);stage.style.width=display?width+'px':'auto';stage.textContent=source;
+          MathJax.typesetClear([stage]);const entryStyle=window.getComputedStyle(entry.element);
+          stage.style.fontSize=entryStyle.fontSize;stage.style.fontFamily=entryStyle.fontFamily;
+          stage.style.width=display?width+'px':'auto';stage.textContent=source;
           // Let MathJax generate the tag, seeded by this equation's document order.
           // Cursor redraws must not increment numbering; moved equations invalidate the cache.
           if(display)MathJax.texReset(firstNumber);
@@ -714,6 +721,12 @@ export function createMathEditor(options:MathEditorOptions):MathEditor {
     return Number([...element.classList].find(c => c.startsWith(prefix))?.slice(prefix.length));
   }
   function hit(target:Element, x:number) {
+    if(formula.contains(target)&&!formula.classList.contains('display-formula')){
+      const box=formula.getBoundingClientRect();
+      const edgeWidth=Math.min(2,box.width/4);
+      if(edgeWidth>0&&x>=box.left&&x<=box.left+edgeWidth)return {id:model.root.id,offset:0};
+      if(edgeWidth>0&&x<=box.right&&x>=box.right-edgeWidth)return {id:model.root.id,offset:model.root.items.length};
+    }
     const boundary=target.closest('.math-boundary');
     if(boundary && formula.contains(boundary))return {id:model.root.id,offset:boundary.classList.contains('boundary-start')?0:model.root.items.length};
     const regionElement = target.closest('.math-region');

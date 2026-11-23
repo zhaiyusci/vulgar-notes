@@ -112,7 +112,7 @@ export {flushSync} from 'react-dom';
     assert.equal(editor.api.isCollapsed(),true);assert.equal(editor.selection.anchor.offset,12);
     editor.tf.deselect();await tick();
     flushSync(()=>editor.getApi(BlockSelectionPlugin).blockSelection.set(['paragraph-10']));await tick();
-    const selectedBlock=mount.querySelector('[data-root-block-id="paragraph-10"] [data-slot="block-selection"]');
+    const selectedBlock=editor.api.toDOMNode(editor.children[10]).querySelector('[data-slot="block-selection"]');
     assert.ok(selectedBlock?.classList.contains('opacity-100'));
     flushSync(()=>editor.getApi(BlockSelectionPlugin).blockSelection.deselect());await tick();
     const refPath=footnoteApi.references({identifier:'note-1'})[0][1];

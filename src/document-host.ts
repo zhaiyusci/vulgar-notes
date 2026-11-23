@@ -1,4 +1,5 @@
 import type {MathDocumentAdapter,MathEditorHooks,MathFormulaEntry} from './math-editor';
+import type {PrintOptions} from './print-document';
 
 export type FormulaEntry=MathFormulaEntry;
 export type MathHostHooks=MathEditorHooks;
@@ -10,4 +11,5 @@ export interface DocumentHost extends MathDocumentAdapter {
   exportLatex():string;
   exportMarkdown():string;
   exportHtml?():Promise<string>;
+  exportPrintHtml?(options:PrintOptions):Promise<string>;
 }

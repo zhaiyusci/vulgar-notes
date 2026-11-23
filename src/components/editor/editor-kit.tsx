@@ -19,7 +19,6 @@ import { DateKit } from './plugins/date-kit';
 import { DiscussionKit } from './plugins/discussion-kit';
 import { DndKit } from './plugins/dnd-kit';
 import { DocxKit } from './plugins/docx-kit';
-import { EmojiKit } from './plugins/emoji-kit';
 import { ExitBreakKit } from './plugins/exit-break-kit';
 import { ExcalidrawKit } from './plugins/excalidraw-kit';
 import { FixedToolbarKit } from './plugins/fixed-toolbar-kit';
@@ -83,7 +82,6 @@ export const EditorKit = [
   ...NavigationKit,
   ...CursorOverlayKit,
   ...DndKit,
-  ...EmojiKit,
   ...ExitBreakKit,
   TrailingBlockPlugin,
 

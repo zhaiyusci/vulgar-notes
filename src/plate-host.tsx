@@ -16,6 +16,7 @@ import {TooltipProvider} from './components/ui/tooltip';
 import {Toaster,toast} from 'sonner';
 import {EditorModel,type MathItem} from './editor-model';
 import type {DocumentHost,MathHostHooks,FormulaEntry} from './document-host';
+import {defaultTypography,parseTypography,type DocumentTypography} from './document-typography';
 import {documentStorageKey,formulaNode,isFormula,newId,plateLatex,restoreDocumentEnvelope,parseDocumentEnvelope,validateDocumentLibraries,isBlankDocument,type FormulaNode} from './plate-document';
 import {convertMath} from './tex-convert';
 import {bibliographyItems,citedReferenceKeys,referenceTargets,resolveReferenceTargets,validReferenceKey,type ReferenceNode} from './references';
@@ -30,7 +31,9 @@ import {registerDocumentDraftProducer} from './document-draft-store';
 import {hasNativeClipboard,readNativeClipboard,writeNativeClipboard,nativeClipboardHtml,captureDocumentFragment,cloneDocumentFragment} from './native-clipboard';
 import {documentClipboardHtml,documentClipboardText,prepareClipboardHtml,restoreClipboardMath} from './document-clipboard-format';
 import {documentOutline} from './document-outline';
-import {exportRenderedHtml} from './html-export';
+import {exportRenderedHtml,type HtmlExportFormula} from './html-export';
+import type {PrintOptions} from './print-document';
+import {equationNumbering} from './math-equation-numbering';
 import {standaloneMathEnvironmentBounds} from './tex-display-environment';
 import {inactiveCollaboration,type CollaborationState,type CollaborationRemoteCursor} from './collaboration-types';
 import {createHostedInvite,collaborationInviteUrl,type CollaborationInvite} from './collaboration-invite';
@@ -108,7 +111,7 @@ export class PlateMathHost implements DocumentHost {
       if(attempt!==this.collaborationAttempt)return;
       const session=new DocumentCollaborationSession(invite,{
         editor:this.editor,
-        data:()=>({value:this.editor.children,libraries:this.bibliographyLibraries,style:this.bibliographyStyle}),
+        data:()=>({typography:this.typography,value:this.editor.children,libraries:this.bibliographyLibraries,style:this.bibliographyStyle}),
         snapshots:()=>new Map([...this.models].map(([id,model])=>[id,model.snapshot()])),
         activeSnapshot:()=>{const id=this.activeFormula?.dataset.mathId,model=id?this.models.get(id):undefined;return id&&model?[id,model.snapshot()]:undefined;},
         applying:value=>{this.collaborationApplying=value;},
@@ -119,7 +122,7 @@ export class PlateMathHost implements DocumentHost {
           this.deferredMath.clear();this.deferredMathCursors.clear();
         },
         recover:()=>this.captureCollaborationRecovery(),
-        reconcile:(math,cursors,libraries,style,changedMath)=>this.applyCollaboration(math,cursors,libraries,style,changedMath),
+        reconcile:(math,cursors,libraries,style,changedMath,typography)=>{this.applyTypography(typography??defaultTypography);this.applyCollaboration(math,cursors,libraries,style,changedMath);},
         state:this.updateCollaboration,
       },{hostKey});
       this.collaboration=session;
@@ -231,6 +234,29 @@ export class PlateMathHost implements DocumentHost {
   private pendingActivation=new Set<string>();
   private bibliographyLibraries:readonly BibLibrary[]=Object.freeze([]);
   private bibliographyStyle:BibliographyStyle='simple';
+  typography:DocumentTypography=defaultTypography;
+  private typeListeners=new Set<()=>void>();
+  subscribeTypography=(listener:()=>void)=>{this.typeListeners.add(listener);return ()=>{this.typeListeners.delete(listener);};};
+  getTypography=()=>this.typography;
+  setTypography(value:DocumentTypography){
+    if(this.readOnly||!this.applyTypography(value))return;
+    this.collaboration?.publishSettings();this.save();this.scheduleChange();
+  }
+  private applyTypography(value:DocumentTypography){
+    const next=parseTypography(value);
+    if(JSON.stringify(next)===JSON.stringify(this.typography))return false;
+    this.typography=next;this.serializedCache=undefined;
+    this.styleDocument();for(const listener of this.typeListeners)listener();return true;
+  }
+  private styleDocument(){
+    const surface=this.mount.querySelector<HTMLElement>('.document-zoom-surface');
+    if(!surface)return;
+    const {bodyFont,bodyPt,mathFont,mathPt}=this.typography;
+    surface.dataset.mathFont=mathFont;surface.dataset.typeSizes=bodyPt+'-'+mathPt;
+    surface.style.setProperty('--vn-body-font',bodyFont?'"'+bodyFont+'"':'');
+    surface.style.setProperty('--vn-body-size',bodyPt===12?'':bodyPt+'pt');
+    surface.style.setProperty('--vn-math-size',mathPt===null?'':mathPt+'pt');
+  }
   private clipboardDocumentId=newId();
   private clipboardCopySucceeded=false;
   getBibliographyStyle=():BibliographyStyle=>this.bibliographyStyle;
@@ -291,12 +317,12 @@ export class PlateMathHost implements DocumentHost {
   }
   private envelope(){
     const bibliographyCapturedLibraryIds=this.bibliographyLibraries.filter(library=>this.capturedLibraryIds.has(library.id)).map(library=>library.id);
-    return {version:1,value:this.editor.children,bibliographyLibraries:this.bibliographyLibraries,bibliographyMode:'full' as const,...(bibliographyCapturedLibraryIds.length?{bibliographyCapturedLibraryIds}:{}),...(this.bibliographyStyle!=='simple'?{bibliographyStyle:this.bibliographyStyle}:{})};
+    return {version:1,...(JSON.stringify(this.typography)!==JSON.stringify(defaultTypography)?{typography:this.typography}:{}),value:this.editor.children,bibliographyLibraries:this.bibliographyLibraries,bibliographyMode:'full' as const,...(bibliographyCapturedLibraryIds.length?{bibliographyCapturedLibraryIds}:{}),...(this.bibliographyStyle!=='simple'?{bibliographyStyle:this.bibliographyStyle}:{})};
   }
   get readOnly(){return this.collaborationState.active?!this.collaborationState.writable:this.mount.querySelector('[data-slate-editor]')?.getAttribute('contenteditable')==='false';}
   constructor(readonly mount:HTMLElement,initial:EditorModel,private hooks:MathHostHooks){
     try{const copies=JSON.parse(draftStorage().getItem(documentStorageKey+'-collaboration-recovery')??'[]');if(Array.isArray(copies))this.collaborationRecoveries=copies.filter(copy=>Number.isFinite(copy?.createdAt)&&typeof copy?.source==='string');}catch{/* An unreadable recovery must not prevent opening the document. */}
-    const restored=restoreDocumentEnvelope(initial);this.bibliographyStyle=restored.bibliographyStyle??'simple';this.restoreBibliography(restored.bibliographyLibraries,restored.value,restored.bibliographyMode==='full',restored.bibliographyCapturedLibraryIds);
+    const restored=restoreDocumentEnvelope(initial);this.typography=restored.typography??defaultTypography;this.bibliographyStyle=restored.bibliographyStyle??'simple';this.restoreBibliography(restored.bibliographyLibraries,restored.value,restored.bibliographyMode==='full',restored.bibliographyCapturedLibraryIds);
     this.editor=createPlateEditor({plugins:EditorKit,value:restored.value,navigationFeedback:false,chunking:{chunkSize:32}});
     this.ensureFormulas();
     const originalNormalize=this.editor.tf.normalizeNode.bind(this.editor);
@@ -327,7 +353,7 @@ export class PlateMathHost implements DocumentHost {
     this.editor.tf.withoutSaving(()=>this.editor.tf.normalize({force:true}));
     // Recovery is not a file save. The lifecycle restores a real saved baseline
     // after construction; otherwise restored content remains unsaved.
-    this.savedDocument=isBlankDocument(this.editor.children,this.bibliographyStyle)?JSON.stringify(this.envelope(),null,2):JSON.stringify({version:1,value:[{type:'p',children:[{text:''}]}]},null,2);
+    this.savedDocument=(!restored.typography&&isBlankDocument(this.editor.children,this.bibliographyStyle))?JSON.stringify(this.envelope(),null,2):JSON.stringify({version:1,value:[{type:'p',children:[{text:''}]}]},null,2);
     this.proofreader=new ProofreadingController(this.editor,mount,()=>this.readOnly);
     mount.removeAttribute('contenteditable');mount.removeAttribute('role');mount.removeAttribute('aria-label');mount.id='plateMount';
     this.root=createRoot(mount,{onUncaughtError:error=>{
@@ -345,7 +371,7 @@ export class PlateMathHost implements DocumentHost {
       <CollaborationCursors host={this} />
     </CollaborationPlate><Toaster /></TooltipProvider></HostContext.Provider>));
     if(this.renderFailure!==undefined){this.proofreader.destroy();this.root.unmount();throw this.renderFailure;}
-    this.initialized=true;this.persist();
+    this.styleDocument();this.initialized=true;this.persist();
     this.unregisterDraftProducer=registerDocumentDraftProducer(()=>{
       if(this.recoveryTimer!==undefined)this.saveNow();
     });
@@ -671,7 +697,7 @@ export class PlateMathHost implements DocumentHost {
     this.hooks.leave();this.activeFormula=undefined;this.pendingActivation.clear();this.models.clear();
     this.checkedFormulaSources.clear();this.formulaMigrations.clear();
     flushSync(()=>{
-      this.bibliographyStyle=opened.bibliographyStyle??'simple';this.restoreBibliography(opened.bibliographyLibraries,opened.value,opened.bibliographyMode==='full',opened.bibliographyCapturedLibraryIds);this.editor.tf.setValue(opened.value);
+      this.applyTypography(opened.typography??defaultTypography);this.bibliographyStyle=opened.bibliographyStyle??'simple';this.restoreBibliography(opened.bibliographyLibraries,opened.value,opened.bibliographyMode==='full',opened.bibliographyCapturedLibraryIds);this.editor.tf.setValue(opened.value);
       this.ensureFormulas();
       this.editor.tf.withoutSaving(()=>this.editor.tf.normalize({force:true}));
     });
@@ -686,7 +712,10 @@ export class PlateMathHost implements DocumentHost {
   exportMarkdown(){
     return bibliographyMarkdown(this.editor.children,this.bibliographyLibraries,value=>this.editor.getApi(MarkdownPlugin).markdown.serialize({value}),this.bibliographyStyle);
   }
-  async exportHtml():Promise<string> {
+  exportHtml():Promise<string> {return this.exportView();}
+  exportPrintHtml(options:PrintOptions):Promise<string> {return this.exportView(options);}
+  private async exportView(print?:PrintOptions):Promise<string> {
+    const mathRuntime=print?'none':'reader';
     // Flush mounted React content and await only the current math repaint.
     // HTML export never reinterprets the document through Markdown or TeX.
     flushSync(()=>this.syncMath());
@@ -694,7 +723,7 @@ export class PlateMathHost implements DocumentHost {
     const root=this.mount.querySelector<HTMLElement>('.document-zoom-surface');
     if(!root)throw Error(t('The document is not ready to export.'));
     const value=this.editor.children,index=referenceTargets(value,this.bibliographyLibraries);
-    const targets=new Map<Element,string>(),links:{element:Element;href:string}[]=[],formulas:{element:Element;source:string;typesetSource:string}[]=[];
+    const targets=new Map<Element,string>(),links:{element:Element;href:string}[]=[],formulas:HtmlExportFormula[]=[];
     const mark=(element:Element|undefined|null,id:string):string|undefined=>{
       if(!element||!root.contains(element))return;
       if(!targets.has(element))targets.set(element,id);return targets.get(element);
@@ -706,15 +735,21 @@ export class PlateMathHost implements DocumentHost {
       const element=target.libraryId?rows.find(row=>row.dataset.bibliographyKey===target.key):this.editor.api.toDOMNode(target.node);
       const anchor=mark(element,'vn-target-'+order);if(anchor)references.set(target,anchor);
     });
+    let equationNumber=0;
     for(const [node] of NodeApi.nodes(this.editor)){
       if(isFormula(node)){
         const formula=node as FormulaNode,element=this.mounts.get(formula.id),source=String(formula.texExpression??'');
-        if(element&&source.trim()){
-          const display=formula.type==='equation'||formula.display===true;
-          const typesetSource=standaloneMathEnvironmentBounds(source)?source:display
-            ?formula.numbered!==false?'\\begin{equation}'+source+'\\end{equation}':'\\['+source+'\\]'
-            :'\\('+source+'\\)';
-          formulas.push({element,source,typesetSource});
+        const intrinsic=standaloneMathEnvironmentBounds(source);
+        const display=formula.type==='equation'||formula.display===true||!!intrinsic;
+        const numbered=intrinsic?intrinsic.numbered!==false:display&&formula.numbered!==false;
+        const firstNumber=equationNumber;
+        if(numbered)equationNumber+=intrinsic?equationNumbering(source).count:1;
+        if(element&&(source.trim()||mathRuntime==='none')){
+          const content=source||'\\vphantom{X}';
+          const typesetSource=intrinsic?(mathRuntime==='none'?'\\['+content+'\\]':content):display
+            ?numbered?'\\begin{equation}'+content+'\\end{equation}':'\\['+content+'\\]'
+            :'\\('+content+'\\)';
+          formulas.push({element,source,typesetSource,...(mathRuntime==='none'?{firstNumber}:{})});
         }
         continue;
       }
@@ -727,7 +762,12 @@ export class PlateMathHost implements DocumentHost {
       if(anchor)links.push({element,href:'#'+anchor});
     }
     const title=root.querySelector('[data-metadata-role="title"] .metadata-entry-body')?.textContent?.trim()||undefined;
-    return exportRenderedHtml(root,{title,lang:document.documentElement.lang,targets:[...targets].map(([element,id])=>({element,id})),links,formulas});
+    const content={title,lang:document.documentElement.lang,targets:[...targets].map(([element,id])=>({element,id})),links,formulas};
+    if(print){
+      const {preparePrintHtml}=await import('./print-document');
+      return preparePrintHtml(root,content,print);
+    }
+    return exportRenderedHtml(root,content);
   }
   get activeFormulaId(){return this.activeFormula?.dataset.mathId;}
   getFormulaSource(element:HTMLElement):string|undefined {

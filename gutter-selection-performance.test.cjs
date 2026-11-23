@@ -6,11 +6,11 @@ const workerFlag='--gutter-selection-worker';
 if(process.argv.includes(workerFlag)){
   void exerciseGutters().then(()=>process.exit(0),error=>{console.error(String(error.stack||error).slice(0,3000));process.exit(1);});
 }else{
-  test('full EditorKit gutters avoid desktop selection subscriptions and preserve narrow-screen, selection and drag feedback',{timeout:120000},()=>{
+  test('full EditorKit selects paragraphs without mounting drag handles or per-paragraph Slate selection hooks',{timeout:120000},()=>{
     const result=spawnSync(process.execPath,[__filename,workerFlag],{cwd:__dirname,encoding:'utf8',timeout:115000,maxBuffer:2*1024*1024});
     const output=(result.stdout||'')+(result.stderr||'');
     assert.equal(result.error,undefined,output);assert.equal(result.status,0,output);
-    for(const marker of ['DESKTOP_NO_GUTTER_SELECTION_SUBSCRIPTIONS','NARROW_GUTTER_SELECTION','BLOCK_SELECTION_AND_DROP_FEEDBACK','SHARED_MEDIA_LISTENER_CLEANUP'])assert.match(output,new RegExp(marker));
+    for(const marker of ['NO_PARAGRAPH_DRAG_HANDLES','BLOCK_SELECTION_WITHOUT_DRAG_HANDLES'])assert.match(output,new RegExp(marker));
   });
 }
 
@@ -18,6 +18,15 @@ async function exerciseGutters(){
   const fs=require('node:fs'),path=require('node:path'),{pathToFileURL}=require('node:url'),{build}=require('esbuild');
   const {Window}=await import('happy-dom');const window=new Window({url:'http://localhost/'});
   window.document.write('<!doctype html><html><body></body></html>');
+  // A touchscreen laptop can also have a mouse attached.
+  Object.defineProperty(window.navigator,'maxTouchPoints',{value:10});
+  const matchMedia=window.matchMedia.bind(window);
+  window.matchMedia=query=>{
+    const result=matchMedia(query);
+    if(query==='(pointer: coarse)'||query==='(any-pointer: fine)')
+      Object.defineProperty(result,'matches',{value:true});
+    return result;
+  };
   const globals=['innerWidth','innerHeight','window','document','navigator','location','history','sessionStorage','localStorage',
     'Node','Element','HTMLElement','HTMLInputElement','HTMLTextAreaElement','Document','DocumentFragment','MutationObserver',
     'ResizeObserver','DOMParser','Range','Event','CustomEvent','KeyboardEvent','ClipboardEvent','DOMRect','HTMLDivElement',
@@ -28,12 +37,7 @@ async function exerciseGutters(){
   for(const key of methods)Object.defineProperty(globalThis,key,{value:window[key].bind(window),configurable:true});
   const diagnostics=path.resolve(__dirname,'diagnostics');fs.mkdirSync(diagnostics,{recursive:true});
   const directory=fs.mkdtempSync(path.join(diagnostics,'gutter-selection-test-'));
-  let wide=true,mediaQueries=0,peakMediaListeners=0,selectedSubscriptions=0,selectedRenders=0;
-  const mediaListeners=new Set(),nativeMatchMedia=window.matchMedia.bind(window);
-  const query={get matches(){return wide;},media:'(min-width: 40rem)',
-    addEventListener:(event,listener)=>{assert.equal(event,'change');mediaListeners.add(listener);peakMediaListeners=Math.max(peakMediaListeners,mediaListeners.size);},
-    removeEventListener:(event,listener)=>{assert.equal(event,'change');mediaListeners.delete(listener);}};
-  window.matchMedia=media=>media===query.media?(mediaQueries++,query):nativeMatchMedia(media);
+  let selectedSubscriptions=0,selectedRenders=0;
   globalThis.__gutterSelectionProbe=kind=>{
     if(kind==='subscribe')selectedSubscriptions++;
     else if(kind==='unsubscribe')selectedSubscriptions--;
@@ -41,7 +45,7 @@ async function exerciseGutters(){
   };
   const redundantContextCalls=[];
   globalThis.__blockChromeEditorProbe=stack=>{
-    if(/at (?:Gutter(?:View)?|SelectedGutter|DragHandle|DropLine|BlockSelection)\b/.test(stack))redundantContextCalls.push(stack);
+    if(/at BlockSelection\b/.test(stack))redundantContextCalls.push(stack);
   };
   let host;
   const renderErrors=[];
@@ -54,7 +58,6 @@ export {PlateMathHost} from './src/plate-host';
 export {EditorModel} from './src/editor-model';
 export {draftStorage} from './src/platform';
 export {BlockSelectionPlugin} from '@platejs/selection/react';
-export {DndPlugin} from '@platejs/dnd';
 export {flushSync} from 'react-dom';
 `,resolveDir:__dirname,loader:'ts'},bundle:true,platform:'browser',alias:{path:'path-browserify'},format:'esm',splitting:true,outdir:directory,
       outExtension:{'.js':'.mjs'},entryNames:'entry',external:['yjs'],conditions:['production'],define:{'process.env.NODE_ENV':'"production"'},
@@ -77,65 +80,51 @@ React.useEffect(()=>{globalThis.__gutterSelectionProbe?.('subscribe');return()=>
         });
       }}]});
     assert.ok(selectedInstrumented&&editorInstrumented);
-    const {PlateMathHost,EditorModel,draftStorage,BlockSelectionPlugin,DndPlugin,flushSync}=await import(pathToFileURL(path.join(directory,'entry.mjs')).href);
+    const {PlateMathHost,EditorModel,draftStorage,BlockSelectionPlugin,flushSync}=await import(pathToFileURL(path.join(directory,'entry.mjs')).href);
     window.addEventListener('vulgar-document-render-error',event=>renderErrors.push(event.detail));
     const tick=()=>new Promise(resolve=>setTimeout(resolve,20));
-    const resize=async desktop=>{flushSync(()=>{wide=desktop;for(const listener of mediaListeners)listener();});await tick();};
     draftStorage().clear();
     draftStorage().setItem('math-plate-document-v1',JSON.stringify({version:1,value:Array.from({length:120},(_,i)=>({type:'p',id:'paragraph-'+i,children:[{text:'Ordinary prose '+i}]}))}));
     const mount=document.createElement('div');document.body.append(mount);
     host=new PlateMathHost(mount,new EditorModel(),{activate(){},leave(){},change(){}});
     await tick();const editor=host.editor;
-    const rootBlock=id=>mount.querySelector(`[data-root-block-id="${id}"]`);
-    const gutter=id=>rootBlock(id).parentElement.querySelector('.slate-gutterLeft');
-    const overlay=id=>rootBlock(id).querySelector('[data-slot="block-selection"]');
-    assert.equal(mount.querySelectorAll('.slate-gutterLeft').length,120);
-    assert.equal(selectedSubscriptions,0);assert.equal(selectedRenders,0);
-    assert.equal(mediaQueries,1);assert.equal(mediaListeners.size,1);
-    editor.tf.select(editor.api.end([60]));await tick();
-    for(const letter of 'abc'){editor.tf.insertText(letter);await tick();}
-    assert.equal(selectedSubscriptions,0);assert.equal(selectedRenders,0,'typing never mounts a desktop gutter selection hook');
-    assert.equal(redundantContextCalls.length,0,'block chrome consumes its supplied editor instead of subscribing to it again');
-    assert.ok(gutter('paragraph-60').classList.contains('hover:opacity-100'));
-    assert.ok(gutter('paragraph-60').classList.contains('group-hover:opacity-100'));
-    assert.ok(gutter('paragraph-60').classList.contains('opacity-0'));
-    console.log('DESKTOP_NO_GUTTER_SELECTION_SUBSCRIPTIONS');
+    const paragraph=index=>editor.api.toDOMNode(editor.children[index]);
+    const overlay=index=>paragraph(index).querySelector('[data-slot="block-selection"]');
+    const setViewport=async width=>{
+      window.happyDOM.setWindowSize({width,height:800});
+      await tick();
+      assert.equal(mount.querySelector('.slate-gutterLeft, .slate-dropLine, .slate-blockToolbar'),null);
+      assert.equal(selectedSubscriptions,0);
+    };
+    for(const width of [1280,480]){
+      await setViewport(width);
+      editor.tf.select(editor.api.end([60]));
+      editor.tf.insertText('a');await tick();
+      assert.equal(selectedRenders,0);
+    }
+    assert.equal(editor.children[60].children[0].text,'Ordinary prose 60aa');
+    assert.equal(redundantContextCalls.length,0);
+    console.log('NO_PARAGRAPH_DRAG_HANDLES');
 
-    await resize(false);
-    assert.equal(selectedSubscriptions,120);
-    assert.equal(gutter('paragraph-60').classList.contains('opacity-0'),false,'narrow-screen selected paragraph keeps its visible handle');
-    assert.equal(gutter('paragraph-59').classList.contains('opacity-0'),true);
-    editor.tf.select(editor.api.end([61]));await tick();
-    assert.equal(gutter('paragraph-60').classList.contains('opacity-0'),true);
-    assert.equal(gutter('paragraph-61').classList.contains('opacity-0'),false);
-    editor.tf.select({anchor:{path:[59,0],offset:0},focus:{path:[61,0],offset:2}});await tick();
-    for(const id of ['paragraph-59','paragraph-60','paragraph-61'])assert.equal(gutter(id).classList.contains('opacity-0'),false);
-    await resize(true);assert.equal(selectedSubscriptions,0);
-    assert.equal(mediaListeners.size,1);assert.equal(peakMediaListeners,1);
-    console.log('NARROW_GUTTER_SELECTION');
-
-    flushSync(()=>editor.getApi(BlockSelectionPlugin).blockSelection.set(['paragraph-10','paragraph-11']));await tick();
-    assert.ok(overlay('paragraph-10')?.classList.contains('opacity-100'));assert.ok(overlay('paragraph-11')?.classList.contains('opacity-100'));
-    assert.equal(overlay('paragraph-12'),null);
-    flushSync(()=>editor.setOption(DndPlugin,'isDragging',true));await tick();
-    assert.ok(overlay('paragraph-10').classList.contains('opacity-0'),'dragging still hides the selected block overlay');
-    flushSync(()=>editor.setOption(DndPlugin,'dropTarget',{id:'paragraph-12',line:'top'}));await tick();
-    assert.ok(rootBlock('paragraph-12').querySelector('.slate-dropLine.-top-px'));
-    assert.equal(rootBlock('paragraph-11').querySelector('.slate-dropLine'),null);
-    flushSync(()=>editor.setOption(DndPlugin,'dropTarget',{id:'paragraph-12',line:'bottom'}));await tick();
-    assert.ok(rootBlock('paragraph-12').querySelector('.slate-dropLine.-bottom-px'));
-    flushSync(()=>editor.setOption(DndPlugin,'dropTarget',{id:'paragraph-12',line:'left'}));await tick();
-    assert.equal(rootBlock('paragraph-12').querySelector('.slate-dropLine'),null,'vertical block drags ignore horizontal drop indicators');
-    flushSync(()=>{editor.setOption(DndPlugin,'isDragging',false);editor.setOption(DndPlugin,'dropTarget',null);});await tick();
-    assert.ok(overlay('paragraph-10').classList.contains('opacity-100'));
-    flushSync(()=>editor.setOption(BlockSelectionPlugin,'isSelectionAreaVisible',true));await tick();
-    assert.ok(gutter('paragraph-10').classList.contains('hidden'));
-    flushSync(()=>{editor.setOption(BlockSelectionPlugin,'isSelectionAreaVisible',false);editor.getApi(BlockSelectionPlugin).blockSelection.deselect();});await tick();
-    assert.equal(overlay('paragraph-10'),null);assert.equal(gutter('paragraph-10').classList.contains('hidden'),false);
-    assert.deepEqual(renderErrors,[]);console.log('BLOCK_SELECTION_AND_DROP_FEEDBACK');
-    host.destroy();mount.remove();host=null;await tick();
-    assert.equal(selectedSubscriptions,0);assert.equal(mediaListeners.size,0);
-    console.log('SHARED_MEDIA_LISTENER_CLEANUP');
+    const rightClick=(index,shiftKey=false)=>paragraph(index).querySelector('[data-slate-string]')
+      .dispatchEvent(new window.MouseEvent('contextmenu',{bubbles:true,cancelable:true,button:2,shiftKey}));
+    flushSync(()=>rightClick(10));await tick();
+    assert.ok(mount.querySelector('[data-slot="context-menu-trigger"]'));
+    assert.ok(document.querySelector('[role="menu"]'),'mouse opens the block menu on a touchscreen laptop');
+    flushSync(()=>rightClick(11,true));await tick();
+    const blocks=editor.getApi(BlockSelectionPlugin).blockSelection;
+    assert.deepEqual(blocks.getNodes({sort:true}).map(([node])=>node.id),['paragraph-10','paragraph-11']);
+    for(const index of [10,11])assert.ok(overlay(index)?.classList.contains('opacity-100'));
+    assert.equal(overlay(12),null);
+    flushSync(()=>blocks.deselect());await tick();
+    assert.equal(overlay(10),null);assert.equal(overlay(11),null);
+    editor.tf.select({anchor:{path:[59,0],offset:8},focus:{path:[60,0],offset:8}});
+    assert.equal(editor.api.string(editor.selection),' prose 59Ordinary');
+    editor.tf.insertText(' + ');await tick();
+    assert.equal(editor.children[59].children[0].text,'Ordinary +  prose 60aa');
+    assert.equal(editor.api.isCollapsed(),true);
+    assert.deepEqual(renderErrors,[]);
+    console.log('BLOCK_SELECTION_WITHOUT_DRAG_HANDLES');
   }finally{
     if(host){host.editor.tf.deselect();host.destroy();}
     await window.happyDOM.cancelAsync();console.error=originalError;

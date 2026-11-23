@@ -2,12 +2,15 @@
 
 export interface HtmlExportTarget {element:Element;id:string}
 export interface HtmlExportLink {element:Element;href:string}
+export interface HtmlExportFormula {element:Element;source:string;typesetSource?:string;firstNumber?:number}
 export interface HtmlExportOptions {
   title?:string;
   lang?:string;
   targets?:readonly HtmlExportTarget[];
   links?:readonly HtmlExportLink[];
-  formulas?:readonly {element:Element;source:string;typesetSource?:string}[];
+  formulas?:readonly HtmlExportFormula[];
+  /** Printing consumes the static snapshot in an isolated, local renderer. */
+  mathRuntime?:'reader'|'none';
   /** Injectable for tests; production reads the same assets used by the view. */
   fetchResource?:(url:string)=>Promise<Blob>;
 }
@@ -23,7 +26,7 @@ const editOnly=[
 ].join(',');
 const transientClasses=new Set(['math-active-region','math-selected','flow-selected','font-warning','math-region','math-item','opacity-50','first-block-drop-target']);
 const transientAttribute=/^(?:on|data-(?:reference-selected|formula-selected|endnote-selected|nav-|metadata-dragging|table-selecting|table-resizing)|aria-(?:selected|expanded|haspopup|invalid)|contenteditable$|draggable$|spellcheck$|tabindex$|autofocus$)/i;
-const escapeHtml=(value:string)=>value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+export const escapeHtml=(value:string)=>value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const dataUrl=/^data:/i;
 const fontFamilies=(source:string):string[]=>Array.from(source.matchAll(/(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[^,])+/g),match=>match[0].trim().replace(/^(['"])(.*)\1$/,'$2').replace(/\\(['"\\])/g,'$1').toLowerCase()).filter(Boolean);
 
@@ -42,7 +45,8 @@ function resourceUrl(value:string,base:string):string {
 async function blobDataUrl(blob:Blob):Promise<string> {
   const bytes=new Uint8Array(await blob.arrayBuffer());let binary='';
   for(let index=0;index<bytes.length;index+=0x8000)binary+=String.fromCharCode(...bytes.subarray(index,index+0x8000));
-  const type=/^[\w.+-]+\/[\w.+-]+$/.test(blob.type)?blob.type:'application/octet-stream';
+  const mime=blob.type.split(';',1)[0].trim();
+  const type=/^[\w.+-]+\/[\w.+-]+$/.test(mime)?mime:'application/octet-stream';
   return 'data:'+type+';base64,'+btoa(binary);
 }
 
@@ -52,14 +56,7 @@ function replaceTag(element:Element,tag:string):HTMLElement {
   replacement.append(...Array.from(element.childNodes));element.replaceWith(replacement);return replacement;
 }
 
-/** Clone a rendered view; no live selection, editor node or MathJax tree is changed. */
-export async function exportRenderedHtml(root:HTMLElement,options:HtmlExportOptions={}):Promise<string> {
-  const document=root.ownerDocument,view=document.defaultView;
-  if(!view)throw Error('The document view is unavailable for HTML export.');
-  const base=document.baseURI,clone=root.cloneNode(true) as HTMLElement;
-  const copies=new Map<Element,Element>();
-  const originals=[root,...Array.from(root.querySelectorAll('*'))],clones=[clone,...Array.from(clone.querySelectorAll('*'))];
-  originals.forEach((element,index)=>copies.set(element,clones[index]));
+export function exportAssets(base:string,options:HtmlExportOptions={}) {
   const fetchResource=options.fetchResource??(async(url:string)=>{
     const response=await fetch(url,{credentials:'same-origin'});
     if(!response.ok)throw Error('HTTP '+response.status);
@@ -88,6 +85,18 @@ export async function exportRenderedHtml(root:HTMLElement,options:HtmlExportOpti
     return result+css.slice(offset);
   };
 
+  return {embed,embedCss,fetchResource};
+}
+
+/** Clone a rendered view; no live selection, editor node or MathJax tree is changed. */
+export async function cloneExportContent(root:HTMLElement,options:HtmlExportOptions,assets=exportAssets(root.ownerDocument.baseURI,options)) {
+  const document=root.ownerDocument,view=document.defaultView;
+  if(!view)throw Error('The document view is unavailable for HTML export.');
+  const base=document.baseURI,clone=root.cloneNode(true) as HTMLElement;
+  const copies=new Map<Element,Element>();
+  const originals=[root,...Array.from(root.querySelectorAll('*'))],clones=[clone,...Array.from(clone.querySelectorAll('*'))];
+  originals.forEach((element,index)=>copies.set(element,clones[index]));
+  const {embed,embedCss}=assets;
   // These are exact live-to-copy mappings, so duplicate headings and reference
   // text never make an exported link point to an unrelated section.
   for(const target of options.targets??[])copies.get(target.element)?.setAttribute('id',target.id);
@@ -135,12 +144,39 @@ export async function exportRenderedHtml(root:HTMLElement,options:HtmlExportOpti
     element.removeAttribute('title');element.setAttribute('aria-hidden','true');
   });
   clone.querySelectorAll(editOnly).forEach(element=>element.remove());
+  if(options.mathRuntime==='none'){
+    // Slate wraps even a single unformatted text run in three spans. Only
+    // collapse the exact plain-text shape, after export anchors are assigned.
+    for(const paragraph of clone.querySelectorAll<HTMLElement>('.slate-p')){
+      let node:Element=paragraph;
+      for(const [key,value] of [['data-slate-node','text'],['data-slate-leaf','true'],['data-slate-string','true']]){
+        const child:Element|null=node.firstElementChild;
+        if(node.childNodes.length!==1||child?.tagName!=='SPAN'||child.attributes.length!==1||child.getAttribute(key)!==value)break;
+        node=child;
+      }
+      if(!node.hasAttribute('data-slate-string')||node.childNodes.length!==1||node.firstChild?.nodeType!==3)continue;
+      paragraph.replaceChildren(node.firstChild);
+      if(paragraph.style.position==='relative')paragraph.style.removeProperty('position');
+    }
+  }
   clone.querySelectorAll('[data-slate-zero-width]').forEach(element=>{
     const lineBreak=element.querySelector('br');if(lineBreak)element.replaceWith(lineBreak);else element.remove();
   });
+  let hasMath=false;
+  for(const formula of options.formulas??[]){
+    const element=copies.get(formula.element);if(!element||!clone.contains(element))continue;
+    hasMath=true;
+    // A fresh MathJax instance typesets this source at paper width. Only the
+    // final snapshot needs its glyphs and embedded fonts.
+    if(options.mathRuntime==='none')element.replaceChildren();
+    element.setAttribute('data-slate-tex-expression',formula.source);
+    element.setAttribute('data-export-math-source',formula.typesetSource??'\\('+formula.source+'\\)');
+    if(formula.firstNumber!==undefined)element.setAttribute('data-print-first-number',String(formula.firstNumber));
+  }
   for(const original of originals){
     const element=copies.get(original);if(!element||!clone.contains(element))continue;
     if(original.tagName.toLowerCase()==='img'){
+      if(!original.getAttribute('src')?.trim()&&!(original as HTMLImageElement).currentSrc){element.remove();continue;}
       const selected=(original as HTMLImageElement).currentSrc;if(selected)element.setAttribute('src',selected);
     }else if(original.tagName.toLowerCase()==='canvas'){
       const image=document.createElement('img');
@@ -200,20 +236,29 @@ export async function exportRenderedHtml(root:HTMLElement,options:HtmlExportOpti
     if(element.hasAttribute('style'))element.setAttribute('style',await embedCss(element.getAttribute('style')!));
   }
 
+  return {clone,hasMath,originals,copies};
+}
+
+/** Read font families from the nodes that will actually be painted. */
+export async function embeddedStyles(document:Document,sheets:CSSStyleSheet[],elements:Iterable<Element>,
+    assets:ReturnType<typeof exportAssets>,includeSelector?:(selector:string)=>boolean):Promise<string>{
+  const view=document.defaultView!,base=document.baseURI,{embedCss}=assets;
   // MathJax's sidebar shares this page and creates font faces of its own. Embed
   // only families used by retained document nodes, including CHTML glyphs whose
   // actual characters live in ::before/::after rather than text nodes.
   const usedFonts=new Set<string>();
-  for(const original of originals){
-    const copy=copies.get(original);if(!copy||!clone.contains(copy))continue;
+  const fontLists=new Set<string>();
+  for(const original of elements){
     for(const pseudo of [null,'::before','::after']){
       const style=view.getComputedStyle(original,pseudo);
-      for(const family of fontFamilies(style.fontFamily))usedFonts.add(family);
+      fontLists.add(style.fontFamily);
     }
   }
+  for(const list of fontLists)for(const family of fontFamilies(list))usedFonts.add(family);
   const readRules=async(rules:CSSRuleList,relativeTo:string,ancestors:Set<CSSStyleSheet>):Promise<string>=>{
     const parts:string[]=[];
     for(const rule of Array.from(rules)){
+      if(includeSelector&&rule.type===1&&!includeSelector((rule as CSSStyleRule).selectorText))continue;
       if(rule.type===3){
         const imported=rule as CSSImportRule;
         if(!imported.styleSheet)throw Error('An imported stylesheet is not ready for HTML export.');
@@ -223,6 +268,10 @@ export async function exportRenderedHtml(root:HTMLElement,options:HtmlExportOpti
         const face=rule as CSSFontFaceRule;
         const family=face.style?.fontFamily??/font-family\s*:\s*([^;}]+)/i.exec(rule.cssText)?.[1]??'';
         if(fontFamilies(family).some(name=>usedFonts.has(name)))parts.push(await embedCss(rule.cssText,relativeTo));
+      }else if(rule.type===6){
+        // @page has both declarations (size/margins) and nested margin boxes.
+        // Treating it as an ordinary group drops the physical paper settings.
+        parts.push(await embedCss(rule.cssText,relativeTo));
       }else if(rule.type!==1&&'cssRules' in rule){
         const content=await readRules((rule as CSSGroupingRule).cssRules,relativeTo,ancestors);
         if(content)parts.push(rule.cssText.slice(0,rule.cssText.indexOf('{')+1)+content+'}');
@@ -237,8 +286,15 @@ export async function exportRenderedHtml(root:HTMLElement,options:HtmlExportOpti
     try{rules=sheet.cssRules;}catch{throw Error('Unable to read a stylesheet for HTML export: '+(sheet.href??'inline stylesheet'));}
     return readRules(rules,sheet.href??base,parents);
   };
-  const sheets=[...Array.from(document.styleSheets),...Array.from(document.adoptedStyleSheets??[])];
-  const css=(await Promise.all([...new Set(sheets)].filter(sheet=>!sheet.disabled).map(sheet=>readSheet(sheet)))).join('\n');
+  return (await Promise.all([...new Set(sheets)].filter(sheet=>!sheet.disabled).map(sheet=>readSheet(sheet)))).join('\n');
+}
+
+export async function exportRenderedHtml(root:HTMLElement,options:HtmlExportOptions={}):Promise<string>{
+  const document=root.ownerDocument,view=document.defaultView!,base=document.baseURI;
+  const assets=exportAssets(base,options),{fetchResource}=assets;
+  const {clone,hasMath,originals,copies}=await cloneExportContent(root,options,assets);
+  const retained=originals.filter(original=>{const copy=copies.get(original);return !!copy&&clone.contains(copy);});
+  const css=await embeddedStyles(document,[...document.styleSheets,...document.adoptedStyleSheets??[]],retained,assets);
   const exportCss=`
 html,body{width:auto!important;height:auto!important;max-width:none!important;margin:0!important;padding:0!important;overflow:visible!important}
 #plateMount{min-height:0!important}
@@ -255,24 +311,19 @@ html,body{width:auto!important;height:auto!important;max-width:none!important;ma
 `;
   const htmlRoot=document.documentElement;
   const lang=options.lang||htmlRoot.lang||'en';
-  let hasMath=false;
-  for(const formula of options.formulas??[]){
-    const element=copies.get(formula.element);if(!element||!clone.contains(element))continue;
-    hasMath=true;
-    element.setAttribute('data-slate-tex-expression',formula.source);
-    element.setAttribute('data-export-math-source',formula.typesetSource??'\\('+formula.source+'\\)');
-  }
   // The standard MathJax component supplies its own source/copy menu. Keep the
   // already-rendered output as the initial view while the native runtime loads.
-  const mathConfig=hasMath?await(await fetchResource(new URL('mathjax-export-config.js',base).href)).text():'';
-  const random=new Uint8Array(16);if(hasMath)view.crypto.getRandomValues(random);
-  const nonce=hasMath?Array.from(random,byte=>byte.toString(16).padStart(2,'0')).join(''):'';
-  const attributes=' lang="'+escapeHtml(lang)+'"'+
+  const readerMath=hasMath&&options.mathRuntime!=='none';
+  const mathConfig=readerMath?await(await fetchResource(new URL('mathjax-export-config.js',base).href)).text():'';
+  const random=new Uint8Array(16);if(readerMath)view.crypto.getRandomValues(random);
+  const nonce=readerMath?Array.from(random,byte=>byte.toString(16).padStart(2,'0')).join(''):'';
+  const mathFont=clone.dataset.mathFont==='mathjax-stix2'?' data-math-font="mathjax-stix2"':'';
+  const attributes=mathFont+' lang="'+escapeHtml(lang)+'"'+
     (htmlRoot.className?' class="'+escapeHtml(htmlRoot.className)+'"':'')+
     (htmlRoot.dataset.colorScheme?' data-color-scheme="'+escapeHtml(htmlRoot.dataset.colorScheme)+'"':'');
   return '<!doctype html>\n<html'+attributes+'><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+
-    '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; '+(hasMath?'script-src \'nonce-'+nonce+'\' https://cdn.jsdelivr.net; connect-src https://cdn.jsdelivr.net; ':'')+'style-src \'unsafe-inline\'; img-src data:; font-src data:'+(hasMath?' https://cdn.jsdelivr.net':'')+'; media-src data:; base-uri \'none\'; form-action \'none\'">'+
+    '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; '+(readerMath?'script-src \'nonce-'+nonce+'\' https://cdn.jsdelivr.net; connect-src https://cdn.jsdelivr.net; ':'')+'style-src \'unsafe-inline\'; img-src data:; font-src data:'+(readerMath?' https://cdn.jsdelivr.net':'')+'; media-src data:; base-uri \'none\'; form-action \'none\'">'+
     '<title>'+escapeHtml(options.title??document.title.replace(/^\* /,''))+'</title><style>'+((css+'\n'+exportCss).replace(/<\/style/gi,'<\\/style'))+'</style>'+
-    (hasMath?'<script nonce="'+nonce+'">'+mathConfig.replace(/<\/script/gi,'<\\/script')+'</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-chtml.js"></script>':'')+'</head>'+
+    (readerMath?'<script nonce="'+nonce+'">'+mathConfig.replace(/<\/script/gi,'<\\/script')+'</script><script defer src="https://cdn.jsdelivr.net/npm/mathjax@4.1.3/tex-chtml.js"></script>':'')+'</head>'+
     '<body><main id="plateMount">'+clone.outerHTML+'</main></body></html>';
 }

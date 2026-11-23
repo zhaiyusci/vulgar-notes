@@ -3,6 +3,54 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const {build}=require('esbuild');
 
+test('keyboard completion keeps delimiter and command variants individually selectable',async()=>{
+ const {Window}=await import('happy-dom');
+ const window=new Window({url:'http://localhost/'});
+ window.document.write('<!doctype html><body><div id="preview"><div id="textFlow"><span id="formula"></span></div><textarea id="mathInput" hidden></textarea></div><div id="mathPanel"><div id="insertToolbar"></div></div><div id="error"></div><div id="pendingFontHint"></div><div id="structureCount"></div><select id="formulaLayout"></select></body>');
+ window.setTimeout=()=>0;window.requestAnimationFrame=()=>0;
+ const result=await build({entryPoints:['src/editor-ui.ts'],bundle:true,write:false,format:'iife',globalName:'mathUI'});
+ window.eval(result.outputFiles[0].text+'\nwindow.mathUI=mathUI;');
+ let hooks,entry;
+ mountMathEditor(window,window.mathUI,(mount,initial,h)=>{
+  hooks=h;entry={element:window.document.getElementById('formula'),model:initial};
+  return {entries:()=>[entry],syncMath(){},persist(){},exportLatex:()=>'',exportMarkdown:()=>'',isDisplay:()=>false,isNumbered:()=>false,readOnly:false};
+ });
+ const input=window.document.getElementById('mathInput');
+ const type=text=>{
+  input.dispatchEvent(new window.InputEvent('beforeinput',{inputType:'insertText',data:text}));
+  input.setRangeText(text,input.selectionStart,input.selectionEnd,'end');
+  input.dispatchEvent(new window.InputEvent('input',{inputType:'insertText',data:text}));
+ };
+ const key=key=>input.dispatchEvent(new window.KeyboardEvent('keydown',{key}));
+ for(const accept of ['Enter','Tab','literal']){
+  entry.model.root.items=[];entry.model.index();entry.model.setCursor(entry.model.root.id,0);hooks.activate(entry.element,entry.model,'end');
+  for(const ch of '\\left')type(ch);
+  const options=Array.from(window.document.querySelectorAll('[data-command]'));
+  const square=options.findIndex(option=>option.dataset.command==='left[');
+  assert.ok(square>=0,'square brackets appear in the keyboard completion menu');
+  assert.ok(options.some(option=>option.dataset.command==='left\\{'),'braces also appear');
+  if(accept==='literal')type('[');
+  else{for(let i=0;i<square;i++)key('ArrowDown');key(accept);}
+  type('x');assert.equal(entry.model.exportLatex(),'\\left[ x\\right]');
+  assert.equal(entry.model.cursor.region,entry.model.root.items[0].regions[0].id);
+ }
+ for(const [query,target,accept] of [
+  ['sqrt','nthroot','Enter'],['cfrac','cfracr','Tab'],['pmatrix','matrix3','Enter'],
+  ['pmatrix','pmatrixr','Tab'],['dv','physics-dvFlat','Enter'],['quantity','physics-qtyBrackets','Tab'],
+  ['sum','sumLimits','Enter'],['Bigl','brackets-Big','Tab'],['left','rightBrace','Enter'],
+ ]){
+  entry.model.root.items=[];entry.model.index();entry.model.setCursor(entry.model.root.id,0);hooks.activate(entry.element,entry.model,'end');
+  for(const ch of '\\'+query)type(ch);
+  const candidate=entry.model.commandCandidates().find(choice=>choice.type===target);assert.ok(candidate,target);
+  const options=Array.from(window.document.querySelectorAll('[data-command]'));
+  const index=options.findIndex(option=>option.dataset.command===candidate.name);assert.ok(index>=0,target+' is visible');
+  for(let i=0;i<index;i++)key('ArrowDown');key(accept);
+  assert.equal(entry.model.root.items[0].type,target);
+  assert.equal(window.document.activeElement,input);
+ }
+ await window.happyDOM.abort();
+});
+
 test('switching formulas during composition does not lock the next formula',async()=>{
  const {Window}=await import('happy-dom');
  const window=new Window({url:'http://localhost/'});

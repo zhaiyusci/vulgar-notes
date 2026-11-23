@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 
-import { AIChatPlugin } from '@platejs/ai/react';
 import {
   BLOCK_CONTEXT_MENU_ID,
   BlockMenuPlugin,
@@ -28,11 +27,8 @@ import {
 import { setBlockType } from '@/components/editor/transforms';
 import { useIsTouchDevice } from '@/hooks/use-is-touch-device';
 
-type Value = 'askAI' | null;
-
 export function BlockContextMenu({ children }: { children: React.ReactNode }) {
   const { api, editor } = useEditorPlugin(BlockMenuPlugin);
-  const [value, setValue] = React.useState<Value>(null);
   const isTouch = useIsTouchDevice();
   const readOnly = useEditorReadOnly();
   const openId = usePluginOption(BlockMenuPlugin, 'openId');
@@ -85,12 +81,10 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
 
           if (disabled) return event.preventDefault();
 
-          setTimeout(() => {
-            api.blockMenu.show(BLOCK_CONTEXT_MENU_ID, {
-              x: event.clientX,
-              y: event.clientY,
-            });
-          }, 0);
+          api.blockMenu.show(BLOCK_CONTEXT_MENU_ID, {
+            x: event.clientX,
+            y: event.clientY,
+          });
         }}
       >
         <div className="w-full">{children}</div>
@@ -102,11 +96,6 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
             e.preventDefault();
             editor.getApi(BlockSelectionPlugin).blockSelection.focus();
 
-            if (value === 'askAI') {
-              editor.getApi(AIChatPlugin).aiChat.show();
-            }
-
-            setValue(null);
           }}
         >
           <ContextMenuGroup>

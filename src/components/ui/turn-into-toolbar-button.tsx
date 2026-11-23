@@ -9,9 +9,7 @@ import type { TElement } from 'platejs';
 import { DropdownMenuItemIndicator } from '@radix-ui/react-dropdown-menu';
 import {
   CheckIcon,
-  ChevronRightIcon,
   Code2,
-  Columns3Icon,
   FileCodeIcon,
   Heading1Icon,
   Heading2Icon,
@@ -103,12 +101,6 @@ export const turnIntoItems = [
     value: KEYS.listTodo,
   },
   {
-    icon: <ChevronRightIcon />,
-    keywords: ['collapsible', 'expandable'],
-    label: 'Toggle list',
-    value: KEYS.toggle,
-  },
-  {
     icon: <FileCodeIcon />,
     keywords: ['```'],
     label: 'Code',
@@ -132,11 +124,6 @@ export const turnIntoItems = [
     keywords: ['citation', 'blockquote', '>'],
     label: 'Quote',
     value: KEYS.blockquote,
-  },
-  {
-    icon: <Columns3Icon />,
-    label: '3 columns',
-    value: 'action_three_columns',
   },
 ];
 

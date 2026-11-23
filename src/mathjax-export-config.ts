@@ -1,13 +1,17 @@
 import {installUnicodeFonts} from './mathjax-unicode-fonts';
 import {installMathDelimiters} from './install-math-delimiters';
+import {mathFontBase} from './document-typography';
 import {mathJaxExtensionLoads,mathJaxTexPackages,mathJaxDisabledTexPackages,mathJaxRequireOptions} from './mathjax-extension-policy';
 
 // Exported formulas use the same TeX and alphabets as the editor, while the
 // official menu supplies Show Math As and Copy to Clipboard to readers.
+const font=document.querySelector('[data-math-font="mathjax-stix2"]')?'mathjax-stix2':'mathjax-newcm';
+const fontBase=mathFontBase(font,document);
 const configuration={
-  output:{font:'mathjax-newcm',fontExtensions:['https://cdn.jsdelivr.net/npm/@mathjax/mathjax-bboldx-font-extension@4.1.3']},
+  chtml:{font:'['+font+']',fontURL:fontBase+'/chtml/woff2',dynamicPrefix:'['+font+']/chtml/dynamic'},
+  output:{font,fontExtensions:['https://cdn.jsdelivr.net/npm/@mathjax/mathjax-bboldx-font-extension@4.1.3']},
   loader:{
-    paths:{'mathjax-bboldx-extension':'https://cdn.jsdelivr.net/npm/@mathjax/mathjax-bboldx-font-extension@4.1.3'},
+    paths:{[font]:fontBase,'mathjax-bboldx-extension':'https://cdn.jsdelivr.net/npm/@mathjax/mathjax-bboldx-font-extension@4.1.3'},
     load:['ui/menu',...mathJaxExtensionLoads],
   },
   options:{

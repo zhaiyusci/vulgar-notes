@@ -53,7 +53,7 @@ export async function prepareDocumentRecovery():Promise<string|undefined>{
       const source=JSON.stringify(envelope),validated=parseDocumentEnvelope(source),stamp=await fingerprint(documentContentKey(source));
       if(seen.has(stamp))continue;seen.add(stamp);
       const marker='vulgar-notes-legacy-recovery:'+stamp;if(target.getItem(marker))continue;
-      if(!isBlankDocument(validated.value,validated.bibliographyStyle)){
+      if(validated.typography||!isBlankDocument(validated.value,validated.bibliographyStyle)){
         const id=crypto.randomUUID();target.setItem(prefix+':'+id,source);
         copyMetadata(sessionStorage,'editor.open-document',id);
         target.setItem(marker,id);
@@ -68,7 +68,7 @@ export async function prepareDocumentRecovery():Promise<string|undefined>{
 function documentContentKeySafe(source:string):string{
   try{
     const parsed=parseDocumentEnvelope(source);
-    return documentContentKey(JSON.stringify({version:1,value:parsed.value,...(parsed.bibliographyLibraries.length?{bibliographyLibraries:parsed.bibliographyLibraries}:{}),...(parsed.bibliographyStyle&&parsed.bibliographyStyle!=='simple'?{bibliographyStyle:parsed.bibliographyStyle}:{})}));
+    return documentContentKey(JSON.stringify({version:1,value:parsed.value,...(parsed.typography?{typography:parsed.typography}:{}),...(parsed.bibliographyLibraries.length?{bibliographyLibraries:parsed.bibliographyLibraries}:{}),...(parsed.bibliographyStyle&&parsed.bibliographyStyle!=='simple'?{bibliographyStyle:parsed.bibliographyStyle}:{})}));
   }catch{return source;}
 }
 export interface RecoverableDocument {id:string;name?:string;updatedAt?:number}
@@ -82,7 +82,7 @@ export function listRecoverableDocuments():RecoverableDocument[]{
       let metadata:{name?:unknown;baseline?:unknown}={};try{const value=JSON.parse(storage.getItem(metadataKey(id))||'{}');if(value&&typeof value==='object')metadata=value;}catch{}
       let baseline=typeof metadata.baseline==='string'?metadata.baseline:undefined;
       if(baseline)try{parseDocumentEnvelope(baseline);}catch{baseline=undefined;}
-      if(baseline?documentContentKeySafe(source)===documentContentKeySafe(baseline):isBlankDocument(parsed.value,parsed.bibliographyStyle))continue;
+      if(baseline?documentContentKeySafe(source)===documentContentKeySafe(baseline):!parsed.typography&&isBlankDocument(parsed.value,parsed.bibliographyStyle))continue;
       const updatedAt=Number(storage.getItem(key+'-updated-at'));
       items.push({id,...(typeof metadata.name==='string'&&metadata.name?{name:metadata.name}:{}),...(updatedAt>0?{updatedAt}:{})});
     }catch{/* A corrupt entry must never replace a usable document. */}

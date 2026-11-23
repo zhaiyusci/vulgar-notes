@@ -1,0 +1,20 @@
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+/* Compile the rich-text nodes' layout utilities once when building the app. */
+@import "tailwindcss" source(none);
+@import "./components/ui/float-node.css";
+@import "./document-type.css";
+@source "./components/ui/*-node.tsx";
+@source "./components/ui/block-list.tsx";
+@source "./components/ui/bibtex-bibliography.tsx";
+@source "./components/ui/editor.tsx";
+@custom-variant dark (&:is(.dark *));
+@theme inline {
+  --color-background: #fff;
+  --color-foreground: #202124;
+  --color-border: #e4e4e7;
+  --color-muted: #f4f4f5;
+  --color-muted-foreground: #71717a;
+  --color-primary: #18181b;
+  --color-brand: oklch(62.3% .214 259.815);
+}
+@layer base { * { border-color: #e4e4e7; } }

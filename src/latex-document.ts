@@ -1,5 +1,6 @@
 import type {TElement,Value} from 'platejs';
 import {plateLatex} from './plate-document';
+import {parseTypography,type DocumentTypography} from './document-typography';
 import {unicodeMathPreamble,blackboardPreamble} from './letter-preamble';
 import {mhchemParser} from 'mhchemparser';
 import {citedBibLibraries,parseBibLibraries,validateBibLibraries,validCitationKey,type BibLibrary} from './bibtex';
@@ -142,8 +143,18 @@ function referenceDocument(value:Value,libraries:readonly BibLibrary[],style:Bib
   };
 }
 
-export function latexDocument(value:Value,libraries:readonly BibLibrary[]=[],style:BibliographyStyle='simple',metadata?:DocumentMetadata):string {
+export function latexDocument(value:Value,libraries:readonly BibLibrary[]=[],style:BibliographyStyle='simple',metadata?:DocumentMetadata,typography?:DocumentTypography):string {
   value=migrateDocumentMetadata(value,metadata);
+  const type=parseTypography(typography);
+  const bodySetup=(type.bodyPt!==12||type.mathPt!==null)?'\\usepackage[fontsize='+type.bodyPt+'pt]{fontsize}\n':'';
+  const fontSetup=type.bodyFont?String.raw`\IfFontExistsTF{${type.bodyFont}}{\setmainfont{${type.bodyFont}}
+  \begingroup\fontspec{${type.bodyFont}}\iffontchar\font"4E00\relax
+    \aftergroup\vulgarCJKfont
+  \fi\endgroup}{}`+'\n':'';
+  const cjkFont=type.bodyFont?'\\newcommand{\\vulgarCJKfont}{\\setCJKmainfont{'+type.bodyFont+'}}\n':'';
+  const mathSetup=type.mathFont==='mathjax-stix2'?String.raw`\setmathfont{STIXTwoMath-Regular.otf}`:String.raw`\setmathfont{NewCMMath-Regular.otf}
+\setmathfont{NewCMMath-Bold.otf}[version=bold]`;
+  const mathSize=type.mathPt===null?'':'\\DeclareMathSizes{'+type.bodyPt+'}{'+type.mathPt+'}{'+(type.mathPt*.7).toFixed(2)+'}{'+(type.mathPt*.5).toFixed(2)+'}\n';
   const images=collectFloatImageAssets(value);
   const bibliography=referenceDocument(value,libraries,style,images.renderImage),body=bibliography.body;
   const instructions=bibliography.biblatex?
@@ -166,8 +177,8 @@ ${instructions}${bibliography.resources}${images.resources}\documentclass[UTF8,f
 \usepackage{amssymb}
 ${optionalMathPackages([body])}\usepackage{extarrows}
 \usepackage{cancel}
-${unicodeMathPreamble}\setmathfont{NewCMMath-Regular.otf}
-\setmathfont{NewCMMath-Bold.otf}[version=bold]
+${bodySetup}${unicodeMathPreamble}${cjkFont}${fontSetup}${mathSetup}
+${mathSize}
 \usepackage{physics}
 \usepackage[version=4]{mhchem}
 ${blackboardPreamble}

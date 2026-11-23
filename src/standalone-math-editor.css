@@ -92,7 +92,7 @@ button:focus-visible,select:focus-visible,textarea:focus-visible { outline:2px s
 .math-tree-json { padding-top:8px; border-top:1px solid var(--app-border); }
 .math-tree-raw { margin:6px 0 0 16px; padding:8px 10px; overflow:auto; border:1px solid var(--app-border); border-radius:4px; font:inherit; tab-size:2; }
 
-.inline-formula { position:relative; display:inline-block; vertical-align:baseline; white-space:nowrap; line-height:normal; outline:none; cursor:text; margin:0 .12em; max-width:100%; }
+.inline-formula { position:relative; display:inline-block; vertical-align:baseline; white-space:nowrap; line-height:normal; outline:none; cursor:text; max-width:100%; }
 .inline-formula mjx-container { margin:0!important; }
 .inline-formula.display-formula { display:block; max-width:none; margin:.25em 0; text-align:center; overflow-x:auto; overflow-y:hidden; padding:.15em 0; }
 .inline-formula.flow-selected { background:var(--app-hover); outline:1px solid var(--app-hover-border); }

@@ -7,6 +7,31 @@ const compiled=build({entryPoints:['src/html-export.ts'],bundle:true,write:false
   const mod=new Module(path.resolve('.html-export-test.cjs'),module);mod.paths=module.paths;
   mod._compile(result.outputFiles[0].text,path.resolve('.html-export-test.cjs'));return mod.exports;
 });
+
+test('print snapshots retain formula sources and counter seeds without reader scripts or CDN requests',async t=>{
+  const {exportRenderedHtml}=await compiled;
+  const h=await view(t,'<p>Print</p><span class="inline-formula"><mjx-container>old layout</mjx-container></span>');
+  const element=h.root.querySelector('.inline-formula');
+  const html=await exportRenderedHtml(h.root,{mathRuntime:'none',formulas:[{element,source:'x=y',typesetSource:String.raw`\begin{equation}x=y\end{equation}`,firstNumber:4}],fetchResource:async()=>{throw Error('Unexpected remote request');}});
+  const doc=output(h.window,html);
+  assert.equal(doc.querySelector('script'),null);
+  assert.equal(doc.querySelector('[data-print-first-number]').dataset.printFirstNumber,'4');
+  assert.equal(doc.querySelector('mjx-container'),null,'paper-width typesetting replaces the screen glyphs');
+  assert.equal(element.querySelector('mjx-container').textContent,'old layout');
+  assert.equal(doc.querySelector('[data-export-math-source]').dataset.exportMathSource,String.raw`\begin{equation}x=y\end{equation}`);
+  assert.doesNotMatch(doc.querySelector('meta[http-equiv]').content,/cdn|script-src/);
+  assert.equal(h.root.querySelector('[data-print-first-number]'),null,'Export metadata must not touch the live view');
+});
+
+test('page rules retain paper size and margins as well as nested page-number boxes',async t=>{
+  const {exportRenderedHtml}=await compiled;
+  const h=await view(t,'<p>Printed content</p>');
+  const page={type:6,cssText:'@page { size: 210mm 297mm; margin: 18mm; @bottom-center { content: counter(page); } }',cssRules:[{type:9,cssText:'@bottom-center { content: counter(page); }'}]};
+  Object.defineProperty(h.document,'adoptedStyleSheets',{value:[{disabled:false,cssRules:[page]}]});
+  const html=await exportRenderedHtml(h.root,{mathRuntime:'none'});
+  assert.match(html,/@page \{ size: 210mm 297mm; margin: 18mm; @bottom-center/);
+});
+
 async function view(t,body,styles=''){
   const {Window}=await import('happy-dom');
   const window=new Window({url:'https://example.org/editor/index.html',settings:{disableCSSFileLoading:true}});
@@ -15,6 +40,29 @@ async function view(t,body,styles=''){
   return {window,document:window.document,root:window.document.querySelector('.document-zoom-surface')};
 }
 function output(window,html){return new window.DOMParser().parseFromString(html,'text/html');}
+
+test('PDF simplifies plain Slate text while retaining inline formatting and reference targets',async t=>{
+  const {exportRenderedHtml}=await compiled;
+  const run=text=>'<span data-slate-node="text"><span data-slate-leaf="true"><span data-slate-string="true">'+text+'</span></span></span>';
+  const h=await view(t,['ordinary','<em>emphasis</em>','linked'].map(text=>'<div class="slate-p" style="position:relative">'+run(text)+'</div>').join(''));
+  const target=h.root.querySelectorAll('[data-slate-string]')[2];
+  const doc=output(h.window,await exportRenderedHtml(h.root,{mathRuntime:'none',targets:[{element:target,id:'destination'}]}));
+  const paragraphs=doc.querySelectorAll('.slate-p');
+  assert.equal(paragraphs[0].innerHTML,'ordinary');
+  assert.equal(paragraphs[0].style.position,'');
+  assert.equal(paragraphs[1].querySelector('em').textContent,'emphasis');
+  assert.equal(doc.getElementById('destination').textContent,'linked');
+  assert.equal(h.root.querySelectorAll('[data-slate-string]').length,3);
+});
+
+test('print snapshot omits empty image slots and preserves SVG media type with charset',async t=>{
+  const {exportRenderedHtml}=await compiled;
+  const h=await view(t,'<img><img src="plot.svg" alt="plot">');
+  const html=await exportRenderedHtml(h.root,{mathRuntime:'none',fetchResource:async()=>new Blob(['<svg xmlns="http://www.w3.org/2000/svg"/>'],{type:'image/svg+xml;charset=utf-8'})});
+  const images=output(h.window,html).querySelectorAll('img');
+  assert.equal(images.length,1);
+  assert.match(images[0].src,/^data:image\/svg\+xml;base64,/);
+});
 
 test('HTML export retains rendered mathematics, metadata, figures, tables and references without changing live content or selection',async t=>{
   const {exportRenderedHtml}=await compiled;

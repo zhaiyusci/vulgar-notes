@@ -10,7 +10,7 @@ import {registerSideSetStructures} from './tex-sideset';
 import {registerFormulaLayouts,renderFormulaLayout,type FormulaLayout} from './formula-layouts';
 import {isStandaloneMathEnvironmentName,standaloneMathEnvironmentBounds} from './tex-display-environment';
 import {registerGuiSymbols,organizeGuiSymbols} from './gui-math-symbols';
-import {registerDelimiterVariants} from './gui-math-delimiters';
+import {guiDelimiterPairs,registerDelimiterVariants} from './gui-math-delimiters';
 import {isSourceOnlyMathCommand} from './math-input-policy';
 import {coloredTex,colorBoxTex,mathDecorationTex,hexMathColor,validMathColor,validDecorationColor,type MathColor,type MathColorTarget,type MathBoxStyle} from './math-color';
 export type ScriptSlot = 'lower' | 'upper' | 'leftLower' | 'leftUpper';
@@ -37,7 +37,7 @@ export interface Definition {
  texOptionsKind?:TexLayoutOptionsKind;
  scriptSlots?:ScriptSlot[]; scriptLabels?:string[]; legacySlots?:number;
 }
-export interface CommandCandidate {name:string; type:string; atom:boolean; label:string; category:string;source?:string;script?:'^'|'_'}
+export interface CommandCandidate {name:string; type:string; atom:boolean; label:string; category:string;source?:string;script?:'^'|'_';searchNames?:string[]}
 export interface FontWarning {region:string;index:number;message:string}
 /* Content is a tree of sequences. Strings and structures share one sequence;
  * only a structure's arguments introduce new regions. No operator/text slots. */
@@ -349,6 +349,35 @@ export interface FontWarning {region:string;index:number;message:string}
     if(!environment.configured||!/^\w+$/.test(environment.name)||commandEntries.has(environment.name))continue;
     commandEntries.set(environment.name,{name:environment.name,type:'source-tex',atom:false,label:'LaTeX source',category:'LaTeX source',
       source:`\\begin{${environment.name}}\n\n\\end{${environment.name}}`});
+  }
+  // Delimiters belong to the command identity, including fixed-size pairs.
+  const delimiterCommands:CommandCandidate[]=[];
+  for(const size of ['', 'big', 'Big', 'bigg', 'Bigg']){
+    const command=size?size+'l':'left';commandEntries.delete(command);
+    for(const pair of guiDelimiterPairs){
+      const type=size?(pair.type==='parens'?'paren'+size:pair.type+'-'+size):pair.type;
+      const entry=definitions.get(type);
+      if(entry&&!entry.hidden)delimiterCommands.push({name:command+pair.left,type,atom:false,label:entry.label,category:entry.category});
+    }
+  }
+  for(const entry of delimiterCommands)commandEntries.set(entry.name,entry);
+  const delimiterRanks=new Map(delimiterCommands.map((entry,index)=>[entry.name,index]));
+  // Bare commands keep their existing default. Other visible forms get a
+  // unique syntax template instead of being discarded by control-word dedup.
+  // Hidden/legacy/source-only definitions remain excluded; commandCandidate
+  // false on a visible variant only prevents it from replacing the default.
+  const reachableTypes=new Set([...commandEntries.values()].map(entry=>entry.type));
+  for(const entry of catalog){
+    if(entry.hidden||entry.legacy||reachableTypes.has(entry.type))continue;
+    const template=entry.render(entry.labels.map(()=>'…'));
+    const head=/^\\([A-Za-z]+)/.exec(template)?.[1];
+    if(!head||isSourceOnlyMathCommand(head))continue;
+    const environment=/^\\begin\{([A-Za-z]+\*?)\}/.exec(template)?.[1];
+    const primary=definitions.get(entry.variantOf??'');
+    const sameCommand=primary&&/^\\([A-Za-z]+)/.exec(primary.command)?.[1]===head;
+    const searchNames=[environment??head,...(entry.aliases??[]),...(sameCommand?primary.aliases??[]:[])];
+    const name=template.slice(1);
+    if(!commandEntries.has(name))commandEntries.set(name,{name,type:entry.type,atom:false,label:entry.label,category:entry.category,searchNames});
   }
   const commandInventory=[...commandEntries.values()];
   function example(kind:string) {
@@ -938,6 +967,12 @@ export interface FontWarning {region:string;index:number;message:string}
     commandQuery() {
       if(this.rawInput)return null;
       const [start,end]=this.range;if(start!==end)return null;
+      let segment=end;
+      while(segment>0 && typeof this.current.items[segment-1]==='string')segment--;
+      const delimiter=/\\(left|bigl|Bigl|biggl|Biggl)[ \t]*(\\[A-Za-z]*|\\[{}|]?|\(|\[|\||\/|\.)?$/.exec(this.current.items.slice(segment,end).join(''));
+      // The matched suffix is ASCII; text before it may contain astral letters
+      // whose UTF-16 length differs from the model's item offsets.
+      if(delimiter)return {from:end-delimiter[0].length,end,name:delimiter[1]+(delimiter[2]||'')};
       let from=end;
       while(from>0 && typeof this.current.items[from-1]==='string' && /^[a-zA-Z]$/.test(String(this.current.items[from-1])))from--;
       if(this.current.items[from-1]!=='\\')return null;
@@ -947,8 +982,10 @@ export interface FontWarning {region:string;index:number;message:string}
     commandCandidates() {
       const query=this.commandQuery();if(!query)return [];
       const common=['sin','cos','tan','exp','log','alpha','beta','pi','frac','sqrt','sum','int','mathbf'];
-      return commandInventory.filter(e=>e.name.startsWith(query.name)&&(!isSourceOnlyMathCommand(e.name)||e.name===query.name)).sort((a,b)=>{
-        const rank=(e:CommandCandidate)=>e.name===query.name?-2:common.includes(e.name)?common.indexOf(e.name):100;
+      return commandInventory.filter(e=>(e.name.startsWith(query.name)||e.searchNames?.some(name=>name.startsWith(query.name)))&&(!isSourceOnlyMathCommand(e.name)||e.name===query.name)).sort((a,b)=>{
+        if(/^(left|bigl|Bigl|biggl|Biggl)/.test(query.name)&&(delimiterRanks.has(a.name)||delimiterRanks.has(b.name)))
+          return (delimiterRanks.get(a.name)??1000)-(delimiterRanks.get(b.name)??1000);
+        const rank=(e:CommandCandidate)=>e.name===query.name?-2:e.searchNames?.includes(query.name)?-1:common.includes(e.name)?common.indexOf(e.name):100;
         return rank(a)-rank(b) || a.name.localeCompare(b.name);
       });
     }
@@ -998,6 +1035,9 @@ export interface FontWarning {region:string;index:number;message:string}
         const variant=ch==='\\'||this.commandQuery()?undefined:this.styledLetter(ch);
         const item:MathItem=variant?{id:'n'+nextSerial(),type:variant.type,atom:true,regions:[]}:ch;
         const [a,b]=this.range;this.current.items.splice(a,b-a,item);this.setCursor(this.cursor.region,a+1);this.index();
+        // Literal delimiters finish immediately; named ones wait for a word
+        // boundary or explicit acceptance so their spelling can be completed.
+        if(!/[a-zA-Z\s\\]/.test(ch)&&delimiterRanks.has(this.commandQuery()?.name??''))this.commitCommand(false);
       }
     }
     enterScript(marker:string) {

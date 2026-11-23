@@ -6,19 +6,17 @@ export function useIsTouchDevice() {
   const [isTouchDevice, setIsTouchDevice] = React.useState(false);
 
   React.useEffect(() => {
-    function onResize() {
-      setIsTouchDevice(
-        'ontouchstart' in window ||
-          navigator.maxTouchPoints > 0 ||
-          navigator.maxTouchPoints > 0
-      );
+    const coarse = window.matchMedia('(pointer: coarse)');
+    const fine = window.matchMedia('(any-pointer: fine)');
+    function update() {
+      setIsTouchDevice(coarse.matches && !fine.matches);
     }
-
-    window.addEventListener('resize', onResize);
-    onResize();
-
+    coarse.addEventListener('change', update);
+    fine.addEventListener('change', update);
+    update();
     return () => {
-      window.removeEventListener('resize', onResize);
+      coarse.removeEventListener('change', update);
+      fine.removeEventListener('change', update);
     };
   }, []);
 

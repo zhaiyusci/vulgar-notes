@@ -34,7 +34,7 @@ function fixture(t) {
   write('node_modules/mathjax/tex-chtml.js');
   write('node_modules/mathjax/input/tex/extensions/mhchem.js');
   write('node_modules/mathjax/LICENSE', 'Apache license');
-  for (const name of ['mathjax-newcm-font', 'mathjax-bboldx-font-extension', 'mathjax-mhchem-font-extension']) {
+  for (const name of ['mathjax-newcm-font', 'mathjax-stix2-font', 'mathjax-bboldx-font-extension', 'mathjax-mhchem-font-extension']) {
     write('node_modules/@mathjax/' + name + '/chtml.js');
     write('node_modules/@mathjax/' + name + '/chtml/dynamic/arrows.js');
     write('node_modules/@mathjax/' + name + '/chtml/woff2/math.woff2');

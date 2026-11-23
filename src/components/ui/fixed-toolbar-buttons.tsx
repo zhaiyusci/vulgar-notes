@@ -20,14 +20,13 @@ import { CrossReferenceToolbarButton,CitationReferenceEditor } from './reference
 import { InsertEndnoteToolbarButton } from './insert-endnote-toolbar-button';
 import { BibtexLibrariesButton } from './bibtex-libraries-button';
 import { AlignToolbarButton } from './align-toolbar-button';
-import { CommentToolbarButton } from './comment-toolbar-button';
-import { EmojiToolbarButton } from './emoji-toolbar-button';
 import { ExportToolbarButton } from './export-toolbar-button';
 import { FontColorToolbarButton } from './font-color-toolbar-button';
 import { FontSizeToolbarButton } from './font-size-toolbar-button';
 import { RedoToolbarButton, UndoToolbarButton } from './history-toolbar-button';
 import { DocumentFileToolbarButtons } from './document-file-toolbar-buttons';
 import { CollaborationToolbarButton } from './collaboration-toolbar-button';
+import {DocumentTypeTools} from './document-type-tools';
 import { MetadataToolbarButton } from './metadata-toolbar-button';
 import { DocumentViewToolbarButtons } from './document-view-toolbar-buttons';
 import { ProofreadingToolbarButton } from './proofreading-toolbar-button';
@@ -45,11 +44,9 @@ import {
   TodoListToolbarButton,
 } from './list-toolbar-button';
 import { MarkToolbarButton } from './mark-toolbar-button';
-import { MediaToolbarButton } from './media-toolbar-button';
 import { LabelToolbarButton } from './label-toolbar-button';
 import { MoreToolbarButton } from './more-toolbar-button';
 import { TableToolbarButton } from './table-toolbar-button';
-import { ToggleToolbarButton } from './toggle-toolbar-button';
 import { ToolbarGroup } from './toolbar';
 import { TurnIntoToolbarButton } from './turn-into-toolbar-button';
 
@@ -71,6 +68,7 @@ export function FixedToolbarButtons() {
       </ToolbarGroup>
       <ToolbarGroup>
         {!readOnly&&<><MetadataToolbarButton /><DocumentViewToolbarButtons /></>}
+        <DocumentTypeTools readOnly={readOnly} />
         <ProofreadingToolbarButton />
       </ToolbarGroup>
       {!readOnly && (
@@ -140,20 +138,15 @@ export function FixedToolbarButtons() {
             <NumberedListToolbarButton />
             <BulletedListToolbarButton />
             <TodoListToolbarButton />
-            <ToggleToolbarButton />
+
           </ToolbarGroup>
 
           <ToolbarGroup>
             <LinkToolbarButton />
             <TableToolbarButton />
-            <EmojiToolbarButton />
+
           </ToolbarGroup>
 
-          <ToolbarGroup>
-            <MediaToolbarButton nodeType={KEYS.video} />
-            <MediaToolbarButton nodeType={KEYS.audio} />
-            <MediaToolbarButton nodeType={KEYS.file} />
-          </ToolbarGroup>
 
           <ToolbarGroup>
             <LineHeightToolbarButton />
@@ -173,7 +166,7 @@ export function FixedToolbarButtons() {
         <MarkToolbarButton nodeType={KEYS.highlight} tooltip="Highlight">
           <HighlighterIcon />
         </MarkToolbarButton>
-        <CommentToolbarButton />
+
       </ToolbarGroup>
 
 

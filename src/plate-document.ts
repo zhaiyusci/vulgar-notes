@@ -8,6 +8,7 @@ import {isBibliographyStyle,type BibliographyStyle} from './bibliography-style';
 import {parseDocumentMetadata,isDocumentMetadataEmpty,migrateDocumentMetadata,normalizeMetadataLayout,normalizeDocumentTitles,validMetadataEntry,metadataIndex,metadataNoteSymbol,metadataOrderedIds,type MetadataEntry,type DocumentMetadata} from './document-metadata';
 import {validFloatNode,floatLatex,floatMarkdown,floatNumbers,tableLatex} from './document-floats';
 import {documentOutline,tocMarkdown,outlineHeadingText} from './document-outline';
+import {parseTypography,type DocumentTypography} from './document-typography';
 import {locale,t} from './i18n';
 
 const sessionId=documentSessionId();
@@ -27,7 +28,7 @@ export function documentContentKey(source:string):string {
     return value;
   });
 }
-export interface DocumentEnvelope {version:1;value:Value;bibliographyLibraries:BibLibrary[];bibliographyMode?:'full';bibliographyCapturedLibraryIds?:string[];bibliographyStyle?:BibliographyStyle;metadata?:DocumentMetadata}
+export interface DocumentEnvelope {typography?:DocumentTypography;version:1;value:Value;bibliographyLibraries:BibLibrary[];bibliographyMode?:'full';bibliographyCapturedLibraryIds?:string[];bibliographyStyle?:BibliographyStyle;metadata?:DocumentMetadata}
 export class DocumentFormatError extends Error {
   readonly name='DocumentFormatError';
   constructor(readonly code:'invalid-json'|'invalid-document'){
@@ -56,7 +57,7 @@ export function parseDocumentEnvelope(source:string):DocumentEnvelope {
     const metadata=saved.metadata===undefined?undefined:parseDocumentMetadata(saved.metadata);
     // A paste can introduce a manual key already present in a source library.
     // Preserve both on reopen; reference resolution flags that ambiguity.
-    return {version:1,value:migrateDocumentMetadata(saved.value,metadata),bibliographyLibraries,...(saved.bibliographyMode==='full'?{bibliographyMode:'full' as const}:{}),...(bibliographyCapturedLibraryIds?.length?{bibliographyCapturedLibraryIds:[...bibliographyCapturedLibraryIds]}:{}),...(saved.bibliographyStyle?{bibliographyStyle:saved.bibliographyStyle}:{})};
+    return {version:1,...(saved.typography!==undefined?{typography:parseTypography(saved.typography)}:{}),value:migrateDocumentMetadata(saved.value,metadata),bibliographyLibraries,...(saved.bibliographyMode==='full'?{bibliographyMode:'full' as const}:{}),...(bibliographyCapturedLibraryIds?.length?{bibliographyCapturedLibraryIds:[...bibliographyCapturedLibraryIds]}:{}),...(saved.bibliographyStyle?{bibliographyStyle:saved.bibliographyStyle}:{})};
   }catch{throw new DocumentFormatError('invalid-document');}
 }
 export function parseDocumentFile(source:string):Value {return parseDocumentEnvelope(source).value;}

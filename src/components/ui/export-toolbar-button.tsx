@@ -16,6 +16,7 @@ import {
   DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ToolbarButton } from './toolbar';
+import {PdfExportDialog} from './pdf-export-dialog';
 
 type ExportFormat = 'html' | 'markdown' | 'latex';
 
@@ -23,6 +24,7 @@ export function ExportToolbarButton(props: DropdownMenuProps) {
   const editor = useEditorRef();
   const host = React.useContext(HostContext),libraries=useBibliographyLibraries(),style=useBibliographyStyle();
   const [open, setOpen] = React.useState(false);
+  const [pdfOpen,setPdfOpen]=React.useState(false);
 
   const exportDocument = async (format: ExportFormat) => {
     try {
@@ -30,7 +32,7 @@ export function ExportToolbarButton(props: DropdownMenuProps) {
           ? await host!.exportHtml()
           : format === 'markdown'
           ? host?.exportMarkdown()??editor.getApi(MarkdownPlugin).markdown.serialize()
-          : latexDocument(editor.children,libraries,style);
+          : latexDocument(editor.children,libraries,style,undefined,host?.typography);
       const extension = {html:'html', markdown: 'md', latex: 'tex'}[format];
       const mime = {html:'text/html', markdown: 'text/markdown', latex: 'application/x-tex'}[format];
       await saveExport(new Blob([content], {type: `${mime};charset=utf-8`}), `document.${extension}`);
@@ -39,7 +41,7 @@ export function ExportToolbarButton(props: DropdownMenuProps) {
     }
   };
 
-  return (
+  return <>
     <DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
       <DropdownMenuTrigger asChild>
         <ToolbarButton pressed={open} tooltip="Export" isDropdown>
@@ -48,11 +50,13 @@ export function ExportToolbarButton(props: DropdownMenuProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         <DropdownMenuGroup>
+          <DropdownMenuItem disabled={!host} onSelect={() => setPdfOpen(true)}>PDF (.pdf)</DropdownMenuItem>
           <DropdownMenuItem disabled={!host} onSelect={() => void exportDocument('html')}>HTML (.html)</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => void exportDocument('markdown')}>Markdown (.md)</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => void exportDocument('latex')}>LaTeX (.tex)</DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
+    {host&&<PdfExportDialog open={pdfOpen} onOpenChange={setPdfOpen} render={options=>host.exportPrintHtml(options)} />}
+  </>;
 }

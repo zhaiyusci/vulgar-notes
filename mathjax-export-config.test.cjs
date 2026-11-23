@@ -42,5 +42,11 @@ test('HTML export enables the official MathJax menu and registers only its exact
  config.typesetPromise=async()=>{throw Error('Font download failed');};config.typesetClear=()=>{};
  await assert.rejects(config.startup.pageReady(),/Font download failed/);assert.equal(element.textContent,'Native MathItem','a failed runtime registration retains the existing static formula');
  assert.equal(window.document.querySelector('dialog,[role="menu"],textarea'),null,'the export does not manufacture its own formula reader or menu');
+ window.document.documentElement.dataset.mathFont='mathjax-stix2';
+ window.eval(result.outputFiles[0].text);
+ const stix=window.MathJax;
+ assert.equal(stix.chtml.font,'[mathjax-stix2]');
+ assert.equal(stix.loader.paths['mathjax-stix2'],'https://cdn.jsdelivr.net/npm/@mathjax/mathjax-stix2-font@4.1.3');
+ assert.equal(stix.chtml.fontURL,stix.loader.paths['mathjax-stix2']+'/chtml/woff2');
  await window.happyDOM.abort();
 });

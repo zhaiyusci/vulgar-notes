@@ -1,7 +1,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const {buildSync}=require('esbuild');
-const bundled=buildSync({stdin:{contents:`export {DocumentContentComparison} from './src/document-content-comparison';export {documentContentKey} from './src/plate-document';export {migrateDocumentMetadata,normalizeMetadataLayout,normalizeDocumentTitles} from './src/document-metadata';`,resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,platform:'node',format:'cjs',target:'es2022'}).outputFiles[0].text;
+const bundled=buildSync({stdin:{contents:`export {DocumentContentComparison} from './src/document-content-comparison';export {documentContentKey,parseDocumentEnvelope} from './src/plate-document';export {migrateDocumentMetadata,normalizeMetadataLayout,normalizeDocumentTitles} from './src/document-metadata';`,resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,platform:'node',format:'cjs',target:'es2022'}).outputFiles[0].text;
 const compiled={exports:{}};new Function('module','exports',bundled)(compiled,compiled.exports);
 const {DocumentContentComparison,documentContentKey,migrateDocumentMetadata,normalizeMetadataLayout,normalizeDocumentTitles}=compiled.exports;
 const p=text=>({type:'p',children:[{text}]}),envelope=value=>({version:1,value,bibliographyLibraries:[],bibliographyStyle:'acs'});
@@ -40,6 +40,21 @@ test('title uniqueness and stable metadata role groups compare against the rende
  assert.equal(comparison.isEqual(normalized),true);
  assert.equal(comparison.isEqual(saved),true,'normalization must not mutate the caller or report a false dirty state');
  assert.equal(second.children[0].role,'title');
+});
+
+test('document typography is validated, saved independently of text, and participates in dirty state',()=>{
+ const saved=envelope([p('Unmodified prose')]),comparison=new DocumentContentComparison(JSON.stringify(saved));
+ const typography={bodyFont:'宋体',bodyPt:14,mathFont:'mathjax-stix2',mathPt:16};
+ const formatted={...saved,typography};
+ const {parseDocumentEnvelope}=compiled.exports;
+ assert.equal(parseDocumentEnvelope(JSON.stringify(saved)).typography,undefined);
+ assert.equal(comparison.isEqual(formatted),false);
+ comparison.reset(JSON.stringify(formatted));
+ assert.deepEqual(parseDocumentEnvelope(JSON.stringify(formatted)).typography,typography);
+ assert.equal(comparison.isEqual(formatted),true);
+ assert.equal(comparison.isEqual({...formatted,typography:{...typography,mathPt:null}}),false);
+ for(const patch of [{bodyPt:0},{mathPt:-10},{mathFont:'unlisted'},{bodyFont:'a";color:red'}])
+   assert.throws(()=>parseDocumentEnvelope(JSON.stringify({...saved,typography:{...typography,...patch}})));
 });
 
 test('saving an older snapshot does not mark newer current content clean',()=>{

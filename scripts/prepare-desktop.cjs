@@ -28,7 +28,7 @@ MathJax.loader.paths['mathjax-mhchem-extension'] = new URL('./vendor/mathjax-mhc
 MathJax.output.fontExtensions = [MathJax.loader.paths['mathjax-bboldx-extension']];
 MathJax.chtml = {fontURL:MathJax.loader.paths['mathjax-newcm']+'/chtml/woff2',dynamicPrefix:'[mathjax-newcm]/chtml/dynamic'};
 `);
-  for (const [pkg, target] of [['mathjax','mathjax'], ['@mathjax/mathjax-newcm-font','mathjax-newcm'], ['@mathjax/mathjax-bboldx-font-extension','mathjax-bboldx'], ['@mathjax/mathjax-mhchem-font-extension','mathjax-mhchem']]) {
+  for (const [pkg, target] of [['mathjax','mathjax'], ['@mathjax/mathjax-newcm-font','mathjax-newcm'], ['@mathjax/mathjax-stix2-font','mathjax-stix2'], ['@mathjax/mathjax-bboldx-font-extension','mathjax-bboldx'], ['@mathjax/mathjax-mhchem-font-extension','mathjax-mhchem']]) {
     fs.cpSync(path.join(root, 'node_modules', pkg), path.join(out, 'vendor', target), {
       recursive:true, filter: file => !file.endsWith('.map') && !['cjs','mjs','def','examples','tsconfig'].includes(path.basename(file)),
     });

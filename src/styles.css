@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./themes.css";
+@import "./document-type.css";
 @import "./themes-catppuccin.css";
 @import "./themes-community.css";
 @import "./components/ui/metadata-node.css";
@@ -15,6 +16,11 @@
  --color-background:var(--background); --color-foreground:var(--foreground); --color-card:var(--card); --color-card-foreground:var(--card-foreground); --color-popover:var(--popover); --color-popover-foreground:var(--popover-foreground); --color-primary:var(--primary); --color-primary-foreground:var(--primary-foreground); --color-secondary:var(--secondary); --color-secondary-foreground:var(--secondary-foreground); --color-muted:var(--muted); --color-muted-foreground:var(--muted-foreground); --color-accent:var(--accent); --color-accent-foreground:var(--accent-foreground); --color-destructive:var(--destructive); --color-border:var(--border); --color-input:var(--input); --color-ring:var(--ring); --color-brand:var(--brand); --radius-sm:calc(var(--radius) - 4px); --radius-md:calc(var(--radius) - 2px); --radius-lg:var(--radius); --radius-xl:calc(var(--radius) + 4px);
 }
 @layer base { * { @apply border-border; } body { @apply bg-background text-foreground; } }
+.vn-type-form { display:grid; gap:.75rem; }
+.vn-type-form label { display:grid; grid-template-columns:1fr 1.4fr; align-items:center; gap:.5rem; }
+.vn-type-form :is(input,select,button) { border:1px solid var(--border); border-radius:4px; padding:4px 7px; min-width:0; }
+.vn-type-form button { justify-self:end; }
+@media print { canvas[aria-hidden="true"][data-formatting-marks] {display:none!important} }
 /* Decorative tooltips must never capture a click or a drag over the editor.
    The Radix positioning wrapper also has a hit area of its own. */
 [data-radix-popper-content-wrapper]:has(> [data-slot="tooltip-content"]),

@@ -1,154 +1,110 @@
 'use client';
 
 import * as React from 'react';
-
-import type { TElement } from 'platejs';
-
-import { toUnitLess } from '@platejs/basic-styles';
 import { FontSizePlugin } from '@platejs/basic-styles/react';
 import { Minus, Plus } from 'lucide-react';
-import { KEYS } from 'platejs';
+import { KEYS, type TElement } from 'platejs';
 import { useEditorPlugin, useEditorSelector } from 'platejs/react';
 
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
-
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { HostContext } from '@/plate-editor-context';
+import { defaultTypography } from '@/document-typography';
+import { t } from '@/i18n';
 import { ToolbarButton } from './toolbar';
 
-const DEFAULT_FONT_SIZE = '16';
+const HEADING_SCALE: Record<string, number> = {
+  h1: 2.25, h2: 1.5, h3: 1.25, h4: 1.125, h5: 1.125,
+};
+const SIZES_PT = [8, 9, 10, 11, 12, 14, 16, 18, 24, 30, 36, 48, 60, 72, 96];
 
-const FONT_SIZE_MAP = {
-  h1: '36',
-  h2: '24',
-  h3: '20',
-} as const;
+function absolutePoints(size: unknown) {
+  const match = /^(\d*\.?\d+)\s*(pt|px)?$/i.exec(String(size).trim());
+  if (!match) return undefined;
+  // Legacy numeric marks use CSS pixels, just like an explicit px mark.
+  return Number(match[1]) * (match[2]?.toLowerCase() === 'pt' ? 1 : 0.75);
+}
 
-const FONT_SIZES = [
-  '8',
-  '9',
-  '10',
-  '12',
-  '14',
-  '16',
-  '18',
-  '24',
-  '30',
-  '36',
-  '48',
-  '60',
-  '72',
-  '96',
-] as const;
+function formatPoints(size: number) {
+  return String(Number(size.toFixed(3)));
+}
 
 export function FontSizeToolbarButton() {
-  const [inputValue, setInputValue] = React.useState(DEFAULT_FONT_SIZE);
-  const [isFocused, setIsFocused] = React.useState(false);
   const { editor, tf } = useEditorPlugin(FontSizePlugin);
-
-  const cursorFontSize = useEditorSelector((editor) => {
-    const fontSize = editor.api.marks()?.[KEYS.fontSize];
-
-    if (fontSize) {
-      return toUnitLess(fontSize as string);
+  const host = React.useContext(HostContext);
+  const { bodyPt } = React.useSyncExternalStore(
+    host?.subscribeTypography ?? (() => () => {}),
+    host?.getTypography ?? (() => defaultTypography)
+  );
+  const cursorSize = useEditorSelector(editor => {
+    const [block] = editor.api.block<TElement>() ?? [];
+    const size = editor.api.marks()?.[KEYS.fontSize] ?? block?.fontSize;
+    if (size != null) {
+      const points = absolutePoints(size);
+      if (points !== undefined) return formatPoints(points);
+      // Pasted rich text may use relative CSS sizes. Read the rendered leaf for these.
+      const focus = editor.selection?.focus;
+      const node = focus && editor.api.node(focus)?.[0];
+      const leaf = node && editor.api.toDOMNode(node);
+      const styled = leaf?.querySelector('[data-slate-string]') ?? leaf;
+      if (styled) return formatPoints(parseFloat(getComputedStyle(styled).fontSize) * 0.75);
     }
+    return formatPoints(bodyPt * (HEADING_SCALE[block?.type ?? ''] ?? 1));
+  }, [bodyPt]);
 
-    const [block] = editor.api.block<TElement>() || [];
-
-    if (!block?.type) return DEFAULT_FONT_SIZE;
-
-    return block.type in FONT_SIZE_MAP
-      ? FONT_SIZE_MAP[block.type as keyof typeof FONT_SIZE_MAP]
-      : DEFAULT_FONT_SIZE;
-  }, []);
-
-  const handleInputChange = () => {
-    const newSize = toUnitLess(inputValue);
-
-    if (
-      Number.parseInt(newSize, 10) < 1 ||
-      Number.parseInt(newSize, 10) > 100
-    ) {
-      editor.tf.focus();
-
-      return;
+  const [draft, setDraft] = React.useState<string | null>(null);
+  const ignoreBlur = React.useRef(false);
+  function applySize(size: number) {
+    if (Number.isFinite(size) && size > 0 && formatPoints(size) !== cursorSize) {
+      tf.fontSize.addMark(`${formatPoints(size)}pt`);
     }
-    if (newSize !== toUnitLess(cursorFontSize)) {
-      tf.fontSize.addMark(`${newSize}px`);
-    }
-
+  }
+  function finish(size: number) {
+    ignoreBlur.current = true;
+    applySize(size);
+    setDraft(null);
     editor.tf.focus();
-  };
-
-  const handleFontSizeChange = (delta: number) => {
-    const newSize = Number(displayValue) + delta;
-    tf.fontSize.addMark(`${newSize}px`);
-    editor.tf.focus();
-  };
-
-  const displayValue = isFocused ? inputValue : cursorFontSize;
+  }
+  function enteredPoints(value: string) {
+    const match = /^(\d*\.?\d+)\s*(?:pt)?$/i.exec(value.trim());
+    return match ? Number(match[1]) : NaN;
+  }
 
   return (
     <div className="flex h-7 items-center gap-1 rounded-md bg-muted/60 p-0">
-      <ToolbarButton onClick={() => handleFontSizeChange(-1)}>
-        <Minus />
-      </ToolbarButton>
-
-      <Popover open={isFocused} modal={false}>
+      <ToolbarButton tooltip="Decrease font size" onMouseDown={e => e.preventDefault()}
+        onClick={() => finish(Number(cursorSize) - 1)}><Minus /></ToolbarButton>
+      <Popover open={draft !== null} modal={false}>
         <PopoverTrigger asChild>
-          <input
-            className={cn(
-              'h-full w-10 shrink-0 bg-transparent px-1 text-center text-sm hover:bg-muted'
-            )}
-            value={displayValue}
-            onBlur={() => {
-              setIsFocused(false);
-              handleInputChange();
+          <input className="h-full w-10 shrink-0 bg-transparent px-1 text-center text-sm hover:bg-muted"
+            type="text" aria-label={t('Text size (pt)')} inputMode="decimal" data-plate-focus="true"
+            value={draft ?? cursorSize}
+            onFocus={() => { ignoreBlur.current = false; setDraft(cursorSize); }}
+            onChange={e => setDraft(e.target.value)}
+            onBlur={e => {
+              if (!ignoreBlur.current) applySize(enteredPoints(e.currentTarget.value));
+              setDraft(null);
             }}
-            onChange={(e) => setInputValue(e.target.value)}
-            onFocus={() => {
-              setIsFocused(true);
-              setInputValue(toUnitLess(cursorFontSize));
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+            onKeyDown={e => {
+              if (e.key === 'Enter' || e.key === 'Escape') {
                 e.preventDefault();
-                handleInputChange();
+                finish(e.key === 'Enter' ? enteredPoints(e.currentTarget.value) : NaN);
               }
             }}
-            data-plate-focus="true"
-            type="text"
           />
         </PopoverTrigger>
-        <PopoverContent
-          className="w-10 px-px py-1"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
-          {FONT_SIZES.map((size) => (
-            <button
-              key={size}
-              className={cn(
-                'flex h-8 w-full items-center justify-center text-sm hover:bg-accent data-[highlighted=true]:bg-accent'
-              )}
-              onClick={() => {
-                tf.fontSize.addMark(`${size}px`);
-                setIsFocused(false);
-              }}
-              data-highlighted={size === displayValue}
-              type="button"
-            >
-              {size}
-            </button>
+        <PopoverContent className="w-auto px-1 py-1"
+          onOpenAutoFocus={e => e.preventDefault()} onCloseAutoFocus={e => e.preventDefault()}>
+          {SIZES_PT.map(size => (
+            <button key={size} type="button"
+              className="flex h-8 w-full items-center justify-center px-2 text-sm hover:bg-accent data-[highlighted=true]:bg-accent"
+              onMouseDown={e => e.preventDefault()} onClick={() => finish(size)}
+              data-highlighted={String(size) === cursorSize}>{size} pt</button>
           ))}
         </PopoverContent>
       </Popover>
-
-      <ToolbarButton onClick={() => handleFontSizeChange(1)}>
-        <Plus />
-      </ToolbarButton>
+      <span aria-hidden="true" className="text-xs">pt</span>
+      <ToolbarButton tooltip="Increase font size" onMouseDown={e => e.preventDefault()}
+        onClick={() => finish(Number(cursorSize) + 1)}><Plus /></ToolbarButton>
     </div>
   );
 }
